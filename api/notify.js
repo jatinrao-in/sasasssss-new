@@ -21,60 +21,34 @@ const initDb = () => {
 };
 
 export default async function handler(req, res) {
-  // CORS headers for local dev
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
-
   if (req.method !== 'POST') return res.status(405).end();
-
-  console.log('=== NOTIFY API CALLED ===');
-  console.log('Event type:', req.body?.eventType);
-  console.log('Context:', JSON.stringify(req.body?.context));
-
-  // ENV check
-  console.log('ENV CHECK:');
-  console.log('GEMINI_API_KEY exists:', !!process.env.GEMINI_API_KEY);
-  console.log('MSG91_AUTH_KEY exists:', !!process.env.MSG91_AUTH_KEY);
-  console.log('MSG91_INTEGRATED_NUMBER:', process.env.MSG91_INTEGRATED_NUMBER);
-  console.log('FIREBASE_PROJECT_ID:', process.env.FIREBASE_PROJECT_ID);
 
   const { eventType, context } = req.body || {};
 
   if (!eventType || !context) {
-    console.error('Missing eventType or context in request body');
     return res.status(400).json({ error: 'Missing eventType or context' });
   }
 
   const firestore = initDb();
 
   try {
-    // 1. Draft message via Gemini AI
-    console.log('Drafting message for event:', eventType);
     const message = await draftMessage(eventType, context);
-    console.log('Message drafted successfully:', message);
 
-    // 2. Validate WhatsApp number
     const toNumber = context.whatsappNumber;
-    console.log('WhatsApp number from context:', toNumber);
-
     if (!toNumber || toNumber.trim() === '') {
-      console.error('NO WHATSAPP NUMBER PROVIDED in context!');
       return res.status(400).json({
-        error: 'No WhatsApp number provided in context',
+        error: 'No WhatsApp number provided',
         hint: 'Check that member.whatsapp field exists in Firestore /users collection'
       });
     }
 
-    // 3. Send via MSG91
-    console.log('Sending via MSG91 to:', toNumber);
     const sendResult = await sendViaMsg91(toNumber, message);
-    console.log('MSG91 result:', JSON.stringify(sendResult));
+    const success = sendResult?.type === 'success' || sendResult?.message?.includes('success');
 
-    const success = sendResult?.type === 'success' || sendResult?.message === 'Message sent successfully';
-
-    // 4. Log to Firestore
     await firestore.collection('whatsapp_logs').add({
       eventType,
       toNumber,
@@ -85,7 +59,6 @@ export default async function handler(req, res) {
       sentAt: Timestamp.now()
     });
 
-    // 5. Save in-app notification
     if (context.memberUid) {
       await firestore
         .collection('notifications')
@@ -100,16 +73,10 @@ export default async function handler(req, res) {
         });
     }
 
-    return res.status(200).json({
-      success: true,
-      message,
-      sent: success,
-      msg91Result: sendResult
-    });
+    return res.status(200).json({ success: true, message, sent: success });
 
   } catch (error) {
-    console.error('NOTIFY ERROR:', error.message);
-    console.error('Stack:', error.stack);
+    console.error('[notify]', error.message);
 
     try {
       await firestore.collection('whatsapp_logs').add({
@@ -119,27 +86,22 @@ export default async function handler(req, res) {
         error: error.message,
         sentAt: Timestamp.now()
       });
-    } catch (logErr) {
-      console.error('Failed to log error to Firestore:', logErr.message);
-    }
+    } catch (_) {}
 
-    return res.status(500).json({
-      error: error.message,
-      stack: error.stack
-    });
+    return res.status(500).json({ error: error.message });
   }
 }
 
 const getTitle = (eventType) => {
   const titles = {
-    task_assigned: '📋 New Task Assigned',
-    task_completed: '✅ Task Completed',
-    task_overdue: '⚠️ Task Overdue',
-    salary_paid: '💰 Salary Credited',
-    enquiry_assigned: '📩 New Enquiry',
-    followup_due: '🔔 Follow-up Due',
-    payment_due: '💳 Payment Reminder',
-    rgp_overdue: '📦 RGP Reminder',
+    task_assigned:     '📋 New Task Assigned',
+    task_completed:    '✅ Task Completed',
+    task_overdue:      '⚠️ Task Overdue',
+    salary_paid:       '💰 Salary Credited',
+    enquiry_assigned:  '📩 New Enquiry',
+    followup_due:      '🔔 Follow-up Due',
+    payment_due:       '💳 Payment Reminder',
+    rgp_overdue:       '📦 RGP Reminder',
     tool_not_returned: '🔧 Tool Return'
   };
   return titles[eventType] || 'Notification';
