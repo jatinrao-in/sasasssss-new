@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Settings, User, Bell, Shield, Palette, Save, Building2, Download, Database } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
@@ -198,7 +198,7 @@ export default function SettingsPage() {
  )}
 
  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-700">
- <strong>⏰ Recommendation:</strong> Manual backup recommended every hour for data safety.
+ <strong>Recommendation:</strong> Manual backup recommended every hour for data safety.
  </div>
  </div>
  );
@@ -209,7 +209,7 @@ export default function SettingsPage() {
  <div><label className="label mb-3">Theme</label>
  <div className="grid grid-cols-3 gap-3">{['Light', 'Dark', 'System'].map(theme => (
  <button key={theme} className={`p-4 rounded-xl border-2 text-sm font-medium transition-all ${theme === 'Light' ? 'border-teal-500 bg-teal-50 text-teal-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
- {theme === 'Light' ? '☀️' : theme === 'Dark' ? '🌙' : '💻'} {theme}
+ {theme}
  </button>
  ))}</div>
  </div>
@@ -254,3 +254,4 @@ export default function SettingsPage() {
  </div>
  );
 }
+

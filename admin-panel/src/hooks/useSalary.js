@@ -10,7 +10,7 @@ import {
 import { db } from '../lib/firebase';
 import { getSalaryMonthDoc, getSalaryMonthsCollection } from '../lib/firestore-helpers';
 
-// ─── Calculation Logic ────────────────────────────────────────────────────────
+// Calculation logic
 export function calcSalary(baseSalary, workingDays, presentDays) {
   const base = Number(baseSalary) || 0;
   const working = Number(workingDays) || 0;
@@ -36,15 +36,13 @@ export function formatMonthLabel(monthStr) {
   });
 }
 
-// ─── Hook: useSalaryForMonth ──────────────────────────────────────────────────
-// Fetches salary docs for all members in a given month.
-// Uses individual onSnapshot listeners per member (avoids collectionGroup issues).
+// Fetch salary docs for all members in a given month.
+// Uses individual listeners per member to avoid collectionGroup issues.
 export function useSalaryForMonth(members, month) {
-  const [records, setRecords] = useState({});   // { uid: salaryData | null }
+  const [records, setRecords] = useState({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Always clean state when inputs change
     setRecords({});
 
     const validMembers = (members || []).filter(Boolean);
@@ -56,7 +54,6 @@ export function useSalaryForMonth(members, month) {
 
     setLoading(true);
 
-    // Track per-member data in a closure object
     const localData = {};
     let resolvedCount = 0;
     const total = validMembers.length;
@@ -68,7 +65,6 @@ export function useSalaryForMonth(members, month) {
         (snap) => {
           localData[member.id] = snap.exists() ? { id: snap.id, ...snap.data() } : null;
           resolvedCount += 1;
-          // Update records on every change
           setRecords((prev) => ({ ...prev, [member.id]: localData[member.id] }));
           if (resolvedCount >= total) setLoading(false);
         },
@@ -82,13 +78,13 @@ export function useSalaryForMonth(members, month) {
       );
     });
 
-    return () => unsubscribers.forEach((u) => u());
-  }, [members, month]); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => unsubscribers.forEach((unsubscribe) => unsubscribe());
+  }, [members, month]);
 
   return { records, loading };
 }
 
-// ─── Hook: useSalaryForMember (member history — real-time) ───────────────────
+// Member salary history in real time.
 export function useSalaryForMember(uid) {
   const [salaryHistory, setSalaryHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -100,12 +96,12 @@ export function useSalaryForMember(uid) {
       return;
     }
 
-    const q = query(getSalaryMonthsCollection(db, uid), orderBy('month', 'desc'));
+    const salaryQuery = query(getSalaryMonthsCollection(db, uid), orderBy('month', 'desc'));
 
-    const unsub = onSnapshot(
-      q,
+    const unsubscribe = onSnapshot(
+      salaryQuery,
       (snap) => {
-        setSalaryHistory(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        setSalaryHistory(snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() })));
         setLoading(false);
       },
       (err) => {
@@ -114,13 +110,13 @@ export function useSalaryForMember(uid) {
       }
     );
 
-    return () => unsub();
+    return () => unsubscribe();
   }, [uid]);
 
   return { salaryHistory, loading };
 }
 
-// ─── Salary Write Operations ──────────────────────────────────────────────────
+// Salary write operations.
 export function useSalaryActions() {
   const saveSalary = useCallback(async (uid, month, data) => {
     const calc = calcSalary(data.baseSalary, data.workingDays, data.presentDays);
@@ -174,9 +170,9 @@ export function useSalaryActions() {
   const bulkMarkPaid = useCallback(async (rows) => {
     await Promise.all(
       rows
-        .filter((r) => r.status === 'pending')
-        .map((r) =>
-          updateDoc(getSalaryMonthDoc(db, r.uid, r.month || r.id), {
+        .filter((row) => row.status === 'pending')
+        .map((row) =>
+          updateDoc(getSalaryMonthDoc(db, row.uid, row.month || row.id), {
             status: 'paid',
             paidDate: serverTimestamp(),
             updatedAt: serverTimestamp(),
@@ -187,14 +183,14 @@ export function useSalaryActions() {
 
   const initMonthForAllMembers = useCallback(async (members, month) => {
     await Promise.all(
-      members.map((m) =>
+      members.map((member) =>
         setDoc(
-          getSalaryMonthDoc(db, m.id, month),
+          getSalaryMonthDoc(db, member.id, month),
           {
-            uid: m.id,
+            uid: member.id,
             month,
-            memberName: m.name || '',
-            designation: m.designation || '',
+            memberName: member.name || '',
+            designation: member.designation || '',
             workingDays: 26,
             presentDays: 26,
             lopDays: 0,
@@ -223,7 +219,7 @@ export function useSalaryActions() {
   };
 }
 
-// ─── Legacy compat ────────────────────────────────────────────────────────────
+// Legacy compatibility wrapper.
 export function useSalary(selectedUserId = null) {
   const { salaryHistory, loading } = useSalaryForMember(selectedUserId);
   const { saveSalary, markPaid } = useSalaryActions();

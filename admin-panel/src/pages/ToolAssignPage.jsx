@@ -154,7 +154,7 @@ export default function ToolAssignPage() {
  return (
  <div className="space-y-6">
  <div className="flex items-center justify-between">
- <div><h1 className="text-2xl font-bold text-gray-900">Tool Assignment</h1><p className="text-sm text-[var(--text-muted)] mt-0.5">{tools.length} tools · {pendingReturn} pending return</p></div>
+ <div><h1 className="text-2xl font-bold text-gray-900">Tool Assignment</h1><p className="text-sm text-[var(--text-muted)] mt-0.5">{tools.length} tools | {pendingReturn} pending return</p></div>
  <div className="flex items-center gap-3">
  <ExportButton
  data={filtered}

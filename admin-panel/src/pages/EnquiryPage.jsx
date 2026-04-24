@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+﻿import { useState, useMemo } from 'react';
 import {
  Plus, X, LayoutGrid, Columns3, Search, FileText,
  TrendingUp, Clock, BarChart3, Eye, Calendar, Trash2,
@@ -109,7 +109,7 @@ function EnquiryModal({ onClose, onSubmit, members, editing }) {
  <input className="input-field" type="date" value={form.targetDate} onChange={e => setForm({...form, targetDate: e.target.value})} /></div>
  </div>
  <div className="grid grid-cols-2 gap-3">
- <div><label className="label">Estimated Value (₹)</label>
+ <div><label className="label">Estimated Value (Rs)</label>
  <input className="input-field" type="number" placeholder="0" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} /></div>
  <div><label className="label">Priority</label>
  <select className="input-field" value={form.priority} onChange={e => setForm({...form, priority: e.target.value})}>
@@ -270,7 +270,7 @@ export default function EnquiryPage() {
  <div className="flex items-center justify-between">
  <div>
  <h1 className="text-2xl font-bold text-gray-900">Enquiry Management</h1>
- <p className="text-sm text-[var(--text-muted)] mt-0.5">{enquiries.length} enquiries · {analytics.open} open</p>
+ <p className="text-sm text-[var(--text-muted)] mt-0.5">{enquiries.length} enquiries | {analytics.open} open</p>
  </div>
  <div className="flex items-center gap-3">
  <button onClick={() => setShowAnalytics(!showAnalytics)}
@@ -497,3 +497,4 @@ export default function EnquiryPage() {
  </div>
  );
 }
+

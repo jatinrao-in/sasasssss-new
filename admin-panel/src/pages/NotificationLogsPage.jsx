@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { collection, onSnapshot, query, orderBy, limit, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import {
@@ -28,7 +28,7 @@ function StatusBadge({ status }) {
 }
 
 function formatPhone(to) {
-  if (!to) return '—';
+  if (!to) return '-';
   const s = String(to);
   if (s.length === 12 && s.startsWith('91')) {
     return `+91 ${s.slice(2, 7)} ${s.slice(7)}`;
@@ -37,7 +37,7 @@ function formatPhone(to) {
 }
 
 function formatTime(ts) {
-  if (!ts) return '—';
+  if (!ts) return '-';
   const d = ts.toDate ? ts.toDate() : new Date(ts);
   return d.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
 }
@@ -208,7 +208,7 @@ export default function NotificationLogsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-xs font-semibold bg-purple-50 text-purple-700 px-2 py-1 rounded-md">
-                          {log.payload?.payload?.template?.name || log.eventName || '—'}
+                          {log.payload?.payload?.template?.name || log.eventName || '-'}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -226,7 +226,7 @@ export default function NotificationLogsPage() {
                             {log.error.substring(0, 60)}{log.error.length > 60 ? '...' : ''}
                           </span>
                         ) : (
-                          <span className="text-xs text-gray-300">—</span>
+                          <span className="text-xs text-gray-300">-</span>
                         )}
                       </td>
                     </tr>
@@ -270,7 +270,7 @@ export default function NotificationLogsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-xs font-semibold bg-indigo-50 text-indigo-700 px-2 py-1 rounded-md">
-                          {item.eventName || '—'}
+                          {item.eventName || '-'}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -298,3 +298,4 @@ export default function NotificationLogsPage() {
     </div>
   );
 }
+

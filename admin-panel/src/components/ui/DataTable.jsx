@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+﻿import { useState, useMemo, useCallback } from 'react';
 import {
  Search, ChevronUp, ChevronDown, ChevronLeft, ChevronRight,
  Download, FileSpreadsheet, FileText, Printer, Columns3,
@@ -346,7 +346,7 @@ export default function DataTable({
  </div>
  <div className="flex items-center gap-2">
  <span className="text-xs text-[var(--text-muted)]">
- {page * pageSize + 1}–{Math.min((page + 1) * pageSize, sorted.length)} of {sorted.length}
+ {page * pageSize + 1}-{Math.min((page + 1) * pageSize, sorted.length)} of {sorted.length}
  </span>
  <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
  className="p-1 rounded hover:bg-gray-100 sabled:opacity-30 disabled:cursor-not-allowed transition-colors">
@@ -362,3 +362,4 @@ export default function DataTable({
  </div>
  );
 }
+

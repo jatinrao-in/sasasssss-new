@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+﻿import { useState, useMemo } from 'react';
 import {
  Plus, X, Search, Package, Clock, AlertTriangle,
  FileText, BarChart3, Building2, CheckCircle2,
@@ -90,7 +90,7 @@ function RgpModal({ onClose, onSubmit, members, editing }) {
  <div><label className="label">Description</label><input className="input-field" value={form.description} onChange={e => setForm({...form, description: e.target.value})} /></div>
  <div className="grid grid-cols-2 gap-3">
  <div><label className="label">Quantity</label><input className="input-field" type="number" value={form.quantity} onChange={e => setForm({...form, quantity: e.target.value})} /></div>
- <div><label className="label">Value (₹)</label><input className="input-field" type="number" value={form.value} onChange={e => setForm({...form, value: e.target.value})} /></div>
+ <div><label className="label">Value (Rs)</label><input className="input-field" type="number" value={form.value} onChange={e => setForm({...form, value: e.target.value})} /></div>
  </div>
  <div className="grid grid-cols-2 gap-3">
  <div><label className="label">Sent Date</label><input className="input-field" type="date" value={form.sentDate} onChange={e => setForm({...form, sentDate: e.target.value})} /></div>
@@ -193,7 +193,7 @@ export default function RgpChallanPage() {
  <div className="space-y-6 page-transition">
  <div className="flex items-center justify-between">
  <div><h1 className="text-2xl font-bold text-gray-900">RGP & Challan</h1>
- <p className="text-sm text-[var(--text-muted)] mt-0.5">{rgpChallans.length} records · {openCount} open</p></div>
+ <p className="text-sm text-[var(--text-muted)] mt-0.5">{rgpChallans.length} records | {openCount} open</p></div>
  <div className="flex items-center gap-3">
  <button onClick={() => setShowCharts(!showCharts)}
  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all ${showCharts ? 'bg-teal-50 text-teal-700 border border-teal-200' : 'text-gray-500 hover:bg-gray-100'}`}>
@@ -254,7 +254,7 @@ export default function RgpChallanPage() {
  {agingData.slice(0, 10).map(r => (
  <div key={r.id} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
  <div className="flex-1 min-w-0">
- <p className="text-sm font-medium text-gray-700 truncate">{r.companyName} — {r.challanNumber || r.type}</p>
+ <p className="text-sm font-medium text-gray-700 truncate">{r.companyName} - {r.challanNumber || r.type}</p>
  <p className="text-[10px] text-gray-400">{r.description || 'No description'}</p>
  </div>
  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
@@ -332,3 +332,4 @@ export default function RgpChallanPage() {
  </div>
  );
 }
+

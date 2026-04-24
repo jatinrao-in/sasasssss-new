@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Reusable Skeleton Loading Components
  * Shimmer animation applied via CSS class .skeleton-shimmer
  */
@@ -146,7 +146,7 @@ export function SkeletonTimeline({ items = 5 }) {
  );
 }
 
-// ✅ Fix P20: Static Tailwind grid class map — dynamic grid-cols-${count} would be purged in production
+// Keep this static Tailwind grid map so production builds do not purge classes.
 export function SkeletonStatCards({ count = 4 }) {
  const gridMap = {
  1: 'grid-cols-1',
@@ -184,3 +184,4 @@ export function SkeletonDashboard() {
  </div>
  );
 }
+

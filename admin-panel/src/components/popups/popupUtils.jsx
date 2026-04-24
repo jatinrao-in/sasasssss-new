@@ -2,9 +2,9 @@
 import { formatCurrency } from '../../lib/formatters';
 
 export function fmtDate(val) {
-  if (!val) return '—';
+  if (!val) return '-';
   const d = typeof val?.toDate === 'function' ? val.toDate() : new Date(val);
-  if (isNaN(d)) return '—';
+  if (isNaN(d)) return '-';
   return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
@@ -61,7 +61,7 @@ export function Shimmer({ h = '20px', w = '100%', r = '8px', mb = '0' }) {
 export function PopupSkeletonSummary() {
   return (
     <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
-      {[1,2,3,4].map(i => (
+      {[1, 2, 3, 4].map(i => (
         <div key={i} style={{ flex: 1, background: '#f8fafc', borderRadius: 12, padding: 16 }}>
           <Shimmer h="12px" w="60%" mb="10px" />
           <Shimmer h="28px" w="70%" mb="6px" />
@@ -75,7 +75,7 @@ export function PopupSkeletonSummary() {
 export function PopupSkeletonList() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {[1,2,3].map(i => (
+      {[1, 2, 3].map(i => (
         <div key={i} style={{ background: '#f8fafc', borderRadius: 12, padding: 18 }}>
           <Shimmer h="14px" w="40%" mb="10px" />
           <Shimmer h="10px" w="90%" mb="8px" />

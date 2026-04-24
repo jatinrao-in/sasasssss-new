@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, X } from 'lucide-react';
 import { Timestamp } from 'firebase/firestore';
@@ -262,7 +262,7 @@ export default function ProjectDetailPage() {
  </button>
  <div>
  <h1 className="text-2xl font-bold text-gray-900">{project.name}</h1>
- <p className="text-sm text-gray-500">{project.client || ''} · {project.status}</p>
+ <p className="text-sm text-gray-500">{project.client || ''} | {project.status}</p>
  </div>
  </div>
 

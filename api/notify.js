@@ -94,15 +94,15 @@ export default async function handler(req, res) {
 
 const getTitle = (eventType) => {
   const titles = {
-    task_assigned:     '📋 New Task Assigned',
-    task_completed:    '✅ Task Completed',
-    task_overdue:      '⚠️ Task Overdue',
-    salary_paid:       '💰 Salary Credited',
-    enquiry_assigned:  '📩 New Enquiry',
-    followup_due:      '🔔 Follow-up Due',
-    payment_due:       '💳 Payment Reminder',
-    rgp_overdue:       '📦 RGP Reminder',
-    tool_not_returned: '🔧 Tool Return'
+    task_assigned:     'New Task Assigned',
+    task_completed:    'Task Completed',
+    task_overdue:      'Task Overdue',
+    salary_paid:       'Salary Credited',
+    enquiry_assigned:  'New Enquiry',
+    followup_due:      'Follow-up Due',
+    payment_due:       'Payment Reminder',
+    rgp_overdue:       'RGP Reminder',
+    tool_not_returned: 'Tool Return'
   };
   return titles[eventType] || 'Notification';
 };

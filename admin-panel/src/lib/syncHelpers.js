@@ -1,5 +1,5 @@
-/**
- * Client-side sync helpers — replaces Firebase onDocumentWritten triggers.
+﻿/**
+ * Client-side sync helpers - replaces Firebase onDocumentWritten triggers.
  * These run in the Admin Panel browser after every Firestore write.
  */
 import { doc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
@@ -100,3 +100,4 @@ export function calculateSalaryDerivedFields(d) {
     : netSalary;
   return { totalAllowances, totalDeductions, grossSalary, netSalary, lopDays, finalSalary };
 }
+

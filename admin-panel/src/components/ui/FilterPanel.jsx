@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { ChevronDown, ChevronUp, X, RotateCcw } from 'lucide-react';
 
 export default function FilterPanel({ filters = [], values = {}, onChange, onReset, children }) {
@@ -86,7 +86,7 @@ export default function FilterPanel({ filters = [], values = {}, onChange, onRes
  value={values[`${filter.key}_min`] || ''}
  onChange={e => onChange(`${filter.key}_min`, e.target.value)}
  />
- <span className="text-gray-300">–</span>
+ <span className="text-gray-300">-</span>
  <input
  type="number"
  className="input-field text-sm flex-1"

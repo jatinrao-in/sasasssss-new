@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+﻿import { useState, useMemo, useCallback } from 'react';
 import {
   Wallet, Check, Edit2, X, Save, Users,
   AlertTriangle, ChevronDown, RefreshCw,
@@ -17,7 +17,7 @@ import { formatCurrency, getInitials } from '../lib/formatters';
 import { notify } from '../lib/notify';
 import { formatMonth } from '../lib/helpers';
 
-// ─── Month options (next + last 12) ──────────────────────────────────────────
+// Month options (next + last 12)
 function getMonthOptions() {
   const opts = [];
   const now = new Date();
@@ -35,7 +35,7 @@ function currentMonth() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
+// Skeleton
 function SkeletonRow() {
   return (
     <tr className="animate-pulse">
@@ -60,7 +60,7 @@ function SkeletonRow() {
   );
 }
 
-// ─── Edit Modal ───────────────────────────────────────────────────────────────
+// Edit modal
 function EditModal({ row, month, onClose, onSave }) {
   const [form, setForm] = useState({
     workingDays: row?.workingDays ?? 26,
@@ -96,7 +96,7 @@ function EditModal({ row, month, onClose, onSave }) {
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-primary)]">
           <div>
             <h2 className="text-base font-semibold text-[var(--text-primary)]">
-              Edit Salary — {row?.memberName}
+              Edit Salary - {row?.memberName}
             </h2>
             <p className="text-xs text-[var(--text-muted)] mt-0.5">{formatMonthLabel(month)}</p>
           </div>
@@ -127,7 +127,7 @@ function EditModal({ row, month, onClose, onSave }) {
               />
             </div>
             <div>
-              <label className="label">Base Salary (₹)</label>
+              <label className="label">Base Salary (Rs)</label>
               <input
                 className="input-field"
                 type="number" min="0"
@@ -162,7 +162,7 @@ function EditModal({ row, month, onClose, onSave }) {
             <div className="flex justify-between">
               <span className="text-[var(--text-muted)]">LOP Deduction</span>
               <span className="font-medium text-red-500">
-                {calc.lopDeduction > 0 ? `-${formatCurrency(calc.lopDeduction)}` : '—'}
+                {calc.lopDeduction > 0 ? `-${formatCurrency(calc.lopDeduction)}` : '-'}
               </span>
             </div>
             <div className="flex justify-between items-center border-t border-[var(--border-primary)] pt-2.5">
@@ -203,7 +203,7 @@ function EditModal({ row, month, onClose, onSave }) {
   );
 }
 
-// ─── Summary Cards ────────────────────────────────────────────────────────────
+// Summary cards
 function SummaryCards({ rows, loading }) {
   const withData = rows.filter((r) => r.hasData);
   const total = withData.reduce((s, r) => s + (r.netSalary || 0), 0);
@@ -247,7 +247,7 @@ function SummaryCards({ rows, loading }) {
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// Main page
 export default function SalaryPage() {
   const toast = useToast();
   const { members, loading: teamLoading } = useTeam();
@@ -259,7 +259,7 @@ export default function SalaryPage() {
 
   const teamMembers = useMemo(() => members.filter((m) => m.role === 'member'), [members]);
 
-  // Fetch salary data — individual listeners per member
+  // Fetch salary data with individual listeners per member.
   const { records, loading: salaryLoading } = useSalaryForMonth(teamMembers, month);
   const { saveSalary, markPaid, bulkSetWorkingDays, bulkMarkPaid, initMonthForAllMembers } =
     useSalaryActions();
@@ -294,7 +294,7 @@ export default function SalaryPage() {
     });
   }, [teamMembers, records, month]);
 
-  // ── Save salary for one member ──────────────────────────────────────────────
+  // Save salary for one member.
   const handleSaveRow = useCallback(
     async (uid, form) => {
       const row = rows.find((r) => r.uid === uid);
@@ -313,7 +313,7 @@ export default function SalaryPage() {
     [rows, month, saveSalary, toast]
   );
 
-  // ── Mark one member as paid ─────────────────────────────────────────────────
+    // Mark one member as paid.
   const handleMarkPaid = useCallback(
     async (row) => {
       if (!row.hasData) {
@@ -355,7 +355,7 @@ export default function SalaryPage() {
           console.warn('Notification failed (non-fatal):', notifErr.message);
         }
 
-        toast.success(`✅ Marked paid for ${row.memberName}`);
+        toast.success(`Marked paid for ${row.memberName}`);
       } catch (e) {
         console.error('Mark paid error:', e);
         toast.error('Failed: ' + e.message);
@@ -366,7 +366,7 @@ export default function SalaryPage() {
     [month, markPaid, toast]
   );
 
-  // ── Initialize payroll for all members ─────────────────────────────────────
+  // Initialize payroll for all members.
   const handleProcessPayroll = useCallback(async () => {
     if (!teamMembers.length) {
       toast.error('No team members found');
@@ -384,11 +384,11 @@ export default function SalaryPage() {
     }
   }, [teamMembers, month, initMonthForAllMembers, toast]);
 
-  // ── Bulk: set working days ──────────────────────────────────────────────────
+  // Bulk: set working days.
   const handleBulkWorkingDays = useCallback(async () => {
     const days = Number(bulkDays);
     if (!days || days < 1 || days > 31) {
-      toast.error('Enter valid days (1–31)');
+      toast.error('Enter valid days (1-31)');
       return;
     }
     setProcessing(true);
@@ -405,7 +405,7 @@ export default function SalaryPage() {
     }
   }, [bulkDays, teamMembers, month, bulkSetWorkingDays, toast]);
 
-  // ── Bulk: mark all paid ─────────────────────────────────────────────────────
+  // Bulk: mark all paid.
   const handleBulkMarkPaid = useCallback(async () => {
     const pending = rows.filter((r) => r.status === 'pending' && r.hasData);
     if (!pending.length) {
@@ -467,12 +467,12 @@ export default function SalaryPage() {
 
   return (
     <div className="space-y-5 page-transition">
-      {/* ── Header ── */}
+      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">Salary Management</h1>
           <p className="text-sm text-[var(--text-muted)] mt-0.5">
-            {teamMembers.length} employees · {formatMonthLabel(month)}
+            {teamMembers.length} employees | {formatMonthLabel(month)}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -500,10 +500,10 @@ export default function SalaryPage() {
         </div>
       </div>
 
-      {/* ── Summary Cards ── */}
+      {/* Summary cards */}
       <SummaryCards rows={rows} loading={loading} />
 
-      {/* ── Bulk Actions ── */}
+      {/* Bulk actions */}
       <div className="flex items-center gap-2 flex-wrap">
         <button
           onClick={() => setShowBulkInput((v) => !v)}
@@ -541,7 +541,7 @@ export default function SalaryPage() {
         </button>
       </div>
 
-      {/* ── Table ── */}
+      {/* Table */}
       <div className="card p-0 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[900px]">
@@ -565,7 +565,7 @@ export default function SalaryPage() {
               ) : teamMembers.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="text-center py-16">
-                    <div className="text-4xl mb-3">👥</div>
+                    <div className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Team</div>
                     <p className="font-medium text-[var(--text-primary)]">No team members found</p>
                     <p className="text-xs text-[var(--text-muted)] mt-1">Add members in the Team page first</p>
                   </td>
@@ -573,7 +573,7 @@ export default function SalaryPage() {
               ) : !hasAnyData ? (
                 <tr>
                   <td colSpan={10} className="text-center py-16">
-                    <div className="text-5xl mb-3">📊</div>
+                    <div className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Payroll</div>
                     <p className="font-semibold text-[var(--text-primary)] text-base">No salary data for {formatMonthLabel(month)}</p>
                     <p className="text-xs text-[var(--text-muted)] mt-1.5">Click "Process Payroll" to initialize records for all members</p>
                     <button
@@ -624,7 +624,7 @@ export default function SalaryPage() {
                     </td>
 
                     <td className="table-cell text-right text-red-500 font-medium">
-                      {row.lopDeduction > 0 ? `-${formatCurrency(row.lopDeduction)}` : '—'}
+                      {row.lopDeduction > 0 ? `-${formatCurrency(row.lopDeduction)}` : '-'}
                     </td>
 
                     <td className="table-cell text-right font-bold text-teal-700">
@@ -634,10 +634,10 @@ export default function SalaryPage() {
                     <td className="table-cell text-center">
                       {row.hasData ? (
                         <span className={`badge ${row.status === 'paid' ? 'badge-green' : 'badge-yellow'}`}>
-                          {row.status === 'paid' ? '✅ Paid' : '🟡 Pending'}
+                          {row.status === 'paid' ? 'Paid' : 'Pending'}
                         </span>
                       ) : (
-                        <span className="text-xs text-gray-400">—</span>
+                        <span className="text-xs text-gray-400">-</span>
                       )}
                     </td>
 
@@ -668,7 +668,7 @@ export default function SalaryPage() {
         </div>
       </div>
 
-      {/* ── Edit Modal ── */}
+      {/* Edit modal */}
       {editRow && (
         <EditModal
           row={editRow}
@@ -680,3 +680,5 @@ export default function SalaryPage() {
     </div>
   );
 }
+
+

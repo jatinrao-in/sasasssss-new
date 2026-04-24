@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
  BarChart, Bar, LineChart, Line, AreaChart, Area,
@@ -28,10 +28,11 @@ import ProjectsPopup from '../components/popups/ProjectsPopup';
 import TasksPopup    from '../components/popups/TasksPopup';
 import PaymentsPopup from '../components/popups/PaymentsPopup';
 import TeamPopup     from '../components/popups/TeamPopup';
+import { RankBadge } from '../components/ui/TextIndicators';
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// LIVE CLOCK
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// Live clock
+
+
 
 function LiveClock() {
  const [now, setNow] = useState(new Date());
@@ -53,9 +54,9 @@ function LiveClock() {
  );
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// DASHBOARD WIDGET WRAPPER
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// Dashboard widget wrapper
+
+
 
 function DashboardWidget({ title, children, className = '', action }) {
  return (
@@ -71,9 +72,9 @@ function DashboardWidget({ title, children, className = '', action }) {
  );
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// CHART COLORS
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// Chart colors
+
+
 const COLORS = ['#0d9488', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
 
 function normalizeDate(val) {
@@ -83,7 +84,7 @@ function normalizeDate(val) {
  return isNaN(d.getTime()) ? null : d;
 }
 
-// ─── AI INSIGHTS WIDGET ───────────────────────────────────────────────────────
+// AI insights widget
 function AIInsightsWidget({ data }) {
   const { generateInsights, isProcessing } = useAIManager();
   const [insights, setInsights] = useState(null);
@@ -135,9 +136,9 @@ function AIInsightsWidget({ data }) {
   );
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// MAIN DASHBOARD
-// ═════════════════════════════════════════════════════════════════════════════
+// Main dashboard
+
+
 
 export default function DashboardPage() {
  const navigate = useNavigate();
@@ -175,7 +176,7 @@ export default function DashboardPage() {
 
  const loading = projLoading || taskLoading || teamLoading || payLoading || enqLoading || fuLoading;
 
- // â• â• â•  COMPUTED DATA â• â• â• 
+ // Computed data
  const teamMembers = useMemo(() => members.filter(m => m.role === 'member'), [members]);
  const activeProjects = useMemo(() => projects.filter(p => p.status !== 'completed'), [projects]);
 
@@ -198,7 +199,7 @@ export default function DashboardPage() {
  const totalPOValue = useMemo(() => projects.reduce((s, p) => s + Number(p.poValue || 0), 0), [projects]);
  const totalExpense = useMemo(() => projects.reduce((s, p) => s + Number(p.totalExpense || 0), 0), [projects]);
 
- // â• â• â•  MEMBER PERFORMANCE â• â• â• 
+ // Member performance
  const memberStats = useMemo(() => {
  return teamMembers.map(m => {
  const memberTasks = tasks.filter(t => t.assignedTo === m.id);
@@ -211,7 +212,7 @@ export default function DashboardPage() {
  }).sort((a, b) => b.completed - a.completed);
  }, [teamMembers, tasks]);
 
- // â• â• â•  WEEKLY DATA â• â• â• 
+ // Weekly data
  const weeklyData = useMemo(() => {
  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
  const today = new Date();
@@ -237,14 +238,14 @@ export default function DashboardPage() {
  });
  }, [tasks]);
 
- // â• â• â•  STATUS BREAKDOWN â• â• â• 
+ // Status breakdown
  const taskStatusData = useMemo(() => [
  { name: 'Open', value: openTasks.filter(t => t.status === 'open').length, color: '#3b82f6' },
  { name: 'Overdue', value: overdueTasks.length, color: '#ef4444' },
  { name: 'Completed', value: completedTasks.length, color: '#10b981' },
  ], [openTasks, overdueTasks, completedTasks]);
 
- // â• â• â•  UPCOMING DEADLINES â• â• â• 
+ // Upcoming deadlines
  const upcomingDeadlines = useMemo(() => {
  const now = new Date();
  const weekLater = new Date();
@@ -276,7 +277,7 @@ export default function DashboardPage() {
  return deadlines.sort((a, b) => a.dueDate - b.dueDate).slice(0, 8);
  }, [tasks, payments, enquiries]);
 
- // â• â• â•  MONTHLY CHARTS â• â• â• 
+ // Monthly charts
  const monthlyTrend = useMemo(() => {
  const months = [];
  for (let i = 5; i >= 0; i--) {
@@ -301,7 +302,7 @@ export default function DashboardPage() {
  return months;
  }, [tasks]);
 
- // â• â• â•  RADAR DATA â• â• â• 
+ // Radar data
  const radarData = useMemo(() => {
  return memberStats.slice(0, 5).map(m => ({
  name: m.name.split(' ')[0],
@@ -338,7 +339,7 @@ export default function DashboardPage() {
 
  return (
  <div className="space-y-6 page-transition">
- {/* â• â• â•  WELCOME BANNER â• â• â•  */}
+ {/* Welcome banner */}
  <div className="welcome-banner animated-gradient p-6 text-white">
  <div className="relative z-10 flex items-center justify-between">
  <div>
@@ -379,7 +380,7 @@ export default function DashboardPage() {
  </div>
  </div>
 
- {/* â• â• â•  WIDGET CUSTOMIZATION PANEL â• â• â•  */}
+ {/* Widget customization panel */}
  {showCustomize && (
  <div className="card bg-gray-50 border border-[var(--border-primary)] p-4">
  <h3 className="text-sm font-semibold text-gray-700 mb-3">Toggle Dashboard Widgets</h3>
@@ -413,7 +414,7 @@ export default function DashboardPage() {
  </div>
  )}
 
- {/* â• â• â•  STAT CARDS â• â• â•  */}
+ {/* Stat cards */}
  <div className="grid grid-cols-4 gap-5">
  {[
  {
@@ -433,7 +434,7 @@ export default function DashboardPage() {
  color: 'bg-teal-50 text-teal-600',
  iconBg: 'bg-teal-100',
  sub: `${overdueTasks.length} overdue`,
- trend: overdueTasks.length > 0 ? `${overdueTasks.length} âš ï¸ ` : 'âœ… On track',
+ trend: overdueTasks.length > 0 ? `${overdueTasks.length} overdue` : 'On track',
  trendUp: overdueTasks.length === 0,
  },
  {
@@ -488,7 +489,7 @@ export default function DashboardPage() {
  })}
  </div>
 
- {/* â• â• â•  QUICK ACTIONS â• â• â•  */}
+ {/* Quick actions */}
  {widgetConfig.quickActions && (
  <div className="flex gap-3">
  {[
@@ -520,7 +521,7 @@ export default function DashboardPage() {
   }} />
  )}
 
- {/* â• â• â•  SMART ALERTS â• â• â•  */}
+ {/* Smart alerts */}
  {widgetConfig.alerts && (overdueTasks.length > 0 || overduePayments.length > 0 || overdueEnquiries.length > 0 || pendingFollowups.length > 0) && (
  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
  {overdueTasks.length > 0 && (
@@ -566,7 +567,7 @@ export default function DashboardPage() {
  </div>
  )}
 
- {/* â•â•â• SPARKLINE MINI CHARTS â•â•â• */}
+ {/* Sparkline mini charts */}
  {widgetConfig.sparklines && (
  <div className="grid grid-cols-3 gap-5">
  <div className="card sparkline-card">
@@ -617,7 +618,7 @@ export default function DashboardPage() {
  </div>
  )}
 
- {/* â•â•â• MAIN CHARTS ROW â•â•â• */}
+ {/* Main charts row */}
  {widgetConfig.charts && (
  <div className="grid grid-cols-3 gap-5">
  {/* Monthly Task Trend - Stacked Bar */}
@@ -678,7 +679,7 @@ export default function DashboardPage() {
  </div>
  )}
 
- {/* â•â•â• TEAM OVERVIEW + UPCOMING DEADLINES â•â•â• */}
+ {/* Team overview and upcoming deadlines */}
  <div className="grid grid-cols-3 gap-5">
  {/* Team Overview Table */}
  {widgetConfig.teamOverview && (
@@ -741,7 +742,7 @@ export default function DashboardPage() {
  </div>
  </td>
  <td className="text-center py-2.5 px-2">
- <span className="text-lg">{i === 0 ? 'ðŸ¥‡' : i === 1 ? 'ðŸ¥ˆ' : i === 2 ? 'ðŸ¥‰' : `#${i + 1}`}</span>
+ <RankBadge rank={i + 1} />
  </td>
  </tr>
  ))}
@@ -783,7 +784,7 @@ export default function DashboardPage() {
  <div className="flex-1 min-w-0">
  <p className="text-sm font-medium text-gray-700 truncate">{item.title}</p>
  <p className="text-[10px] text-gray-400">
- {item.assignedToName || item.type} Â· {item.dueDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+ {item.assignedToName || item.type} | {item.dueDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
  </p>
  </div>
  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
@@ -802,7 +803,7 @@ export default function DashboardPage() {
  )}
  </div>
 
- {/* â•â•â• WEEKLY TREND + PERFORMANCE â•â•â• */}
+ {/* Weekly trend and performance */}
  {widgetConfig.weeklyTrend && (
  <div className="grid grid-cols-2 gap-5">
  <DashboardWidget title="Weekly Task Trend">
@@ -851,7 +852,7 @@ export default function DashboardPage() {
  </div>
  )}
 
- {/* â•â•â• ACTIVITY TIMELINE â•â•â• */}
+ {/* Activity timeline */}
  {widgetConfig.timeline && (
  <DashboardWidget
  title="Recent Activity"
@@ -884,7 +885,7 @@ export default function DashboardPage() {
  id: 'pay-' + p.id,
  icon: Receipt,
  dotClass: 'timeline-dot-payment',
- title: `${p.customerName} â€” ${formatCurrency(p.amount || 0)}`,
+ title: `${p.customerName} - ${formatCurrency(p.amount || 0)}`,
  subtitle: p.paymentStatus || 'pending',
  type: 'payment',
  badge: p.paymentStatus,
@@ -950,7 +951,7 @@ export default function DashboardPage() {
  </DashboardWidget>
  )}
 
- {/* â•â•â• FINANCIAL HEALTH â•â•â• */}
+ {/* Financial health */}
  <div className="grid grid-cols-4 gap-4">
  {[
  { label: 'Total PO Value', value: formatLakhs(totalPOValue), icon: Briefcase, color: 'text-blue-600', bg: 'bg-blue-50' },
@@ -973,7 +974,7 @@ export default function DashboardPage() {
  })}
  </div>
 
- {/* â•â•â• PERFORMANCE SCORE CARDS â•â•â• */}
+ {/* Performance score cards */}
  {widgetConfig.performance && memberStats.length > 0 && (
  <DashboardWidget title="Top Performers This Month">
  <div className="grid grid-cols-3 gap-4">
@@ -983,7 +984,7 @@ export default function DashboardPage() {
  i === 1 ? 'bg-gradient-to-br from-gray-50 to-slate-50 border-gray-200' :
  'bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200'
  }`}>
- <div className="text-3xl mb-2">{i === 0 ? 'ðŸ¥‡' : i === 1 ? 'ðŸ¥ˆ' : 'ðŸ¥‰'}</div>
+ <div className="mb-3 flex justify-center"><RankBadge rank={i + 1} style={{ fontSize: '14px', padding: '4px 10px' }} /></div>
  <div className="w-12 h-12 rounded-full bg-teal-500 flex items-center justify-center text-white font-bold mx-auto mb-2">
  {getInitials(m.name)}
  </div>
@@ -1017,3 +1018,4 @@ export default function DashboardPage() {
  </div>
  );
 }
+

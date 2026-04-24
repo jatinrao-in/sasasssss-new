@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+﻿import { useState, useMemo } from 'react';
 import {
  Plus, X, Search, DollarSign, TrendingUp, Clock, AlertTriangle,
  FileText, Download, Eye, CheckCircle2, BarChart3,
@@ -88,7 +88,7 @@ function PaymentModal({ onClose, onSubmit, members, editing }) {
  <div><label className="label">Invoice No.</label><input className="input-field" value={form.invoiceNumber} onChange={e => setForm({...form, invoiceNumber: e.target.value})} /></div>
  </div>
  <div className="grid grid-cols-2 gap-3">
- <div><label className="label">Total Amount (₹) *</label><input className="input-field" type="number" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} /></div>
+ <div><label className="label">Total Amount (Rs) *</label><input className="input-field" type="number" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} /></div>
  <div><label className="label">Status</label>
  <select className="input-field" value={form.paymentStatus} onChange={e => setForm({...form, paymentStatus: e.target.value})}>
  <option value="pending">Pending</option><option value="partial">Partial</option><option value="received">Received</option>
@@ -104,7 +104,7 @@ function PaymentModal({ onClose, onSubmit, members, editing }) {
  <span className="text-gray-500">Pending:</span>
  <span className="font-semibold text-red-500">{formatCurrency(netPending)}</span>
  </div>
- <div><label className="label text-xs">Add Partial Payment (₹)</label>
+ <div><label className="label text-xs">Add Partial Payment (Rs)</label>
  <input className="input-field" type="number" placeholder="0" value={form.partialPayment}
  onChange={e => setForm({...form, partialPayment: e.target.value})} /></div>
  </div>
@@ -254,7 +254,7 @@ export default function PaymentsPage() {
  <div className="flex items-center justify-between">
  <div>
  <h1 className="text-2xl font-bold text-gray-900">Payment Management</h1>
- <p className="text-sm text-[var(--text-muted)] mt-0.5">{payments.length} payments · {metrics.collectionEff}% collection rate</p>
+ <p className="text-sm text-[var(--text-muted)] mt-0.5">{payments.length} payments | {metrics.collectionEff}% collection rate</p>
  </div>
  <div className="flex items-center gap-3">
  <button onClick={() => setShowAnalytics(!showAnalytics)}
@@ -430,3 +430,4 @@ export default function PaymentsPage() {
  </div>
  );
 }
+

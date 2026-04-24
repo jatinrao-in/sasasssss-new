@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+﻿import { useState, useMemo, useRef } from 'react';
 import {
  Plus, X, Search, Calendar, LayoutGrid, Clock,
  CheckCircle2, XCircle, MinusCircle, MessageSquare,
@@ -229,7 +229,7 @@ export default function FollowupPage() {
  <div className="flex items-center justify-between">
  <div>
  <h1 className="text-2xl font-bold text-gray-900">Follow-Up Management</h1>
- <p className="text-sm text-[var(--text-muted)] mt-0.5">{followups.length} follow-ups · {open} open · {overdue} overdue</p>
+ <p className="text-sm text-[var(--text-muted)] mt-0.5">{followups.length} follow-ups | {open} open | {overdue} overdue</p>
  </div>
  <div className="flex items-center gap-3">
  <ExportButton
@@ -375,7 +375,7 @@ export default function FollowupPage() {
  <td className="table-cell text-[var(--text-muted)] text-xs">{formatDate(f.targetDate)}</td>
  <td className="table-cell text-center">
  {(f.rescheduleCount || 0) > 0 ? (
- <span className="text-xs font-medium text-amber-500">×{f.rescheduleCount}</span>
+ <span className="text-xs font-medium text-amber-500">x{f.rescheduleCount}</span>
  ) : <span className="text-gray-300">-</span>}
  </td>
  <td className="table-cell">
@@ -425,5 +425,6 @@ export default function FollowupPage() {
  </div>
  );
 }
+
 
 

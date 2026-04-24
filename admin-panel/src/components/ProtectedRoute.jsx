@@ -1,7 +1,7 @@
-import { Navigate } from 'react-router-dom';
+﻿import { Navigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
-// ✅ Fix P3: Wrong role redirect now shows "/access-denied" message instead of silently going to login
+// Show a clear access-denied page instead of silently redirecting to login.
 export default function ProtectedRoute({ children, requiredRole }) {
  const { user, userData, loading } = useAuth();
 
@@ -13,7 +13,7 @@ export default function ProtectedRoute({ children, requiredRole }) {
  return <Navigate to="/" replace />;
  }
 
- // ✅ Fix P3: If member tries to access admin panel, show meaningful page instead of silent redirect
+ // If a member tries to access the admin panel, show a meaningful message.
  if (requiredRole && userData?.role !== requiredRole) {
  // Show a clear "wrong app" message for members trying to access admin
  return (
@@ -49,3 +49,4 @@ export default function ProtectedRoute({ children, requiredRole }) {
 
  return children;
 }
+

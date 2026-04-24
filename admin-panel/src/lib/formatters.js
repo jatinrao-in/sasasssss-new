@@ -12,13 +12,13 @@ export function formatDateShort(ts) {
 }
 
 export function formatCurrency(amount) {
- if (!amount && amount !== 0) return '₹0';
- return `₹${Number(amount).toLocaleString('en-IN')}`;
+ if (!amount && amount !== 0) return 'Rs 0';
+ return `Rs ${Number(amount).toLocaleString('en-IN')}`;
 }
 
 export function formatLakhs(amount) {
- if (!amount) return '₹0L';
- return `₹${(amount / 100000).toFixed(1)}L`;
+ if (!amount) return 'Rs 0L';
+ return `Rs ${(amount / 100000).toFixed(1)}L`;
 }
 
 // Get initials from name

@@ -99,7 +99,7 @@ export const draftMessage = async (eventType, context) => {
       - Professional and warm
       - Max 8 lines
       - Plain text only
-      - Show amounts with rupee symbol
+      - Show amounts with Rs. prefix
     `,
 
     enquiry_assigned: `

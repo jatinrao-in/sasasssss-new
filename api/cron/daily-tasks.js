@@ -44,11 +44,11 @@ const sendNotification = async (db, eventType, context) => {
 
     if (context.memberUid) {
       const titles = {
-        task_overdue: '⚠️ Task Overdue',
-        followup_due: '🔔 Follow-up Due',
-        payment_due: '💳 Payment Reminder',
-        rgp_overdue: '📦 RGP Reminder',
-        tool_not_returned: '🔧 Tool Return',
+        task_overdue: 'Task Overdue',
+        followup_due: 'Follow-up Due',
+        payment_due: 'Payment Reminder',
+        rgp_overdue: 'RGP Reminder',
+        tool_not_returned: 'Tool Return',
       };
       await db.collection('notifications').doc(context.memberUid).collection('items').add({
         title: titles[eventType] || 'Notification',

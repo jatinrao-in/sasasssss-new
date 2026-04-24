@@ -82,7 +82,7 @@ function OutgoingModal({ onClose, onSubmit, members, editing }) {
  <div><label className="label">Invoice No.</label><input className="input-field" value={form.invoiceNumber} onChange={e => setForm({...form, invoiceNumber: e.target.value})} /></div>
  </div>
  <div className="grid grid-cols-2 gap-3">
- <div><label className="label">Amount (₹) *</label><input className="input-field" type="number" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} /></div>
+ <div><label className="label">Amount (Rs) *</label><input className="input-field" type="number" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} /></div>
  <div><label className="label">Category</label>
  <select className="input-field" value={form.category} onChange={e => setForm({...form, category: e.target.value})}>
  <option value="">Select</option>
@@ -104,7 +104,7 @@ function OutgoingModal({ onClose, onSubmit, members, editing }) {
  <div className="bg-orange-50 rounded-xl p-3">
  <div className="flex justify-between text-sm mb-2"><span className="text-gray-500">Paid:</span><span className="font-semibold text-green-600">{formatCurrency(form.totalPaid)}</span></div>
  <div className="flex justify-between text-sm mb-2"><span className="text-gray-500">Pending:</span><span className="font-semibold text-red-500">{formatCurrency(Number(form.amount || 0) - Number(form.totalPaid || 0))}</span></div>
- <label className="label text-xs">Add Partial Payment (₹)</label>
+ <label className="label text-xs">Add Partial Payment (Rs)</label>
  <input className="input-field" type="number" placeholder="0" value={form.partialPayment} onChange={e => setForm({...form, partialPayment: e.target.value})} />
  </div>
  )}
@@ -196,7 +196,7 @@ export default function OutgoingPaymentsPage() {
  <div className="space-y-6 page-transition">
  <div className="flex items-center justify-between">
  <div><h1 className="text-2xl font-bold text-gray-900">Outgoing Payments</h1>
- <p className="text-sm text-[var(--text-muted)] mt-0.5">{outgoingPayments.length} payments · Net Cash Flow: {formatCurrency(netCashFlow)}</p></div>
+ <p className="text-sm text-[var(--text-muted)] mt-0.5">{outgoingPayments.length} payments | Net Cash Flow: {formatCurrency(netCashFlow)}</p></div>
  <div className="flex items-center gap-3">
  <button onClick={() => setShowCashFlow(!showCashFlow)}
  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all ${showCashFlow ? 'bg-teal-50 text-teal-700 border border-teal-200' : 'text-gray-500 hover:bg-gray-100'}`}>
@@ -239,7 +239,7 @@ export default function OutgoingPaymentsPage() {
 
  {showCashFlow && (
  <div className="card">
- <h3 className="text-sm font-semibold text-gray-700 mb-3">Cash Flow — Incoming vs Outgoing</h3>
+ <h3 className="text-sm font-semibold text-gray-700 mb-3">Cash Flow - Incoming vs Outgoing</h3>
  <ResponsiveContainer width="100%" height={250}>
  <BarChart data={cashFlowData}>
  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -299,4 +299,5 @@ export default function OutgoingPaymentsPage() {
  </div>
  );
 }
+
 

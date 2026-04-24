@@ -52,7 +52,7 @@ export default function BasePopup({ isOpen, onClose, title, badge, footer, child
             overflow: 'hidden',
           }}
         >
-          {/* ── Header ── */}
+          {/* Header */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -105,7 +105,7 @@ export default function BasePopup({ isOpen, onClose, title, badge, footer, child
             </button>
           </div>
 
-          {/* ── Scrollable Body ── */}
+          {/* Scrollable body */}
           <div style={{
             flex: 1,
             overflowY: 'auto',
@@ -114,7 +114,7 @@ export default function BasePopup({ isOpen, onClose, title, badge, footer, child
             {children}
           </div>
 
-          {/* ── Footer ── */}
+          {/* Footer */}
           {footer && (
             <div style={{
               padding: '16px 24px',
@@ -183,7 +183,7 @@ export function FooterBtn({ label, onClick }) {
       onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
       onMouseLeave={e => e.currentTarget.style.opacity = '1'}
     >
-      {label} →
+      {label} {'->'}
     </button>
   );
 }

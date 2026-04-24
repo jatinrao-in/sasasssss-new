@@ -1,5 +1,5 @@
-/**
- * Backend API — thin wrapper around the Vercel serverless backend.
+﻿/**
+ * Backend API - thin wrapper around the Vercel serverless backend.
  * Replaces all Firebase httpsCallable() calls.
  *
  * Set VITE_BACKEND_URL in your .env.local to your Vercel deployment URL.
@@ -50,3 +50,4 @@ export async function sendWhatsAppMessage({ to, templateName, components }) {
 }
 
 export default { createTeamMember, sendWhatsAppMessage };
+
