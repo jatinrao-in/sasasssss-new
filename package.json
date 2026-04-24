@@ -1,0 +1,17 @@
+{
+  "name": "saya-industrial-workspace",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "emulators": "firebase emulators:start --only auth,firestore,functions",
+    "seed": "node seedData.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "firebase": "^12.11.0",
+    "firebase-admin": "^13.0.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.52.0"
+  }
+}

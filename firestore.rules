@@ -1,0 +1,201 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helpers ─────────────────────────────────────────────────────────────
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return signedIn() && userDoc().role == 'admin';
+    }
+
+    function isSelf(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function isAssigned() {
+      return signedIn() && resource.data.assignedTo == request.auth.uid;
+    }
+
+    // ─── Users ───────────────────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read: if isAdmin() || isSelf(userId);
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || (isSelf(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fcmTokens']))
+        || (isSelf(userId)
+          && request.resource.data.get('email', '') == resource.data.get('email', '')
+          && request.resource.data.get('role', '') == resource.data.get('role', '')
+          && request.resource.data.get('status', '') == resource.data.get('status', '')
+          && request.resource.data.get('permissions', []) == resource.data.get('permissions', []));
+    }
+
+    // ─── Projects ────────────────────────────────────────────────────────────
+    match /projects/{projectId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ─── Tasks ───────────────────────────────────────────────────────────────
+    match /tasks/{taskId} {
+      allow read: if isAdmin() || isAssigned();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || (isAssigned()
+          && request.resource.data.projectId == resource.data.projectId
+          && request.resource.data.assignedTo == resource.data.assignedTo
+          && request.resource.data.assignedToName == resource.data.assignedToName
+          && request.resource.data.title == resource.data.title
+          && request.resource.data.description == resource.data.description);
+    }
+
+    // ─── Expenses ────────────────────────────────────────────────────────────
+    match /expenses/{expenseId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.assignedTo == request.auth.uid);
+      allow create: if isAdmin()
+        || (signedIn()
+          && request.resource.data.assignedTo == request.auth.uid
+          && request.resource.data.assignedTo != null
+          && request.resource.data.projectId != null);
+      allow update, delete: if isAdmin();
+    }
+
+    // ─── Enquiries ───────────────────────────────────────────────────────────
+    match /enquiries/{enquiryId} {
+      allow read: if isAdmin() || isAssigned();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || (isAssigned()
+          && request.resource.data.assignedTo == resource.data.assignedTo
+          && request.resource.data.assignedToName == resource.data.assignedToName
+          && request.resource.data.taskType == resource.data.taskType);
+    }
+
+    // ─── Follow-ups ──────────────────────────────────────────────────────────
+    match /followups/{followupId} {
+      allow read: if isAdmin() || isAssigned();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || (isAssigned()
+          && request.resource.data.assignedTo == resource.data.assignedTo
+          && request.resource.data.assignedToName == resource.data.assignedToName
+          && request.resource.data.taskType == resource.data.taskType);
+    }
+
+    // ─── Payments ────────────────────────────────────────────────────────────
+    match /payments/{paymentId} {
+      allow read: if isAdmin() || isAssigned();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || (isAssigned()
+          && request.resource.data.assignedTo == resource.data.assignedTo
+          && request.resource.data.assignedToName == resource.data.assignedToName
+          && request.resource.data.customerName == resource.data.customerName
+          && request.resource.data.invoiceNumber == resource.data.invoiceNumber
+          && request.resource.data.invoiceDate == resource.data.invoiceDate
+          && request.resource.data.targetPaymentDate == resource.data.targetPaymentDate
+          && request.resource.data.amount == resource.data.amount);
+    }
+
+    // ─── Outgoing Payments ───────────────────────────────────────────────────
+    match /outgoing_payments/{paymentId} {
+      allow read: if isAdmin() || isAssigned();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ─── RGP ─────────────────────────────────────────────────────────────────
+    match /rgp/{rgpId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ─── Tools ───────────────────────────────────────────────────────────────
+    match /tools/{toolId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ─── WhatsApp Config ─────────────────────────────────────────────────────
+    match /whatsapp_config/{configId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /whatsapp_config/{configId}/items/{logId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // ─── Salary ──────────────────────────────────────────────────────────────
+    // Helper: direct role read (avoids nested get() chain failures)
+    function isAdminDirect() {
+      return signedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Parent doc: admin full access, member can read own
+    match /salary/{userId} {
+      allow read: if isAdminDirect() || isSelf(userId);
+      allow write: if isAdminDirect();
+    }
+
+    // Month sub-collection: admin can read/write all; member read own only.
+    match /salary/{userId}/months/{monthId} {
+      allow read: if isAdminDirect() || isSelf(userId);
+      allow create, update, delete: if isAdminDirect();
+    }
+
+    // ─── Notifications ───────────────────────────────────────────────────────
+    // Parent doc (container): admin can create/manage
+    match /notifications/{userId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Notification items:
+    //   - Member can read their own
+    //   - Member can update only the 'read' field (mark as read)
+    //   - Admin and Cloud Functions (via admin SDK, bypasses rules) can create/delete
+    match /notifications/{userId}/items/{notificationId} {
+      allow read: if isAdmin() || isSelf(userId);
+
+      // Allow member to mark notification as read (only 'read' field change)
+      allow update: if isSelf(userId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+
+      // Admin can do everything
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ─── Daily Summaries (AI-generated, admin only) ──────────────────────────
+    match /daily_summaries/{dateKey} {
+      allow read, write: if isAdmin();
+    }
+
+    // ─── Error Logs (Cloud Functions write, admin read) ──────────────────────
+    match /error_logs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false; // only Cloud Functions (admin SDK) write here
+    }
+
+    // ─── MSG91 WhatsApp Queue ─────────────────────────────────────────────────
+    // Cloud Functions (admin SDK) write to this queue.
+    // Admin can read the queue to monitor pending/failed messages.
+    match /whatsapp_queue/{docId} {
+      allow read: if isAdmin();
+      allow write: if false; // only Cloud Functions (admin SDK) write here
+    }
+
+    // ─── MSG91 WhatsApp Logs ─────────────────────────────────────────────────
+    // Admin SDK (Vercel serverless) writes delivery logs via bypass (no rules apply).
+    // Admin users can read all logs for notification tracking.
+    match /whatsapp_logs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false; // Admin SDK (server) writes bypass rules automatically
+    }
+  }
+}

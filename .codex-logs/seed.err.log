@@ -1,0 +1,7 @@
+[2026-04-05T03:19:27.654Z]  @firebase/firestore: Firestore (12.11.0): GrpcConnection RPC 'Write' stream 0x38498c47 error. Code: 7 Message: 7 PERMISSION_DENIED: Missing or insufficient permissions.
+Seed failed.
+[FirebaseError: 7 PERMISSION_DENIED: Missing or insufficient permissions.] {
+  code: 'permission-denied',
+  customData: undefined,
+  toString: [Function (anonymous)]
+}

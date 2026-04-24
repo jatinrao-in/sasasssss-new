@@ -1,0 +1,18 @@
+{
+  "projects": {
+    "default": "saya-industrial"
+  },
+  "targets": {
+    "saya-industrial": {
+      "hosting": {
+        "admin": [
+          "saya-industrial"
+        ],
+        "pwa": [
+          "saya-industrial-pwa"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

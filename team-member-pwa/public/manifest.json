@@ -1,0 +1,30 @@
+{
+  "$comment": "Fix P17: vite.config.js is the single source of truth for PWA manifest. This file is kept minimal to avoid duplication. The VitePWA plugin in vite.config.js generates the full manifest during build.",
+  "name": "Saya Industrial Team App",
+  "short_name": "Saya Team",
+  "description": "Enterprise team member app for Saya Industrial — manage tasks, follow-ups, payments, and notifications.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "background_color": "#ffffff",
+  "theme_color": "#0D9488",
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

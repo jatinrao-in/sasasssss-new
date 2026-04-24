@@ -1,0 +1,93 @@
+name: Daily WhatsApp Notifications
+
+on:
+  schedule:
+    # All times in UTC. India (IST) = UTC + 5:30
+    - cron: '0 2 * * *'   # 7:30 AM IST — Daily Member Reminder
+    - cron: '5 2 * * *'   # 7:35 AM IST — Admin Daily Summary
+    - cron: '10 2 * * *'  # 7:40 AM IST — Deadline Reminders
+    - cron: '15 2 * * *'  # 7:45 AM IST — Payment Follow-up
+    - cron: '30 18 * * *' # 12:00 AM IST (midnight) — Overdue Calculator
+  # Allow manual trigger from GitHub Actions tab
+  workflow_dispatch:
+    inputs:
+      job:
+        description: 'Which job to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - dailyMemberReminder
+          - adminDailySummary
+          - deadlineReminder
+          - paymentFollowup
+          - overdue
+
+jobs:
+  # ── Reminder jobs (7:30–7:45 AM IST) ──────────────────────────────────────
+  daily-member-reminder:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 2 * * *' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Trigger dailyMemberReminder
+        run: |
+          curl -s -X POST "${{ secrets.VERCEL_BACKEND_URL }}/api/scheduled/run-reminders" \
+            -H "Content-Type: application/json" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            -d '{"job": "dailyMemberReminder"}' \
+            --fail-with-body
+        timeout-minutes: 5
+
+  admin-daily-summary:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '5 2 * * *' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Trigger adminDailySummary
+        run: |
+          curl -s -X POST "${{ secrets.VERCEL_BACKEND_URL }}/api/scheduled/run-reminders" \
+            -H "Content-Type: application/json" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            -d '{"job": "adminDailySummary"}' \
+            --fail-with-body
+        timeout-minutes: 5
+
+  deadline-reminders:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '10 2 * * *' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Trigger deadlineReminder
+        run: |
+          curl -s -X POST "${{ secrets.VERCEL_BACKEND_URL }}/api/scheduled/run-reminders" \
+            -H "Content-Type: application/json" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            -d '{"job": "deadlineReminder"}' \
+            --fail-with-body
+        timeout-minutes: 5
+
+  payment-followup:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '15 2 * * *' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Trigger paymentFollowup
+        run: |
+          curl -s -X POST "${{ secrets.VERCEL_BACKEND_URL }}/api/scheduled/run-reminders" \
+            -H "Content-Type: application/json" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            -d '{"job": "paymentFollowup"}' \
+            --fail-with-body
+        timeout-minutes: 5
+
+  # ── Overdue Calculator (midnight IST) ────────────────────────────────────────
+  overdue-calculator:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '30 18 * * *' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Trigger run-overdue
+        run: |
+          curl -s -X POST "${{ secrets.VERCEL_BACKEND_URL }}/api/scheduled/run-overdue" \
+            -H "Content-Type: application/json" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            -d '{}' \
+            --fail-with-body
+        timeout-minutes: 10

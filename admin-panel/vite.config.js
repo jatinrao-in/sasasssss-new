@@ -1,0 +1,22 @@
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [
+    react({
+      include: /\.[jt]sx?$/,
+    }),
+  ],
+  css: {
+    postcss: './postcss.config.js',
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    chunkSizeWarningLimit: 1500,
+  },
+  server: {
+    port: 5173,
+    host: true,
+  },
+})
