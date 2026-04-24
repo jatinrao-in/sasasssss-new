@@ -1,7 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './hooks/useAuth';
 import { ToastProvider } from './hooks/useToast';
-import { AIProvider } from './context/AIContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/layout/Layout';
 import LoginPage from './pages/LoginPage';
@@ -37,8 +36,7 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <ToastProvider>
-          <AIProvider>
-            <SplashScreen />
+          <SplashScreen />
             <Routes>
               {/* Public Route */}
               <Route path="/" element={<LoginPage />} />
@@ -65,7 +63,6 @@ export default function App() {
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
-          </AIProvider>
         </ToastProvider>
       </AuthProvider>
     </BrowserRouter>

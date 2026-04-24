@@ -5,6 +5,7 @@ import {
   MessageSquare, CheckCircle2, XCircle, Clock, RefreshCw,
   Filter, AlertTriangle, Phone, Calendar
 } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 
 const STATUS_CONFIG = {
   sent:        { label: 'Sent',        icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
@@ -48,24 +49,33 @@ export default function NotificationLogsPage() {
   const [activeTab, setActiveTab] = useState('logs');
   const [statusFilter, setStatusFilter] = useState('all');
 
+  const { user } = useAuth();
+
   // Live logs from whatsapp_logs
   useEffect(() => {
+    if (!user) return;
     const q = query(collection(db, 'whatsapp_logs'), orderBy('sentAt', 'desc'), limit(100));
     const unsub = onSnapshot(q, (snap) => {
       setLogs(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       setLoading(false);
+    }, (err) => {
+      console.error('Logs listener error:', err);
+      setLoading(false);
     });
     return unsub;
-  }, []);
+  }, [user]);
 
   // Live queue from whatsapp_queue
   useEffect(() => {
+    if (!user) return;
     const q = query(collection(db, 'whatsapp_queue'), orderBy('createdAt', 'desc'), limit(50));
     const unsub = onSnapshot(q, (snap) => {
       setQueue(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, (err) => {
+      console.error('Queue listener error:', err);
     });
     return unsub;
-  }, []);
+  }, [user]);
 
   const filteredLogs = statusFilter === 'all'
     ? logs
