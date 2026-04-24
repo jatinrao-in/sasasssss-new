@@ -17,7 +17,7 @@ export default function LoginPage() {
  // If already logged in as admin, redirect (in useEffect to avoid React warning)
  useEffect(() => {
  if (!authLoading && user && userData?.role === 'admin') {
- navigate('/admin/dashboard', { replace: true });
+ navigate('/dashboard', { replace: true });
  }
  }, [authLoading, user, userData, navigate]);
 
@@ -45,7 +45,7 @@ export default function LoginPage() {
  const data = await login(email, password);
  if (data.role === 'admin') {
  toast.success('Welcome back, Admin!');
- navigate('/admin/dashboard');
+ navigate('/dashboard');
  } else {
  await logout();
  setError('Access denied. This portal is for administrators only.');

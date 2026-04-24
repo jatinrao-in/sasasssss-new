@@ -33,7 +33,7 @@ function AdminLayout() {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/admin">
       <AuthProvider>
         <ToastProvider>
           <SplashScreen />

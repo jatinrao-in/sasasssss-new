@@ -7,6 +7,7 @@ export default defineConfig({
       include: /\.[jt]sx?$/,
     }),
   ],
+  base: '/admin/',
   css: {
     postcss: './postcss.config.js',
   },
