@@ -6,6 +6,41 @@
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
 
+const ACTIVE_CACHE_PREFIXES = [
+  'google-fonts-cache',
+  'gstatic-fonts-cache',
+  'static-assets-v1',
+  'html-nav-cache',
+  'workbox-precache',
+];
+
+self.addEventListener('install', () => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches
+      .keys()
+      .then((cacheNames) =>
+        Promise.all(
+          cacheNames
+            .filter(
+              (cacheName) => !ACTIVE_CACHE_PREFIXES.some((prefix) => cacheName.startsWith(prefix))
+            )
+            .map((cacheName) => caches.delete(cacheName))
+        )
+      )
+      .then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING' || event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 firebase.initializeApp({
   apiKey: 'AIzaSyAdUkbJTH1yPNGz1yZ2vyC0dXHWgnSabgg',
   authDomain: 'saya-industrial.firebaseapp.com',

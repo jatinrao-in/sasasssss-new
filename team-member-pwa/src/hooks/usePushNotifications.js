@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { messaging, db, auth } from '../lib/firebase';
+import { messaging, db } from '../lib/firebase';
 import { getToken, onMessage } from 'firebase/messaging';
 import { doc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from './useAuth';
@@ -51,15 +51,9 @@ export function usePushNotifications() {
 
     const setupFCM = async () => {
       try {
-        // ✅ Critical: pass the firebase-messaging-sw.js registration explicitly.
-        // Without this, getToken() may pick up the Workbox SW instead, which
-        // doesn't have firebase messaging logic → no background notifications.
-        const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-          scope: '/',
-        });
-
-        // Wait for SW to be active
-        await navigator.serviceWorker.ready;
+        // The generated Workbox SW imports firebase-messaging-sw.js so the app
+        // can use one root service worker for caching, updates, and FCM.
+        const swReg = await navigator.serviceWorker.ready;
 
         const token = await getToken(messaging, {
           vapidKey: VAPID_KEY,

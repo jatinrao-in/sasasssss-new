@@ -51,6 +51,7 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
+        importScripts: ['firebase-messaging-sw.js'],
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
 
         // ✅ FIX: Do NOT use navigateFallback to offline.html
@@ -148,6 +149,9 @@ export default defineConfig({
             },
           },
         ],
+      },
+      devOptions: {
+        enabled: false,
       },
     }),
   ],
