@@ -20,7 +20,7 @@ import { useTasks } from '../hooks/useTasks';
 import { useTeam } from '../hooks/useTeam';
 import { usePayments } from '../hooks/usePayments';
 import { useEnquiries } from '../hooks/useEnquiries';
-import { useFollowups } from '../hooks/useFollowups';
+import { useFollowups } from '../hooks/useFollowUps';
 import { formatCurrency, formatLakhs, getInitials } from '../lib/formatters';
 import CountUpNumber from '../components/ui/CountUpNumber';
 import { SkeletonDashboard } from '../components/ui/Skeleton';

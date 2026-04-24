@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import {
  Plus, X, Search, Calendar, LayoutGrid, Clock,
  CheckCircle2, XCircle, MinusCircle, MessageSquare,
@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { Timestamp } from 'firebase/firestore';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { useFollowups } from '../hooks/useFollowups';
+import { useFollowups } from '../hooks/useFollowUps';
 import { useTeam } from '../hooks/useTeam';
 import { useToast } from '../hooks/useToast';
 import { formatDate } from '../lib/formatters';
