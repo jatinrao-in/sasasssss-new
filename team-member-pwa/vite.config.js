@@ -8,7 +8,7 @@ export default defineConfig({
       include: /\.[jt]sx?$/,
     }),
     VitePWA({
-      registerType: 'prompt',
+      registerType: 'autoUpdate',
       manifestFilename: 'manifest.json',
       injectRegister: 'auto',
       includeAssets: ['favicon.svg', 'icons.svg', 'pwa-192x192.png', 'pwa-512x512.png', 'apple-touch-icon.png'],
@@ -49,7 +49,7 @@ export default defineConfig({
       },
       workbox: {
         cleanupOutdatedCaches: true,
-        skipWaiting: false,  // Don't skip waiting — let UpdatePrompt control activation
+        skipWaiting: true,
         clientsClaim: true,
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
 

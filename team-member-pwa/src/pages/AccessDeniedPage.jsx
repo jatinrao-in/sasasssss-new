@@ -1,6 +1,7 @@
 import { ShieldX } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { getAdminPanelUrl } from '../lib/adminPanel';
 
 export default function AccessDeniedPage() {
  const navigate = useNavigate();
@@ -24,7 +25,7 @@ export default function AccessDeniedPage() {
  <p className="text-xs text-gray-400 max-w-xs mb-8">
  If you are an Admin, please use the{' '}
  <a
- href="https://saya-industrial.web.app"
+ href={getAdminPanelUrl()}
  className="text-teal-600 underline font-medium"
  >
  Admin Panel

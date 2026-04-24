@@ -5,6 +5,7 @@ import { Button } from '../components/ui/button';
 import { Label } from '../components/ui/label';
 import { Eye, EyeOff, Building2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { redirectToAdminPanel } from '../lib/adminPanel';
 import { useToast } from '../hooks/useToast';
 
 export default function LoginPage() {
@@ -17,9 +18,16 @@ export default function LoginPage() {
  const [loading, setLoading] = useState(false);
  const [error, setError] = useState('');
 
- // If already logged in as member, redirect (in useEffect to avoid React warning)
+ // Route authenticated users into the correct app without rendering the wrong dashboard first.
  useEffect(() => {
- if (!authLoading && user && userData?.role === 'member') {
+ if (authLoading || !user) return;
+
+ if (userData?.role === 'admin') {
+ redirectToAdminPanel();
+ return;
+ }
+
+ if (userData?.role === 'member') {
  navigate('/dashboard', { replace: true });
  }
  }, [authLoading, user, userData, navigate]);
@@ -46,17 +54,21 @@ export default function LoginPage() {
  setLoading(true);
  try {
  const data = await login(email, password);
- if (data.role === 'member') {
- toast.success(`Welcome back, ${data.name || 'Team Member'}!`);
- navigate('/dashboard');
- } else if (data.role === 'admin') {
- await logout();
- setError('Please use the Admin Panel to log in.');
- toast.warning('This app is for team members only.');
- } else {
- toast.success('Logged in successfully!');
- navigate('/dashboard');
+ if (data?.role === 'admin') {
+ toast.success('Redirecting to Admin Panel...');
+ redirectToAdminPanel();
+ return;
  }
+
+ if (data?.role === 'member') {
+ toast.success(`Welcome back, ${data.name || 'Team Member'}!`);
+ navigate('/dashboard', { replace: true });
+ return;
+ }
+
+ await logout();
+ setError('Access denied. Contact administrator.');
+ toast.error('Access denied. Contact administrator.');
  } catch (err) {
  const message = getFirebaseErrorMessage(err.code);
  setError(message);

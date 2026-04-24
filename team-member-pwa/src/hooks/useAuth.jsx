@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, updatePassword } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
+import { redirectToAdminPanel } from '../lib/adminPanel';
 import { COLLECTIONS } from '../lib/firestore-helpers';
 
 const AuthContext = createContext(null);
@@ -33,7 +34,15 @@ export function AuthProvider({ children }) {
  setUser(firebaseUser);
 
  try {
- setUserData(await fetchUserProfile(firebaseUser.uid, firebaseUser.email));
+ const profile = await fetchUserProfile(firebaseUser.uid, firebaseUser.email);
+
+ if (profile?.role === 'admin') {
+ setUserData(null);
+ redirectToAdminPanel();
+ return;
+ }
+
+ setUserData(profile);
  } catch (error) {
  console.error('Error fetching user data:', error);
  setUserData({
