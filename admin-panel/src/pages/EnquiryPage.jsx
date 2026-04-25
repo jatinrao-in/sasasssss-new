@@ -240,7 +240,6 @@ export default function EnquiryPage() {
      assignedDate: fmtDate(new Date()),
      targetDate: data.targetDate ? fmtDate(data.targetDate.toDate?.() || new Date(data.targetDate)) : 'Not set',
      nextFollowup: 'As per schedule',
-     company: 'Your Company',
     });
    }
   } catch (err) {

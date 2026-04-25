@@ -1,10 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Save, MessageSquare, Clock, ToggleLeft, ToggleRight, Search, CheckCircle2, XCircle, BarChart3, Send } from 'lucide-react';
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
 import { useWhatsAppConfig } from '../hooks/useWhatsAppConfig';
 import { useToast } from '../hooks/useToast';
 import { formatDate } from '../lib/formatters';
-import { useMemo } from 'react';
 import CountUpNumber from '../components/ui/CountUpNumber';
 
 function Toggle({ checked, onChange }) {
@@ -18,28 +17,46 @@ function Toggle({ checked, onChange }) {
 
 export default function WhatsAppAutomationPage() {
   const toast = useToast();
-  const { configs, logs, loading, saveConfig, getConfig } = useWhatsAppConfig();
-  const saving2 = false; // unused, kept for clarity
+  const { logs, saveConfig, getConfig } = useWhatsAppConfig();
 
   const dailyConfig = getConfig('daily_reminder') || {};
- const summaryConfig = getConfig('admin_summary') || {};
+  const summaryConfig = getConfig('admin_summary') || {};
 
  const [dailyForm, setDailyForm] = useState({
- isActive: dailyConfig.isActive ?? false,
- scheduledTime: dailyConfig.scheduledTime || '07:30',
- messageTemplate: dailyConfig.messageTemplate || `Good morning {name}!\nYou have {open_tasks} pending tasks today.\nOverdue: {overdue_tasks}\nPlease update your task status.\n- {company_name}`,
+ isActive: false,
+ scheduledTime: '',
+ messageTemplate: '',
  });
 
  const [summaryForm, setSummaryForm] = useState({
- isActive: summaryConfig.isActive ?? false,
- scheduledTime: summaryConfig.scheduledTime || '07:30',
- recipients: summaryConfig.recipients || ['', '', ''],
- messageTemplate: summaryConfig.messageTemplate || `Daily Task Summary - {date}\n\nTeam Status:\n{team_summary}\n\nTotal Open: {total_open}\nTotal Overdue: {total_overdue}\n- {company_name}`,
+ isActive: false,
+ scheduledTime: '',
+ recipients: ['', '', ''],
+ messageTemplate: '',
  });
 
  const [activeSection, setActiveSection] = useState('daily');
  const [saving, setSaving] = useState(false);
  const [filterType, setFilterType] = useState('All');
+
+ useEffect(() => {
+ setDailyForm({
+ isActive: dailyConfig.isActive ?? false,
+ scheduledTime: dailyConfig.scheduledTime || '',
+ messageTemplate: dailyConfig.messageTemplate || '',
+ });
+ }, [dailyConfig.id, dailyConfig.isActive, dailyConfig.scheduledTime, dailyConfig.messageTemplate]);
+
+ useEffect(() => {
+ setSummaryForm({
+ isActive: summaryConfig.isActive ?? false,
+ scheduledTime: summaryConfig.scheduledTime || '',
+ recipients: Array.isArray(summaryConfig.recipients)
+ ? [...summaryConfig.recipients, '', '', ''].slice(0, 3)
+ : ['', '', ''],
+ messageTemplate: summaryConfig.messageTemplate || '',
+ });
+ }, [summaryConfig.id, summaryConfig.isActive, summaryConfig.scheduledTime, summaryConfig.recipients, summaryConfig.messageTemplate]);
 
  const handleSaveDaily = async () => {
  setSaving(true);
@@ -144,7 +161,7 @@ export default function WhatsAppAutomationPage() {
  {activeSection === 'daily' && (
  <div className="space-y-5">
  <div className="flex items-center justify-between">
- <h2 className="text-lg font-semibold text-gray-900">Daily Reminder Settings (7:30 AM)</h2>
+ <h2 className="text-lg font-semibold text-gray-900">Daily Reminder Settings</h2>
  <Toggle checked={dailyForm.isActive} onChange={val => setDailyForm({ ...dailyForm, isActive: val })} />
  </div>
 
@@ -158,7 +175,7 @@ export default function WhatsAppAutomationPage() {
  <div>
  <div className="flex items-center justify-between mb-1">
  <label className="label" style={{ marginBottom: 0 }}>Message Template</label>
- <span className="text-xs text-gray-400 italic">AI drafts messages automatically per event</span>
+ <span className="text-xs text-gray-400 italic">Template stays blank until you save a Firestore-backed config</span>
  </div>
  <textarea className="input-field resize-none font-mono text-sm" rows={7}
  value={dailyForm.messageTemplate}
@@ -184,7 +201,7 @@ export default function WhatsAppAutomationPage() {
  {activeSection === 'summary' && (
  <div className="space-y-5">
  <div className="flex items-center justify-between">
- <h2 className="text-lg font-semibold text-gray-900">Admin Daily Summary (7:30 AM)</h2>
+ <h2 className="text-lg font-semibold text-gray-900">Admin Daily Summary</h2>
  <Toggle checked={summaryForm.isActive} onChange={val => setSummaryForm({ ...summaryForm, isActive: val })} />
  </div>
 
@@ -193,7 +210,7 @@ export default function WhatsAppAutomationPage() {
  <label className="label">WhatsApp Numbers (Monitoring)</label>
  <div className="space-y-2">
  {[0, 1, 2].map(i => (
- <input key={i} className="input-field" placeholder={`WhatsApp number ${i + 1} (e.g. +91 9876543210)`}
+ <input key={i} className="input-field" placeholder={`WhatsApp number ${i + 1}`}
  value={summaryForm.recipients[i] || ''}
  onChange={e => updateRecipient(i, e.target.value)} />
  ))}
@@ -203,7 +220,7 @@ export default function WhatsAppAutomationPage() {
  <div>
  <div className="flex items-center justify-between mb-1">
  <label className="label" style={{ marginBottom: 0 }}>Message Template</label>
- <span className="text-xs text-gray-400 italic">AI drafts messages automatically per event</span>
+ <span className="text-xs text-gray-400 italic">Template stays blank until you save a Firestore-backed config</span>
  </div>
  <textarea className="input-field resize-none font-mono text-sm" rows={8}
  value={summaryForm.messageTemplate}

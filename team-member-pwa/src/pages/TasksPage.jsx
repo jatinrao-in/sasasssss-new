@@ -150,7 +150,6 @@ export default function TasksPage() {
           taskName: selectedTask.title,
           projectName: project?.name || 'Unknown Project',
           completedOn: fmtDate(new Date()),
-          company: 'Your Company',
         });
       }
 

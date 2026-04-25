@@ -20,6 +20,30 @@ const initDb = () => {
   return db;
 };
 
+const resolveCompanyContext = async (firestore, context) => {
+  if (context?.company && String(context.company).trim()) {
+    return context;
+  }
+
+  try {
+    const settingsDoc = await firestore.collection('settings').doc('company').get();
+    const companyName = settingsDoc.exists ? String(settingsDoc.data()?.name || '').trim() : '';
+
+    if (!companyName) {
+      return context;
+    }
+
+    return {
+      ...context,
+      company: companyName,
+      company_name: companyName,
+    };
+  } catch (error) {
+    console.warn('[notify] company settings lookup failed:', error.message);
+    return context;
+  }
+};
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -36,9 +60,10 @@ export default async function handler(req, res) {
   const firestore = initDb();
 
   try {
-    const message = await draftMessage(eventType, context);
+    const resolvedContext = await resolveCompanyContext(firestore, context);
+    const message = await draftMessage(eventType, resolvedContext);
 
-    const toNumber = context.whatsappNumber;
+    const toNumber = resolvedContext.whatsappNumber;
     if (!toNumber || toNumber.trim() === '') {
       return res.status(400).json({
         error: 'No WhatsApp number provided',
@@ -53,16 +78,16 @@ export default async function handler(req, res) {
       eventType,
       toNumber,
       message,
-      context,
+      context: resolvedContext,
       status: success ? 'sent' : 'failed',
       response: sendResult,
       sentAt: Timestamp.now()
     });
 
-    if (context.memberUid) {
+    if (resolvedContext.memberUid) {
       await firestore
         .collection('notifications')
-        .doc(context.memberUid)
+        .doc(resolvedContext.memberUid)
         .collection('items')
         .add({
           title: getTitle(eventType),
@@ -81,7 +106,7 @@ export default async function handler(req, res) {
     try {
       await firestore.collection('whatsapp_logs').add({
         eventType,
-        context,
+        context: await resolveCompanyContext(firestore, context),
         status: 'failed',
         error: error.message,
         sentAt: Timestamp.now()

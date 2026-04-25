@@ -120,7 +120,7 @@ export default function LoginPage() {
                     type="email"
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
-                    placeholder="admin@company.com"
+                    placeholder="Enter your email"
                     className="input-field pl-10"
                   />
                 </div>

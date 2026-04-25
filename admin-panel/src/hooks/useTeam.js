@@ -4,7 +4,6 @@ import {
  doc,
  getDocs,
  onSnapshot,
- orderBy,
  query,
  updateDoc,
  where,
@@ -17,12 +16,23 @@ export function useTeam() {
  const [loading, setLoading] = useState(true);
 
  useEffect(() => {
- const teamQuery = query(collection(db, COLLECTIONS.users), orderBy('createdAt', 'desc'));
+ const teamQuery = query(
+ collection(db, COLLECTIONS.users),
+ where('role', '==', 'member'),
+ );
 
  const unsubscribe = onSnapshot(
  teamQuery,
  (snapshot) => {
- setMembers(snapshot.docs.map((memberDoc) => ({ id: memberDoc.id, ...memberDoc.data() })));
+ const nextMembers = snapshot.docs
+ .map((memberDoc) => ({ id: memberDoc.id, ...memberDoc.data() }))
+ .sort((firstMember, secondMember) => {
+ const firstCreatedAt = firstMember.createdAt?.toDate?.() ?? new Date(0);
+ const secondCreatedAt = secondMember.createdAt?.toDate?.() ?? new Date(0);
+ return secondCreatedAt - firstCreatedAt;
+ });
+
+ setMembers(nextMembers);
  setLoading(false);
  },
  (error) => {
@@ -40,7 +50,7 @@ export function useTeam() {
  status: currentStatus === 'active' ? 'inactive' : 'active',
  });
 
- const getActiveMembers = () => members.filter((member) => member.role === 'member' && member.status === 'active');
+ const getActiveMembers = () => members.filter((member) => member.status === 'active');
 
  const fetchActiveMembers = async () => {
  const teamSnapshot = await getDocs(

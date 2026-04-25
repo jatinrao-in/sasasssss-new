@@ -348,7 +348,6 @@ export default function SalaryPage() {
               lopDeduction: row.lopDeduction?.toLocaleString('en-IN') ?? '0',
               netSalary: row.netSalary?.toLocaleString('en-IN') ?? '-',
               paidDate: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-              company: 'Your Company',
             });
           }
         } catch (notifErr) {
@@ -447,7 +446,6 @@ export default function SalaryPage() {
               lopDeduction: r.lopDeduction?.toLocaleString('en-IN') ?? '0',
               netSalary: r.netSalary?.toLocaleString('en-IN') ?? '-',
               paidDate: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-              company: 'Your Company',
             });
           }
           return Promise.resolve();
@@ -566,16 +564,16 @@ export default function SalaryPage() {
                 <tr>
                   <td colSpan={10} className="text-center py-16">
                     <div className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Team</div>
-                    <p className="font-medium text-[var(--text-primary)]">No team members found</p>
-                    <p className="text-xs text-[var(--text-muted)] mt-1">Add members in the Team page first</p>
+                    <p className="font-medium text-[var(--text-primary)]">No team members added yet</p>
+                    <p className="text-xs text-[var(--text-muted)] mt-1">Add members from Team page.</p>
                   </td>
                 </tr>
               ) : !hasAnyData ? (
                 <tr>
                   <td colSpan={10} className="text-center py-16">
                     <div className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Payroll</div>
-                    <p className="font-semibold text-[var(--text-primary)] text-base">No salary data for {formatMonthLabel(month)}</p>
-                    <p className="text-xs text-[var(--text-muted)] mt-1.5">Click "Process Payroll" to initialize records for all members</p>
+                    <p className="font-semibold text-[var(--text-primary)] text-base">No salary data for this month.</p>
+                    <p className="text-xs text-[var(--text-muted)] mt-1.5">Click "Process Payroll" to initialize records for all members.</p>
                     <button
                       onClick={handleProcessPayroll}
                       disabled={processing}

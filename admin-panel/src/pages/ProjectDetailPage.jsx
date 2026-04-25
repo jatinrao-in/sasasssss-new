@@ -230,7 +230,6 @@ export default function ProjectDetailPage() {
       ? fmtDate(new Date(taskData.targetDate.seconds * 1000))
       : 'Not set',
      description: taskData.description || '',
-     company: 'Your Company',
     });
    }
 
@@ -295,7 +294,7 @@ export default function ProjectDetailPage() {
  {tasksLoading ? (
  <div className="py-4 text-center text-gray-400">Loading...</div>
  ) : projectTasks.length === 0 ? (
- <div className="py-4 text-center text-gray-400 text-sm">No tasks yet.</div>
+ <div className="py-4 text-center text-gray-400 text-sm">No tasks in this project yet. Click Add Task to create one.</div>
  ) : (
  <table className="w-full">
  <thead>

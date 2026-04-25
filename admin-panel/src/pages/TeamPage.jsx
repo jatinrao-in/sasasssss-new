@@ -296,7 +296,7 @@ export default function TeamPage() {
  {loading ? (
  <SkeletonCards count={4} />
  ) : filteredMembers.length === 0 ? (
- <EmptyState icon="noData" title="No members found" description="Add team members to get started." actionLabel="Add Member" onAction={() => { setEditingMember(null); setShowModal(true); }} />
+ <EmptyState icon="noData" title="No team members added yet" description="Add members from Team page." actionLabel="Add Member" onAction={() => { setEditingMember(null); setShowModal(true); }} />
  ) : (
  <div className="grid grid-cols-4 gap-5">
  {filteredMembers.map((member, index) => (

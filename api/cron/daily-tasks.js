@@ -78,7 +78,7 @@ export default async function handler(req, res) {
 
     // ── Get settings (company name) ──────────────────────────────────────────
     const settingsDoc = await db.collection('settings').doc('company').get();
-    const companyName = settingsDoc.exists ? (settingsDoc.data().name || 'Your Company') : 'Your Company';
+    const companyName = settingsDoc.exists ? (settingsDoc.data().name || '') : '';
 
     // ── Get all active members ──────────────────────────────────────────────
     const usersSnap = await db.collection('users').where('role', '==', 'member').where('status', '==', 'active').get();

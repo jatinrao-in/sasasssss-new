@@ -284,7 +284,7 @@ export default function RgpChallanPage() {
  </div>
 
  {loading ? <SkeletonTable rows={5} cols={8} /> : filtered.length === 0 ? (
- <EmptyState icon="noData" title="No RGP/Challan records" actionLabel="Add Record" onAction={() => { setEditing(null); setShowModal(true); }} />
+ <EmptyState icon="noData" title="No RGP/Challan entries found" actionLabel="Add Record" onAction={() => { setEditing(null); setShowModal(true); }} />
  ) : (
  <div className="card p-0 overflow-hidden">
  <table className="w-full" data-export-table>

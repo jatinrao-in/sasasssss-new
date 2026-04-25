@@ -67,7 +67,7 @@ export default function NotificationsPage() {
  ) : notifications.length === 0 ? (
  <div className="flex flex-col items-center justify-center py-20">
  <div className="h-20 w-20 rounded-full bg-gray-100 flex items-center justify-center mb-4"><BellOff className="h-8 w-8 text-gray-300" /></div>
- <p className="text-gray-400 font-medium">No notifications yet</p>
+ <p className="text-gray-400 font-medium">No notifications yet.</p>
  <p className="text-xs text-gray-300 mt-1">You're all caught up!</p>
  </div>
  ) : (

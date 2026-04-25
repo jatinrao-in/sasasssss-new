@@ -244,7 +244,7 @@ export default function ToolAssignPage() {
  {loading ? (
  <SkeletonTable rows={5} cols={7} />
  ) : filtered.length === 0 ? (
- <EmptyState icon="noData" title="No tool assignments found" actionLabel="Assign Tool" onAction={() => { setEditing(null); setShowModal(true); }} />
+ <EmptyState icon="noData" title="No tools assigned yet" actionLabel="Assign Tool" onAction={() => { setEditing(null); setShowModal(true); }} />
  ) : (
  <div className="overflow-x-auto">
  <table className="w-full">

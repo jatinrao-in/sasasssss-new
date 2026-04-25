@@ -1,8 +1,6 @@
 const { getFirebaseAdmin } = require('../../lib/firebaseAdmin');
 const { sendMSG91WhatsApp } = require('../../lib/msg91');
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
 function normalizeDate(value) {
   if (!value) return null;
   if (typeof value.toDate === 'function') return value.toDate();
@@ -10,71 +8,82 @@ function normalizeDate(value) {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-function calculateOverdueDays(targetDate) {
-  const d = normalizeDate(targetDate);
-  if (!d) return 0;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const norm = new Date(d);
-  norm.setHours(0, 0, 0, 0);
-  const diff = Math.floor((today - norm) / (1000 * 60 * 60 * 24));
-  return diff > 0 ? diff : 0;
-}
-
 function isTomorrow(dateValue) {
-  const d = normalizeDate(dateValue);
-  if (!d) return false;
+  const date = normalizeDate(dateValue);
+  if (!date) return false;
+
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   tomorrow.setHours(0, 0, 0, 0);
-  const check = new Date(d);
-  check.setHours(0, 0, 0, 0);
-  return check.getTime() === tomorrow.getTime();
+
+  const checkDate = new Date(date);
+  checkDate.setHours(0, 0, 0, 0);
+  return checkDate.getTime() === tomorrow.getTime();
 }
 
 function isToday(dateValue) {
-  const d = normalizeDate(dateValue);
-  if (!d) return false;
+  const date = normalizeDate(dateValue);
+  if (!date) return false;
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const check = new Date(d);
-  check.setHours(0, 0, 0, 0);
-  return check.getTime() === today.getTime();
+
+  const checkDate = new Date(date);
+  checkDate.setHours(0, 0, 0, 0);
+  return checkDate.getTime() === today.getTime();
 }
 
-function getCompanyName() {
-  return process.env.APP_COMPANY_NAME || 'Saya Industrial Solutions';
+async function getCompanyName(db) {
+  const settingsDoc = await db.collection('settings').doc('company').get();
+  return settingsDoc.exists ? settingsDoc.data().name || '' : '';
 }
 
 function todayDateString() {
-  return new Date().toLocaleDateString('en-IN', { dateStyle: 'medium', timeZone: 'Asia/Kolkata' });
+  return new Date().toLocaleDateString('en-IN', {
+    dateStyle: 'medium',
+    timeZone: 'Asia/Kolkata',
+  });
 }
 
-async function sendMsg(phone, message, db, FieldValue) {
-  if (!phone) return;
+async function sendMsg(phone, message) {
+  if (!phone || !message?.trim()) return;
+
   const templateName = process.env.MSG91_FREEFORM_TEMPLATE || 'generic_notification';
   const result = await sendMSG91WhatsApp({
     to: phone,
     templateName,
     components: [
-      { type: 'body', parameters: [{ type: 'text', text: message.substring(0, 1024) }] }
-    ]
+      {
+        type: 'body',
+        parameters: [{ type: 'text', text: message.substring(0, 1024) }],
+      },
+    ],
   });
-  if (!result.success) console.warn('[run-reminders] MSG91 failed:', result.error);
+
+  if (!result.success) {
+    console.warn('[run-reminders] MSG91 failed:', result.error);
+  }
 }
 
-// ── Reminder Jobs ─────────────────────────────────────────────────────────────
-
-async function runDailyMemberReminder(db, FieldValue) {
+async function runDailyMemberReminder(db) {
   console.log('[dailyMemberReminder] START');
+
   const configDoc = await db.collection('whatsapp_config').doc('daily_reminder').get();
   if (!configDoc.exists || !configDoc.data().isActive) {
-    console.log('[dailyMemberReminder] Disabled — skipping.'); return;
+    console.log('[dailyMemberReminder] Disabled - skipping.');
+    return;
   }
-  const config = configDoc.data();
-  const template = config.messageTemplate || 'Hi {name}, you have {open_tasks} pending tasks. {overdue_tasks} overdue. - {company_name}';
 
+  const config = configDoc.data();
+  const template = config.messageTemplate || '';
+  if (!template.trim()) {
+    console.log('[dailyMemberReminder] No Firestore template configured - skipping.');
+    return;
+  }
+
+  const companyName = await getCompanyName(db);
   const membersSnap = await db.collection('users').where('role', '==', 'member').where('status', '==', 'active').get();
+
   for (const memberDoc of membersSnap.docs) {
     try {
       const member = memberDoc.data();
@@ -82,130 +91,166 @@ async function runDailyMemberReminder(db, FieldValue) {
       if (!phone) continue;
 
       const tasksSnap = await db.collection('tasks').where('assignedTo', '==', memberDoc.id).get();
-      const openTasks = tasksSnap.docs.filter(d => d.data().status !== 'completed').length;
-      const overdueTasks = tasksSnap.docs.filter(d => d.data().status === 'overdue').length;
+      const openTasks = tasksSnap.docs.filter((docSnap) => docSnap.data().status !== 'completed').length;
+      const overdueTasks = tasksSnap.docs.filter((docSnap) => docSnap.data().status === 'overdue').length;
       if (openTasks === 0) continue;
 
       const message = template
-        .replace(/{name}/g, member.name || member.email)
+        .replace(/{name}/g, member.name || member.email || '')
         .replace(/{open_tasks}/g, String(openTasks))
         .replace(/{overdue_tasks}/g, String(overdueTasks))
-        .replace(/{company_name}/g, getCompanyName());
-      await sendMsg(phone, message, db, FieldValue);
-      console.log(`[dailyMemberReminder] Queued for ${member.name}`);
-    } catch (err) { console.error(`[dailyMemberReminder] Error for ${memberDoc.id}:`, err.message); }
+        .replace(/{company_name}/g, companyName);
+
+      await sendMsg(phone, message);
+      console.log(`[dailyMemberReminder] Queued for ${member.name || memberDoc.id}`);
+    } catch (error) {
+      console.error(`[dailyMemberReminder] Error for ${memberDoc.id}:`, error.message);
+    }
   }
+
   console.log('[dailyMemberReminder] END');
 }
 
-async function runAdminDailySummary(db, FieldValue) {
+async function runAdminDailySummary(db) {
   console.log('[adminDailySummary] START');
+
   const configDoc = await db.collection('whatsapp_config').doc('admin_summary').get();
   if (!configDoc.exists || !configDoc.data().isActive) {
-    console.log('[adminDailySummary] Disabled — skipping.'); return;
+    console.log('[adminDailySummary] Disabled - skipping.');
+    return;
   }
-  const config = configDoc.data();
-  const template = config.messageTemplate || 'Daily Summary - {date}\n{team_summary}\nTotal Open: {total_open} | Overdue: {total_overdue}\n- {company_name}';
-  const recipients = (config.recipients || []).filter(r => r && r.trim());
-  if (recipients.length === 0) return;
 
+  const config = configDoc.data();
+  const template = config.messageTemplate || '';
+  const recipients = (config.recipients || []).filter((value) => value && value.trim());
+  if (recipients.length === 0 || !template.trim()) return;
+
+  const companyName = await getCompanyName(db);
   const membersSnap = await db.collection('users').where('role', '==', 'member').where('status', '==', 'active').get();
-  let totalOpen = 0, totalOverdue = 0;
+
+  let totalOpen = 0;
+  let totalOverdue = 0;
   const summaryLines = [];
+
   for (const memberDoc of membersSnap.docs) {
     const member = memberDoc.data();
     const tasksSnap = await db.collection('tasks').where('assignedTo', '==', memberDoc.id).get();
-    const open = tasksSnap.docs.filter(d => d.data().status !== 'completed').length;
-    const overdue = tasksSnap.docs.filter(d => d.data().status === 'overdue').length;
-    const completed = tasksSnap.docs.filter(d => d.data().status === 'completed').length;
-    totalOpen += open; totalOverdue += overdue;
+    const open = tasksSnap.docs.filter((docSnap) => docSnap.data().status !== 'completed').length;
+    const overdue = tasksSnap.docs.filter((docSnap) => docSnap.data().status === 'overdue').length;
+    const completed = tasksSnap.docs.filter((docSnap) => docSnap.data().status === 'completed').length;
+
+    totalOpen += open;
+    totalOverdue += overdue;
     summaryLines.push(`${member.name}: ${open} open, ${completed} done, ${overdue} overdue`);
   }
+
   const message = template
     .replace(/{date}/g, todayDateString())
     .replace(/{team_summary}/g, summaryLines.join('\n'))
     .replace(/{total_open}/g, String(totalOpen))
     .replace(/{total_overdue}/g, String(totalOverdue))
-    .replace(/{company_name}/g, getCompanyName());
-  for (const recipient of recipients) await sendMsg(recipient, message, db, FieldValue);
+    .replace(/{company_name}/g, companyName);
+
+  for (const recipient of recipients) {
+    await sendMsg(recipient, message);
+  }
+
   console.log(`[adminDailySummary] Sent to ${recipients.length} recipients`);
   console.log('[adminDailySummary] END');
 }
 
-async function runDeadlineReminderWhatsApp(db, FieldValue) {
+async function runDeadlineReminderWhatsApp(db) {
   console.log('[deadlineReminderWhatsApp] START');
+  const companyName = await getCompanyName(db);
 
-  // Tasks due tomorrow
   const tasksSnap = await db.collection('tasks').get();
   for (const taskDoc of tasksSnap.docs) {
     const task = taskDoc.data();
     if (task.status === 'completed' || !isTomorrow(task.targetDate)) continue;
+
     const memberDoc = task.assignedTo ? await db.collection('users').doc(task.assignedTo).get() : null;
-    const phone = memberDoc?.exists ? (memberDoc.data().whatsapp || memberDoc.data().phone) : null;
+    const phone = memberDoc?.exists ? memberDoc.data().whatsapp || memberDoc.data().phone : null;
     if (!phone) continue;
-    const msg = `⏰ Deadline Tomorrow!\nTask: ${task.title}\nDue: Tomorrow\nPlease complete on time.\n- ${getCompanyName()}`;
-    await sendMsg(phone, msg, db, FieldValue);
+
+    await sendMsg(
+      phone,
+      `Deadline tomorrow!\nTask: ${task.title}\nDue: Tomorrow\nPlease complete on time.\n- ${companyName}`,
+    );
   }
 
-  // Enquiries due tomorrow
-  const enqSnap = await db.collection('enquiries').get();
-  for (const doc of enqSnap.docs) {
-    const data = doc.data();
-    if (data.status === 'closed' || !isTomorrow(data.targetDate)) continue;
-    const memberDoc = data.assignedTo ? await db.collection('users').doc(data.assignedTo).get() : null;
-    const phone = memberDoc?.exists ? (memberDoc.data().whatsapp || memberDoc.data().phone) : null;
+  const enquiriesSnap = await db.collection('enquiries').get();
+  for (const enquiryDoc of enquiriesSnap.docs) {
+    const enquiry = enquiryDoc.data();
+    if (enquiry.status === 'closed' || !isTomorrow(enquiry.targetDate)) continue;
+
+    const memberDoc = enquiry.assignedTo ? await db.collection('users').doc(enquiry.assignedTo).get() : null;
+    const phone = memberDoc?.exists ? memberDoc.data().whatsapp || memberDoc.data().phone : null;
     if (!phone) continue;
-    await sendMsg(phone, `⏰ Enquiry Deadline Tomorrow!\nCustomer: ${data.customerName || '-'}\nPlease follow up.\n- ${getCompanyName()}`, db, FieldValue);
+
+    await sendMsg(
+      phone,
+      `Enquiry deadline tomorrow!\nCustomer: ${enquiry.customerName || '-'}\nPlease follow up.\n- ${companyName}`,
+    );
   }
 
-  // Payments due tomorrow
-  const paySnap = await db.collection('payments').get();
-  for (const doc of paySnap.docs) {
-    const data = doc.data();
-    if (data.paymentStatus === 'received' || !isTomorrow(data.targetPaymentDate)) continue;
-    const memberDoc = data.assignedTo ? await db.collection('users').doc(data.assignedTo).get() : null;
-    const phone = memberDoc?.exists ? (memberDoc.data().whatsapp || memberDoc.data().phone) : null;
+  const paymentsSnap = await db.collection('payments').get();
+  for (const paymentDoc of paymentsSnap.docs) {
+    const payment = paymentDoc.data();
+    if (payment.paymentStatus === 'received' || !isTomorrow(payment.targetPaymentDate)) continue;
+
+    const memberDoc = payment.assignedTo ? await db.collection('users').doc(payment.assignedTo).get() : null;
+    const phone = memberDoc?.exists ? memberDoc.data().whatsapp || memberDoc.data().phone : null;
     if (!phone) continue;
-    await sendMsg(phone, `💰 Payment Due Tomorrow!\nCustomer: ${data.customerName}\nAmount: ₹${data.amount || 0}\nPlease follow up.\n- ${getCompanyName()}`, db, FieldValue);
+
+    await sendMsg(
+      phone,
+      `Payment due tomorrow!\nCustomer: ${payment.customerName}\nAmount: ₹${payment.amount || 0}\nPlease follow up.\n- ${companyName}`,
+    );
   }
 
   console.log('[deadlineReminderWhatsApp] END');
 }
 
-async function runPaymentFollowupReminder(db, FieldValue) {
+async function runPaymentFollowupReminder(db) {
   console.log('[paymentFollowupReminder] START');
-  const paySnap = await db.collection('payments').get();
-  for (const doc of paySnap.docs) {
-    const data = doc.data();
-    if (data.paymentStatus === 'received' || !isToday(data.nextFollowupDate)) continue;
-    const memberDoc = data.assignedTo ? await db.collection('users').doc(data.assignedTo).get() : null;
-    const phone = memberDoc?.exists ? (memberDoc.data().whatsapp || memberDoc.data().phone) : null;
+  const companyName = await getCompanyName(db);
+
+  const paymentsSnap = await db.collection('payments').get();
+  for (const paymentDoc of paymentsSnap.docs) {
+    const payment = paymentDoc.data();
+    if (payment.paymentStatus === 'received' || !isToday(payment.nextFollowupDate)) continue;
+
+    const memberDoc = payment.assignedTo ? await db.collection('users').doc(payment.assignedTo).get() : null;
+    const phone = memberDoc?.exists ? memberDoc.data().whatsapp || memberDoc.data().phone : null;
     if (!phone) continue;
-    const netPending = (data.amount || 0) - (data.totalPaid || 0);
-    await sendMsg(phone, `💰 Payment Follow-up Due Today!\nCustomer: ${data.customerName}\nAmount Pending: ₹${netPending}\n- ${getCompanyName()}`, db, FieldValue);
+
+    const netPending = (payment.amount || 0) - (payment.totalPaid || 0);
+    await sendMsg(
+      phone,
+      `Payment follow-up due today!\nCustomer: ${payment.customerName}\nAmount Pending: ₹${netPending}\n- ${companyName}`,
+    );
   }
 
-  const outSnap = await db.collection('outgoing_payments').get();
-  for (const doc of outSnap.docs) {
-    const data = doc.data();
-    if (data.paymentStatus === 'paid' || !isToday(data.nextFollowupDate)) continue;
-    const memberDoc = data.assignedTo ? await db.collection('users').doc(data.assignedTo).get() : null;
-    const phone = memberDoc?.exists ? (memberDoc.data().whatsapp || memberDoc.data().phone) : null;
+  const outgoingPaymentsSnap = await db.collection('outgoing_payments').get();
+  for (const outgoingDoc of outgoingPaymentsSnap.docs) {
+    const outgoingPayment = outgoingDoc.data();
+    if (outgoingPayment.paymentStatus === 'paid' || !isToday(outgoingPayment.nextFollowupDate)) continue;
+
+    const memberDoc = outgoingPayment.assignedTo
+      ? await db.collection('users').doc(outgoingPayment.assignedTo).get()
+      : null;
+    const phone = memberDoc?.exists ? memberDoc.data().whatsapp || memberDoc.data().phone : null;
     if (!phone) continue;
-    await sendMsg(phone, `💰 Outgoing Payment Follow-up Today!\nVendor: ${data.vendorName}\nPending: ₹${data.netPendingAmount || 0}\n- ${getCompanyName()}`, db, FieldValue);
+
+    await sendMsg(
+      phone,
+      `Outgoing payment follow-up today!\nVendor: ${outgoingPayment.vendorName}\nPending: ₹${outgoingPayment.netPendingAmount || 0}\n- ${companyName}`,
+    );
   }
+
   console.log('[paymentFollowupReminder] END');
 }
 
-// ── Main Handler ──────────────────────────────────────────────────────────────
-
-/**
- * POST /api/scheduled/run-reminders
- * Called by GitHub Actions cron jobs.
- * Protected by x-cron-secret header.
- *
- * Body: { "job": "dailyMemberReminder" | "adminDailySummary" | "deadlineReminder" | "paymentFollowup" | "all" }
- */
 module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
@@ -216,21 +261,29 @@ module.exports = async (req, res) => {
   }
 
   const { job = 'all' } = req.body || {};
-  const { db, FieldValue } = getFirebaseAdmin();
+  const { db } = getFirebaseAdmin();
 
   try {
     const results = [];
+
     if (job === 'all' || job === 'dailyMemberReminder') {
-      await runDailyMemberReminder(db, FieldValue); results.push('dailyMemberReminder');
+      await runDailyMemberReminder(db);
+      results.push('dailyMemberReminder');
     }
+
     if (job === 'all' || job === 'adminDailySummary') {
-      await runAdminDailySummary(db, FieldValue); results.push('adminDailySummary');
+      await runAdminDailySummary(db);
+      results.push('adminDailySummary');
     }
+
     if (job === 'all' || job === 'deadlineReminder') {
-      await runDeadlineReminderWhatsApp(db, FieldValue); results.push('deadlineReminderWhatsApp');
+      await runDeadlineReminderWhatsApp(db);
+      results.push('deadlineReminderWhatsApp');
     }
+
     if (job === 'all' || job === 'paymentFollowup') {
-      await runPaymentFollowupReminder(db, FieldValue); results.push('paymentFollowupReminder');
+      await runPaymentFollowupReminder(db);
+      results.push('paymentFollowupReminder');
     }
 
     return res.status(200).json({ success: true, ran: results });

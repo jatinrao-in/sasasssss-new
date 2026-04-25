@@ -38,7 +38,7 @@ export function useWhatsAppConfig() {
 
   useEffect(() => {
     const logQuery = query(
-      collection(db, COLLECTIONS.whatsapp_config, 'logs', 'items'),
+      collection(db, COLLECTIONS.whatsapp_logs),
       orderBy('sentAt', 'desc'),
       limit(50)
     );
@@ -46,7 +46,16 @@ export function useWhatsAppConfig() {
     const unsubscribe = onSnapshot(
       logQuery,
       (snapshot) => {
-        setLogs(snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() })));
+        setLogs(
+          snapshot.docs.map((docSnap) => {
+            const data = docSnap.data();
+            return {
+              id: docSnap.id,
+              ...data,
+              type: data.type || data.eventType || '',
+            };
+          })
+        );
       },
       (error) => {
         // Log collection may not exist yet - that is okay.

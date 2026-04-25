@@ -3,8 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "emulators": "firebase emulators:start --only auth,firestore,functions",
-    "seed": "node seedData.js"
+    "emulators": "firebase emulators:start --only auth,firestore,functions"
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",

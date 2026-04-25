@@ -266,8 +266,8 @@ export default function ProjectsPage() {
  ) : filtered.length === 0 ? (
  <EmptyState
  icon="noData"
- title="No projects found"
- description={search || filterStatus !== 'All' ? 'Try adjusting your filters' : 'Create your first project to get started'}
+ title="No projects created yet"
+ description={search || filterStatus !== 'All' ? 'Try adjusting your filters.' : 'Click Add Project to get started.'}
  actionLabel="New Project"
  onAction={() => { setEditing(null); setShowModal(true); }}
  />

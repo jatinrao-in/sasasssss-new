@@ -61,7 +61,7 @@ export default function PaymentsPage() {
   {loading ? Array(4).fill(0).map((_, i) => (
   <Card key={i}><CardContent className="p-4"><div className="h-4 bg-gray-200 rounded-lg animate-pulse w-3/4 mb-2" /><div className="h-3 bg-gray-100 rounded animate-pulse w-1/2 mb-3" /><div className="h-10 bg-gray-200 rounded-xl animate-pulse w-full" /></CardContent></Card>
  )) : myPayments.length === 0 ? (
- <div className="text-center py-12"><p className="text-gray-400 text-sm">No payments assigned</p></div>
+ <div className="text-center py-12"><p className="text-gray-400 text-sm">No payment records found.</p></div>
  ) : myPayments.map(pay => (
  <Card key={pay.id} className="hover:shadow-card-hover transition-shadow">
  <CardContent className="p-4">

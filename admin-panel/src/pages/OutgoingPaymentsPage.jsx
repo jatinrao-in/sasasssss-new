@@ -265,7 +265,7 @@ export default function OutgoingPaymentsPage() {
  </div>
 
  {loading ? <SkeletonTable rows={5} cols={8} /> : filtered.length === 0 ? (
- <EmptyState icon="noData" title="No outgoing payments" actionLabel="New Payment" onAction={() => { setEditing(null); setShowModal(true); }} />
+ <EmptyState icon="noData" title="No payment records found" actionLabel="New Payment" onAction={() => { setEditing(null); setShowModal(true); }} />
  ) : (
  <div className="card p-0 overflow-hidden">
  <table className="w-full" data-export-table>

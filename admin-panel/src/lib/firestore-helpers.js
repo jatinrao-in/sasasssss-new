@@ -18,10 +18,12 @@ export const COLLECTIONS = {
  projects: 'projects',
  rgp: 'rgp',
  salary: 'salary',
+ settings: 'settings',
  tasks: 'tasks',
  tools: 'tools',
  users: 'users',
  whatsapp_config: 'whatsapp_config',
+ whatsapp_logs: 'whatsapp_logs',
 };
 
 export function toDateValue(value) {
