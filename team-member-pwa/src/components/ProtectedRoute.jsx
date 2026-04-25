@@ -2,6 +2,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import SplashScreen from './SplashScreen';
 import { useAuth } from '../hooks/useAuth';
 import { redirectToAdminPanel } from '../lib/adminPanel';
+import { logInfo } from '../lib/firestoreDebug';
 
 const routePermissionMap = {
   '/dashboard': 'dashboard',
@@ -17,6 +18,13 @@ const routePermissionMap = {
 export default function ProtectedRoute({ children, requiredRole }) {
   const { currentUser, loading } = useAuth();
   const location = useLocation();
+
+  logInfo('ProtectedRoute', 'Evaluating route access:', {
+    path: location.pathname,
+    loading,
+    uid: currentUser?.uid || null,
+    role: currentUser?.role || null,
+  });
 
   if (loading) {
     return <SplashScreen />;

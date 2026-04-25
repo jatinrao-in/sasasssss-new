@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -16,6 +16,7 @@ import { useToast } from '../hooks/useToast';
 import { useMemberSalary, useMemberSalaryMonth, formatMonthLabel, calcSalary } from '../hooks/useSalary';
 import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 import { auth } from '../lib/firebase';
+import { logInfo } from '../lib/firestoreDebug';
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
 function fmt(amount) {
@@ -264,6 +265,15 @@ export default function ProfilePage() {
   const handleLogout = async () => {
     try { await logout(); } catch (err) { toast.error('Logout failed'); }
   };
+
+  useEffect(() => {
+    logInfo('ProfilePage', 'Render state:', {
+      uid: userData?.uid || null,
+      tasks: myTasks.length,
+      completed: completedTasks.length,
+      overdue: overdueTasks.length,
+    });
+  }, [completedTasks.length, myTasks.length, overdueTasks.length, userData?.uid]);
 
   const handleChangePassword = async () => {
     if (newPwd !== confirmPwd) { toast.error('Passwords do not match'); return; }

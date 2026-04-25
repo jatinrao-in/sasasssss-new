@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -13,6 +13,7 @@ import { usePayments } from '../hooks/usePayments';
 import { useProjects } from '../hooks/useProjects';
 import { useTools } from '../hooks/useTools';
 import { formatDate } from '../lib/formatters';
+import { logInfo } from '../lib/firestoreDebug';
 
 export default function DashboardPage() {
  const navigate = useNavigate();
@@ -21,7 +22,7 @@ export default function DashboardPage() {
  const { tasks, loading: tasksLoading } = useTasks(uid);
  const { followUps, loading: fuLoading } = useFollowUps(uid);
  const { payments, loading: payLoading } = usePayments(uid);
- const { projects, loading: projLoading } = useProjects();
+ const { projects, loading: projLoading } = useProjects(uid);
  const { tools, loading: toolsLoading } = useTools(uid);
 
  // Tasks are already filtered by uid from the hook
@@ -39,6 +40,26 @@ export default function DashboardPage() {
  const myPendingTools = tools.filter(t => t.returnStatus === 'pending');
 
  const loading = tasksLoading || fuLoading || payLoading || projLoading || toolsLoading;
+
+ useEffect(() => {
+  logInfo('DashboardPage', 'Render state:', {
+   uid,
+   tasks: myTasks.length,
+   followUps: myFollowUps.length,
+   payments: myPayments.length,
+   projects: myProjects.length,
+   tools: myPendingTools.length,
+   loading,
+  });
+ }, [
+  loading,
+  myFollowUps.length,
+  myPayments.length,
+  myPendingTools.length,
+  myProjects.length,
+  myTasks.length,
+  uid,
+ ]);
 
  const getGreeting = () => {
  const h = new Date().getHours();

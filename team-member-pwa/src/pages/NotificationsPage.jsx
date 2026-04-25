@@ -1,15 +1,25 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { ClipboardList, CreditCard, RefreshCw, Bell, BellOff, CheckCheck, ChevronLeft } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useNotifications } from '../hooks/useNotifications';
+import { logInfo } from '../lib/firestoreDebug';
 
 export default function NotificationsPage() {
  const navigate = useNavigate();
  const { userData } = useAuth();
  const { notifications, loading, markAsRead, markAllRead } = useNotifications(userData?.uid);
  const unreadCount = notifications.filter(n => !n.read).length;
+
+ useEffect(() => {
+  logInfo('NotificationsPage', 'Render state:', {
+   uid: userData?.uid || null,
+   notifications: notifications.length,
+   unreadCount,
+   loading,
+  });
+ }, [loading, notifications.length, unreadCount, userData?.uid]);
 
  const getIcon = (type) => {
  const icons = {

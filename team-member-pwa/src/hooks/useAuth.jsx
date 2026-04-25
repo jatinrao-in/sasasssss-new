@@ -9,6 +9,7 @@ import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { redirectToAdminPanel } from '../lib/adminPanel';
 import { COLLECTIONS } from '../lib/firestore-helpers';
+import { logDocSnapshot, logError, logInfo } from '../lib/firestoreDebug';
 
 const AuthContext = createContext(null);
 
@@ -50,6 +51,7 @@ export function AuthProvider({ children }) {
     let unsubscribeProfile = () => {};
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+      logInfo('useAuth', 'Auth state changed:', firebaseUser ? firebaseUser.uid : 'signed-out');
       unsubscribeProfile();
 
       if (!firebaseUser) {
@@ -65,6 +67,7 @@ export function AuthProvider({ children }) {
       unsubscribeProfile = onSnapshot(
         doc(db, COLLECTIONS.users, firebaseUser.uid),
         (snapshot) => {
+          logDocSnapshot('useAuth.profile', snapshot);
           const profile = snapshot.exists()
             ? { uid: firebaseUser.uid, email: firebaseUser.email, ...snapshot.data() }
             : {
@@ -86,13 +89,14 @@ export function AuthProvider({ children }) {
           setLoading(false);
         },
         async (error) => {
-          console.error('Error listening to user profile:', error);
+          logError('useAuth.profile', error);
 
           try {
             const fallbackProfile = await fetchUserProfile(firebaseUser.uid, firebaseUser.email);
+            logInfo('useAuth', 'Loaded fallback profile for:', firebaseUser.uid);
             setUserData(fallbackProfile);
           } catch (fallbackError) {
-            console.error('Error fetching fallback user data:', fallbackError);
+            logError('useAuth.fallbackProfile', fallbackError);
             setUserData({
               uid: firebaseUser.uid,
               email: firebaseUser.email,

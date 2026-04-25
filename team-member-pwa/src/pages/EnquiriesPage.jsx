@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -8,6 +8,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useEnquiries } from '../hooks/useEnquiries';
 import { useToast } from '../hooks/useToast';
 import { formatDate } from '../lib/formatters';
+import { logInfo } from '../lib/firestoreDebug';
 
 export default function EnquiriesPage() {
  const { userData } = useAuth();
@@ -31,6 +32,16 @@ export default function EnquiriesPage() {
  try { await markClosed(id); toast.success('Enquiry closed!'); }
  catch (err) { toast.error('Failed: ' + err.message); }
  };
+
+ useEffect(() => {
+  logInfo('EnquiriesPage', 'Render state:', {
+   uid: userData?.uid || null,
+   enquiries: myEnquiries.length,
+   filtered: filtered.length,
+   activeTab,
+   loading,
+  });
+ }, [activeTab, filtered.length, loading, myEnquiries.length, userData?.uid]);
 
  const getStatusBadge = (enq) => {
  if (enq.status === 'closed') return <Badge variant="success">Closed</Badge>;

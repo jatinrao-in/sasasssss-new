@@ -15,6 +15,13 @@ import {
 import { db } from '../lib/firebase';
 import { useRealtime } from '../context/RealtimeContext';
 import {
+  logError,
+  logFetch,
+  logInfo,
+  logSkip,
+  logSnapshot,
+} from '../lib/firestoreDebug';
+import {
   COLLECTIONS,
   calculateOverdueDays,
   deriveTaskStatus,
@@ -48,16 +55,20 @@ export function useTasks(filterByUser = null) {
 
   useEffect(() => {
     if (realtimeTasks) {
+      logInfo('useTasks', 'Using realtime tasks:', realtimeTasks.length);
       setTasks(realtimeTasks);
       setLoading(Boolean(realtime?.loading?.tasks));
       return undefined;
     }
 
     if (!filterByUser) {
+      logSkip('useTasks');
       setTasks([]);
       setLoading(false);
       return undefined;
     }
+
+    logFetch('useTasks', filterByUser);
 
     const taskQuery = query(
       collection(db, COLLECTIONS.tasks),
@@ -68,6 +79,7 @@ export function useTasks(filterByUser = null) {
     const unsubscribe = onSnapshot(
       taskQuery,
       (snapshot) => {
+        logSnapshot('useTasks', snapshot);
         const nextTasks = snapshot.docs.map((taskDoc) => {
           const task = { id: taskDoc.id, ...taskDoc.data() };
           task.overdueDays = task.status === 'completed' ? 0 : calculateOverdueDays(task.targetDate);
@@ -79,7 +91,7 @@ export function useTasks(filterByUser = null) {
         setLoading(false);
       },
       (error) => {
-        console.error('Tasks listener error:', error);
+        logError('useTasks', error);
         setLoading(false);
       },
     );

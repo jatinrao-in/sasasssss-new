@@ -2,6 +2,14 @@ import { useEffect, useState } from 'react';
 import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useRealtime } from '../context/RealtimeContext';
+import {
+  logDocSnapshot,
+  logError,
+  logFetch,
+  logInfo,
+  logSkip,
+  logSnapshot,
+} from '../lib/firestoreDebug';
 
 export function calcSalary(baseSalary, workingDays, presentDays) {
   const base = Number(baseSalary) || 0;
@@ -34,10 +42,13 @@ export function useMemberSalary(uid) {
 
   useEffect(() => {
     if (!uid) {
+      logSkip('useMemberSalary');
       setSalaryHistory([]);
       setLoading(false);
       return undefined;
     }
+
+    logFetch('useMemberSalary', uid);
 
     const ref = query(
       collection(db, 'salary', uid, 'months'),
@@ -47,10 +58,14 @@ export function useMemberSalary(uid) {
     const unsubscribe = onSnapshot(
       ref,
       (snapshot) => {
+        logSnapshot('useMemberSalary', snapshot);
         setSalaryHistory(snapshot.docs.map((itemDoc) => ({ id: itemDoc.id, ...itemDoc.data() })));
         setLoading(false);
       },
-      () => setLoading(false),
+      (error) => {
+        logError('useMemberSalary', error);
+        setLoading(false);
+      },
     );
 
     return () => unsubscribe();
@@ -67,25 +82,38 @@ export function useMemberSalaryMonth(uid, month) {
 
   useEffect(() => {
     if (!uid || !month) {
+      logSkip('useMemberSalaryMonth');
       setRecord(null);
       setLoading(false);
       return undefined;
     }
 
     if (realtime && month === currentMonth) {
+      logInfo(
+        'useMemberSalaryMonth',
+        'Using realtime salary record:',
+        realtime.currentSalary ? 1 : 0,
+        'documents',
+      );
       setRecord(realtime.currentSalary || null);
       setLoading(Boolean(realtime.loading?.currentSalary));
       return undefined;
     }
 
+    logFetch('useMemberSalaryMonth', uid, { month });
+
     const ref = doc(db, 'salary', uid, 'months', month);
     const unsubscribe = onSnapshot(
       ref,
       (snapshot) => {
+        logDocSnapshot('useMemberSalaryMonth', snapshot);
         setRecord(snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null);
         setLoading(false);
       },
-      () => setLoading(false),
+      (error) => {
+        logError('useMemberSalaryMonth', error);
+        setLoading(false);
+      },
     );
 
     return () => unsubscribe();

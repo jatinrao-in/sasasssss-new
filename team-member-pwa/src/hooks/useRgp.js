@@ -8,6 +8,13 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useRealtime } from '../context/RealtimeContext';
+import {
+  logError,
+  logFetch,
+  logInfo,
+  logSkip,
+  logSnapshot,
+} from '../lib/firestoreDebug';
 import { COLLECTIONS } from '../lib/firestore-helpers';
 
 export function useRgp(filterByUser = null) {
@@ -20,12 +27,14 @@ export function useRgp(filterByUser = null) {
       const source = filterByUser
         ? realtime.rgp.filter((item) => item.assignedTo === filterByUser)
         : realtime.rgp;
+      logInfo('useRgp', 'Using realtime RGP items:', source.length);
       setRgp(source);
       setLoading(Boolean(realtime.loading?.rgp));
       return undefined;
     }
 
     if (!filterByUser) {
+      logSkip('useRgp');
       setRgp([]);
       setLoading(false);
       return undefined;
@@ -37,14 +46,17 @@ export function useRgp(filterByUser = null) {
       orderBy('createdAt', 'desc'),
     );
 
+    logFetch('useRgp', filterByUser);
+
     const unsubscribe = onSnapshot(
       ref,
       (snapshot) => {
+        logSnapshot('useRgp', snapshot);
         setRgp(snapshot.docs.map((itemDoc) => ({ id: itemDoc.id, ...itemDoc.data() })));
         setLoading(false);
       },
       (error) => {
-        console.error('RGP listener error:', error);
+        logError('useRgp', error);
         setLoading(false);
       },
     );

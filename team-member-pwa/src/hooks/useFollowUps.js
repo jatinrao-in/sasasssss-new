@@ -13,6 +13,13 @@ import {
 import { db } from '../lib/firebase';
 import { useRealtime } from '../context/RealtimeContext';
 import {
+  logError,
+  logFetch,
+  logInfo,
+  logSkip,
+  logSnapshot,
+} from '../lib/firestoreDebug';
+import {
   COLLECTIONS,
   calculateOverdueDays,
   deriveOpenItemStatus,
@@ -42,16 +49,20 @@ export function useFollowUps(filterByUser = null) {
 
   useEffect(() => {
     if (realtimeFollowUps) {
+      logInfo('useFollowUps', 'Using realtime follow-ups:', realtimeFollowUps.length);
       setFollowUps(realtimeFollowUps);
       setLoading(Boolean(realtime?.loading?.followUps));
       return undefined;
     }
 
     if (!filterByUser) {
+      logSkip('useFollowUps');
       setFollowUps([]);
       setLoading(false);
       return undefined;
     }
+
+    logFetch('useFollowUps', filterByUser);
 
     const followupQuery = query(
       collection(db, COLLECTIONS.followups),
@@ -62,6 +73,7 @@ export function useFollowUps(filterByUser = null) {
     const unsubscribe = onSnapshot(
       followupQuery,
       (snapshot) => {
+        logSnapshot('useFollowUps', snapshot);
         const nextFollowUps = snapshot.docs.map((followupDoc) => {
           const followup = { id: followupDoc.id, ...followupDoc.data() };
           followup.overdueDays = followup.status === 'closed' ? 0 : calculateOverdueDays(followup.targetDate);
@@ -73,7 +85,7 @@ export function useFollowUps(filterByUser = null) {
         setLoading(false);
       },
       (error) => {
-        console.error('Follow-ups listener error:', error);
+        logError('useFollowUps', error);
         setLoading(false);
       },
     );

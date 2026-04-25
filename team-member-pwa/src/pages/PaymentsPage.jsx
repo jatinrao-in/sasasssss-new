@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -10,6 +10,7 @@ import { useAuth } from '../hooks/useAuth';
 import { usePayments } from '../hooks/usePayments';
 import { useToast } from '../hooks/useToast';
 import { formatDate, formatCurrency } from '../lib/formatters';
+import { logInfo } from '../lib/firestoreDebug';
 
 export default function PaymentsPage() {
  const navigate = useNavigate();
@@ -24,6 +25,14 @@ export default function PaymentsPage() {
 
  // Already filtered by uid from the hook
  const myPayments = payments;
+
+ useEffect(() => {
+  logInfo('PaymentsPage', 'Render state:', {
+   uid: userData?.uid || null,
+   payments: myPayments.length,
+   loading,
+  });
+ }, [loading, myPayments.length, userData?.uid]);
 
  const openUpdateSheet = (payment) => { setSelectedPayment(payment); setStatusValue(payment.paymentStatus || 'pending'); setRemarks(payment.remarks || ''); setSheetOpen(true); };
 

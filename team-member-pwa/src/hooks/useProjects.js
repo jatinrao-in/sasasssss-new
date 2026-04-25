@@ -1,15 +1,24 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   collection,
+  doc,
   onSnapshot,
-  orderBy,
   query,
+  where,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useRealtime } from '../context/RealtimeContext';
 import { COLLECTIONS } from '../lib/firestore-helpers';
+import {
+  logDocSnapshot,
+  logError,
+  logFetch,
+  logInfo,
+  logSkip,
+  logSnapshot,
+} from '../lib/firestoreDebug';
 
-export function useProjects(filterProjectIds = null) {
+export function useProjects(memberUid = null, filterProjectIds = null) {
   const realtime = useRealtime();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,32 +41,98 @@ export function useProjects(filterProjectIds = null) {
 
   useEffect(() => {
     if (realtimeProjects) {
+      logInfo('useProjects', 'Using realtime projects:', realtimeProjects.length);
       setProjects(realtimeProjects);
       setLoading(Boolean(realtime?.loading?.projects));
       return undefined;
     }
 
-    const projectQuery = query(collection(db, COLLECTIONS.projects), orderBy('createdAt', 'desc'));
+    if (!memberUid) {
+      logSkip('useProjects');
+      setProjects([]);
+      setLoading(false);
+      return undefined;
+    }
+
+    logFetch('useProjects.tasks', memberUid);
+
+    let projectUnsubs = [];
+    let activeProjectKey = '';
+
+    const syncProjectListeners = (projectIds = []) => {
+      const uniqueProjectIds = [...new Set(projectIds.filter(Boolean))];
+      const nextKey = uniqueProjectIds.join(',');
+
+      if (nextKey === activeProjectKey) {
+        return;
+      }
+
+      activeProjectKey = nextKey;
+      projectUnsubs.forEach((unsubscribe) => unsubscribe());
+      projectUnsubs = [];
+      setLoading(true);
+
+      logInfo('useProjects', 'Derived project IDs from member tasks:', uniqueProjectIds);
+
+      if (!uniqueProjectIds.length) {
+        setProjects([]);
+        setLoading(false);
+        return;
+      }
+
+      const projectMap = new Map();
+
+      projectUnsubs = uniqueProjectIds.map((projectId) => onSnapshot(
+        doc(db, COLLECTIONS.projects, projectId),
+        (snapshot) => {
+          logDocSnapshot(`useProjects.${projectId}`, snapshot);
+
+          if (snapshot.exists()) {
+            projectMap.set(projectId, { id: snapshot.id, ...snapshot.data() });
+          } else {
+            projectMap.delete(projectId);
+          }
+
+          const nextProjects = uniqueProjectIds
+            .map((id) => projectMap.get(id))
+            .filter(Boolean);
+
+          setProjects(
+            stableFilterKey
+              ? nextProjects.filter((project) => stableFilterKey.split(',').includes(project.id))
+              : nextProjects,
+          );
+          setLoading(false);
+        },
+        (error) => {
+          logError('useProjects', error);
+          setLoading(false);
+        },
+      ));
+    };
+
+    const tasksQuery = query(
+      collection(db, COLLECTIONS.tasks),
+      where('assignedTo', '==', memberUid),
+    );
 
     const unsubscribe = onSnapshot(
-      projectQuery,
+      tasksQuery,
       (snapshot) => {
-        const nextProjects = snapshot.docs.map((projectDoc) => ({ id: projectDoc.id, ...projectDoc.data() }));
-        setProjects(
-          stableFilterKey
-            ? nextProjects.filter((project) => stableFilterKey.split(',').includes(project.id))
-            : nextProjects,
-        );
-        setLoading(false);
+        logSnapshot('useProjects.tasks', snapshot);
+        syncProjectListeners(snapshot.docs.map((taskDoc) => taskDoc.data().projectId));
       },
       (error) => {
-        console.error('Projects listener error:', error);
+        logError('useProjects.tasks', error);
         setLoading(false);
       },
     );
 
-    return () => unsubscribe();
-  }, [realtimeProjects, realtime?.loading?.projects, stableFilterKey]);
+    return () => {
+      projectUnsubs.forEach((stopListening) => stopListening());
+      unsubscribe();
+    };
+  }, [memberUid, realtime?.loading?.projects, realtimeProjects, stableFilterKey]);
 
   return { projects, loading };
 }

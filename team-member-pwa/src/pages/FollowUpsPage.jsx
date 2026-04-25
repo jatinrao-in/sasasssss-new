@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -9,6 +9,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useFollowUps } from '../hooks/useFollowUps';
 import { useToast } from '../hooks/useToast';
 import { formatDate } from '../lib/formatters';
+import { logInfo } from '../lib/firestoreDebug';
 
 export default function FollowUpsPage() {
  const navigate = useNavigate();
@@ -33,6 +34,16 @@ export default function FollowUpsPage() {
  try { await markClosed(id); toast.success('Follow-up closed!'); }
  catch (err) { toast.error('Failed: ' + err.message); }
  };
+
+ useEffect(() => {
+  logInfo('FollowUpsPage', 'Render state:', {
+   uid: userData?.uid || null,
+   followUps: myFollowUps.length,
+   filtered: filtered.length,
+   activeTab,
+   loading,
+  });
+ }, [activeTab, filtered.length, loading, myFollowUps.length, userData?.uid]);
 
  const getStatusBadge = (fu) => {
  if (fu.status === 'closed') return <Badge variant="success">Closed</Badge>;

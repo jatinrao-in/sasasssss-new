@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   addDoc,
+  limit,
   onSnapshot,
   orderBy,
   query,
@@ -8,6 +9,13 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useRealtime } from '../context/RealtimeContext';
+import {
+  logError,
+  logFetch,
+  logInfo,
+  logSkip,
+  logSnapshot,
+} from '../lib/firestoreDebug';
 import {
   buildNotificationPayload,
   getNotificationItemDoc,
@@ -22,6 +30,7 @@ export function useNotifications(userId) {
 
   useEffect(() => {
     if (realtime && userId) {
+      logInfo('useNotifications', 'Using realtime notifications:', realtime.notifications?.length || 0);
       setNotifications(realtime.notifications || []);
       setUnreadCount(realtime.unreadCount || 0);
       setLoading(Boolean(realtime.loading?.notifications));
@@ -29,20 +38,25 @@ export function useNotifications(userId) {
     }
 
     if (!userId) {
+      logSkip('useNotifications');
       setNotifications([]);
       setUnreadCount(0);
       setLoading(false);
       return undefined;
     }
 
+    logFetch('useNotifications', userId);
+
     const notificationQuery = query(
       getNotificationItemsCollection(db, userId),
       orderBy('createdAt', 'desc'),
+      limit(50),
     );
 
     const unsubscribe = onSnapshot(
       notificationQuery,
       (snapshot) => {
+        logSnapshot('useNotifications', snapshot);
         const nextNotifications = snapshot.docs.map((notificationDoc) => ({
           id: notificationDoc.id,
           ...notificationDoc.data(),
@@ -53,7 +67,7 @@ export function useNotifications(userId) {
         setLoading(false);
       },
       (error) => {
-        console.error('Notifications listener error:', error);
+        logError('useNotifications', error);
         setLoading(false);
       },
     );

@@ -10,6 +10,14 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { COLLECTIONS } from '../lib/firestore-helpers';
+import {
+  logDocSnapshot,
+  logError,
+  logFetch,
+  logInfo,
+  logSkip,
+  logSnapshot,
+} from '../lib/firestoreDebug';
 import { useAuth } from '../hooks/useAuth';
 
 const RealtimeContext = createContext(null);
@@ -51,15 +59,21 @@ export function RealtimeProvider({ children }) {
 
   useEffect(() => {
     if (!currentUser?.uid) {
+      logSkip('RealtimeProvider');
       setState(createInitialState());
       setLoading(createInitialLoadingState());
       return undefined;
     }
 
     const uid = currentUser.uid;
-    const isAdmin = currentUser.role === 'admin';
     const monthKey = currentMonthKey();
     const unsubs = [];
+    let projectUnsubs = [];
+    let activeProjectKey = '';
+
+    setState(createInitialState());
+    setLoading(createInitialLoadingState());
+    logFetch('RealtimeProvider', uid, { role: currentUser.role || 'unknown' });
 
     const setCollectionState = (key, data) => {
       setState((prev) => ({ ...prev, [key]: data }));
@@ -67,37 +81,134 @@ export function RealtimeProvider({ children }) {
     };
 
     const setCollectionError = (key, error) => {
-      console.error(`Realtime listener error for ${key}:`, error);
+      logError(`RealtimeProvider.${key}`, error);
       setLoading((prev) => ({ ...prev, [key]: false }));
     };
 
-    const listenToList = ({ key, collectionName, constraints = [] }) => {
-      const ref = query(collection(db, collectionName), ...constraints);
+    const replaceProjectListeners = (projectIds = []) => {
+      const uniqueProjectIds = [...new Set(projectIds.filter(Boolean))];
+      const nextProjectKey = uniqueProjectIds.join(',');
+
+      if (nextProjectKey === activeProjectKey) {
+        return;
+      }
+
+      activeProjectKey = nextProjectKey;
+      projectUnsubs.forEach((unsubscribe) => unsubscribe());
+      projectUnsubs = [];
+      setLoading((prev) => ({ ...prev, projects: true }));
+
+      logInfo('RealtimeProvider.projects', 'Derived project IDs from tasks:', uniqueProjectIds);
+
+      if (!uniqueProjectIds.length) {
+        setCollectionState('projects', []);
+        return;
+      }
+
+      const projectMap = new Map();
+
+      projectUnsubs = uniqueProjectIds.map((projectId) => onSnapshot(
+        doc(db, COLLECTIONS.projects, projectId),
+        (snapshot) => {
+          logDocSnapshot(`RealtimeProvider.projects.${projectId}`, snapshot);
+
+          if (snapshot.exists()) {
+            projectMap.set(projectId, { id: snapshot.id, ...snapshot.data() });
+          } else {
+            projectMap.delete(projectId);
+          }
+
+          setCollectionState(
+            'projects',
+            uniqueProjectIds
+              .map((id) => projectMap.get(id))
+              .filter(Boolean),
+          );
+        },
+        (error) => setCollectionError('projects', error),
+      ));
+    };
+
+    const listenToList = ({ key, scope, ref, onData }) => {
       unsubs.push(onSnapshot(
         ref,
         (snapshot) => {
-          setCollectionState(key, snapshot.docs.map((itemDoc) => ({
+          logSnapshot(scope, snapshot);
+
+          const data = snapshot.docs.map((itemDoc) => ({
             id: itemDoc.id,
             ...itemDoc.data(),
-          })));
+          }));
+
+          if (onData) {
+            onData(data, snapshot);
+            return;
+          }
+
+          setCollectionState(key, data);
         },
         (error) => setCollectionError(key, error),
       ));
     };
 
-    const assignedQuery = (collectionName) => (
-      isAdmin
-        ? [orderBy('createdAt', 'desc')]
-        : [where('assignedTo', '==', uid), orderBy('createdAt', 'desc')]
-    );
-
-    listenToList({ key: 'tasks', collectionName: COLLECTIONS.tasks, constraints: assignedQuery(COLLECTIONS.tasks) });
-    listenToList({ key: 'projects', collectionName: COLLECTIONS.projects, constraints: [orderBy('createdAt', 'desc')] });
-    listenToList({ key: 'enquiries', collectionName: COLLECTIONS.enquiries, constraints: assignedQuery(COLLECTIONS.enquiries) });
-    listenToList({ key: 'followUps', collectionName: COLLECTIONS.followups, constraints: assignedQuery(COLLECTIONS.followups) });
-    listenToList({ key: 'payments', collectionName: COLLECTIONS.payments, constraints: assignedQuery(COLLECTIONS.payments) });
-    listenToList({ key: 'rgp', collectionName: COLLECTIONS.rgp, constraints: assignedQuery(COLLECTIONS.rgp) });
-    listenToList({ key: 'tools', collectionName: COLLECTIONS.tools, constraints: assignedQuery(COLLECTIONS.tools) });
+    listenToList({
+      key: 'tasks',
+      scope: 'RealtimeProvider.tasks',
+      ref: query(
+        collection(db, COLLECTIONS.tasks),
+        where('assignedTo', '==', uid),
+        orderBy('createdAt', 'desc'),
+      ),
+      onData: (data) => {
+        setCollectionState('tasks', data);
+        replaceProjectListeners(data.map((task) => task.projectId));
+      },
+    });
+    listenToList({
+      key: 'enquiries',
+      scope: 'RealtimeProvider.enquiries',
+      ref: query(
+        collection(db, COLLECTIONS.enquiries),
+        where('assignedTo', '==', uid),
+        orderBy('createdAt', 'desc'),
+      ),
+    });
+    listenToList({
+      key: 'followUps',
+      scope: 'RealtimeProvider.followups',
+      ref: query(
+        collection(db, COLLECTIONS.followups),
+        where('assignedTo', '==', uid),
+        orderBy('createdAt', 'desc'),
+      ),
+    });
+    listenToList({
+      key: 'payments',
+      scope: 'RealtimeProvider.payments',
+      ref: query(
+        collection(db, COLLECTIONS.payments),
+        where('assignedTo', '==', uid),
+        orderBy('createdAt', 'desc'),
+      ),
+    });
+    listenToList({
+      key: 'rgp',
+      scope: 'RealtimeProvider.rgp',
+      ref: query(
+        collection(db, COLLECTIONS.rgp),
+        where('assignedTo', '==', uid),
+        orderBy('createdAt', 'desc'),
+      ),
+    });
+    listenToList({
+      key: 'tools',
+      scope: 'RealtimeProvider.tools',
+      ref: query(
+        collection(db, COLLECTIONS.tools),
+        where('assignedTo', '==', uid),
+        where('returnStatus', '==', 'pending'),
+      ),
+    });
 
     unsubs.push(onSnapshot(
       query(
@@ -106,6 +217,7 @@ export function RealtimeProvider({ children }) {
         limit(50),
       ),
       (snapshot) => {
+        logSnapshot('RealtimeProvider.notifications', snapshot);
         const notifications = snapshot.docs.map((itemDoc) => ({
           id: itemDoc.id,
           ...itemDoc.data(),
@@ -124,6 +236,7 @@ export function RealtimeProvider({ children }) {
     unsubs.push(onSnapshot(
       doc(db, COLLECTIONS.salary, uid, 'months', monthKey),
       (snapshot) => {
+        logDocSnapshot('RealtimeProvider.salary', snapshot);
         setState((prev) => ({
           ...prev,
           currentSalary: snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null,
@@ -134,9 +247,10 @@ export function RealtimeProvider({ children }) {
     ));
 
     return () => {
+      projectUnsubs.forEach((unsubscribe) => unsubscribe());
       unsubs.forEach((unsubscribe) => unsubscribe());
     };
-  }, [currentUser?.uid, currentUser?.role]);
+  }, [currentUser?.role, currentUser?.uid]);
 
   const value = useMemo(() => ({
     ...state,

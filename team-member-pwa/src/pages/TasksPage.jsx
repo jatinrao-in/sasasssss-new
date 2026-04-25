@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -18,6 +18,7 @@ import { db } from '../lib/firebase';
 import { COLLECTIONS, recalculateProjectTotalExpense } from '../lib/firestore-helpers';
 import { notify } from '../lib/notify';
 import { formatDate as fmtDate } from '../lib/helpers';
+import { logInfo } from '../lib/firestoreDebug';
 
 export default function TasksPage() {
   const { userData } = useAuth();
@@ -26,7 +27,7 @@ export default function TasksPage() {
   const { tasks, loading: tasksLoading, updateCompletion } = useTasks(userData?.uid);
   const myTasks = tasks;
 
-  const { projects, loading: projectsLoading } = useProjects();
+  const { projects, loading: projectsLoading } = useProjects(userData?.uid);
   
   const [activeTab, setActiveTab] = useState('all');
   const [collapsedProjects, setCollapsedProjects] = useState({});
@@ -43,6 +44,16 @@ export default function TasksPage() {
   const [expenseAmount, setExpenseAmount] = useState('');
 
   const loading = tasksLoading || projectsLoading;
+
+  useEffect(() => {
+    logInfo('TasksPage', 'Render state:', {
+      uid: userData?.uid || null,
+      tasks: myTasks.length,
+      projects: projects.length,
+      activeTab,
+      loading,
+    });
+  }, [activeTab, loading, myTasks.length, projects.length, userData?.uid]);
 
   // Group and sort tasks by project
   const groupedData = useMemo(() => {

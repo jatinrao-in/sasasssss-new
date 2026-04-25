@@ -7,6 +7,7 @@ import { Eye, EyeOff, Building2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { redirectToAdminPanel } from '../lib/adminPanel';
 import { useToast } from '../hooks/useToast';
+import { logInfo } from '../lib/firestoreDebug';
 
 export default function LoginPage() {
  const navigate = useNavigate();
@@ -20,6 +21,16 @@ export default function LoginPage() {
 
  // Route authenticated users into the correct app without rendering the wrong dashboard first.
  useEffect(() => {
+ if (authLoading) {
+ logInfo('LoginPage', 'Waiting for auth state...');
+ return;
+ }
+
+ logInfo('LoginPage', 'Auth screen state:', {
+ userUid: user?.uid || null,
+ role: userData?.role || null,
+ });
+
  if (authLoading || !user) return;
 
  if (userData?.role === 'admin') {

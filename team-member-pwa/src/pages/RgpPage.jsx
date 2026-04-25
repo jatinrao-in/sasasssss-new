@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { ArrowLeftRight, FileText } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useRgp } from '../hooks/useRgp';
 import { formatDate } from '../lib/formatters';
+import { logInfo } from '../lib/firestoreDebug';
 
 export default function RgpPage() {
   const { userData } = useAuth();
@@ -22,6 +23,16 @@ export default function RgpPage() {
     if (status === 'closed') return <Badge variant="success">Closed</Badge>;
     return <Badge variant="warning">Open</Badge>;
   };
+
+  useEffect(() => {
+    logInfo('RgpPage', 'Render state:', {
+      uid: userData?.uid || null,
+      rgp: rgp.length,
+      filtered: filteredRgp.length,
+      filter,
+      loading,
+    });
+  }, [filter, filteredRgp.length, loading, rgp.length, userData?.uid]);
 
   return (
     <div className="pb-4">

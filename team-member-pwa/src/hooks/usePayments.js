@@ -12,6 +12,13 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useRealtime } from '../context/RealtimeContext';
+import {
+  logError,
+  logFetch,
+  logInfo,
+  logSkip,
+  logSnapshot,
+} from '../lib/firestoreDebug';
 import { COLLECTIONS, calculateOverdueDays } from '../lib/firestore-helpers';
 
 export function usePayments(filterByUser = null) {
@@ -39,16 +46,20 @@ export function usePayments(filterByUser = null) {
 
   useEffect(() => {
     if (realtimePayments) {
+      logInfo('usePayments', 'Using realtime payments:', realtimePayments.length);
       setPayments(realtimePayments);
       setLoading(Boolean(realtime?.loading?.payments));
       return undefined;
     }
 
     if (!filterByUser) {
+      logSkip('usePayments');
       setPayments([]);
       setLoading(false);
       return undefined;
     }
+
+    logFetch('usePayments', filterByUser);
 
     const paymentQuery = query(
       collection(db, COLLECTIONS.payments),
@@ -59,6 +70,7 @@ export function usePayments(filterByUser = null) {
     const unsubscribe = onSnapshot(
       paymentQuery,
       (snapshot) => {
+        logSnapshot('usePayments', snapshot);
         const nextPayments = snapshot.docs.map((paymentDoc) => {
           const payment = { id: paymentDoc.id, ...paymentDoc.data() };
           payment.overdueDays = payment.paymentStatus === 'received'
@@ -71,7 +83,7 @@ export function usePayments(filterByUser = null) {
         setLoading(false);
       },
       (error) => {
-        console.error('Payments listener error:', error);
+        logError('usePayments', error);
         setLoading(false);
       },
     );

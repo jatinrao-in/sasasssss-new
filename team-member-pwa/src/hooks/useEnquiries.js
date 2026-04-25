@@ -13,6 +13,13 @@ import {
 import { db } from '../lib/firebase';
 import { useRealtime } from '../context/RealtimeContext';
 import {
+  logError,
+  logFetch,
+  logInfo,
+  logSkip,
+  logSnapshot,
+} from '../lib/firestoreDebug';
+import {
   COLLECTIONS,
   calculateOverdueDays,
   deriveOpenItemStatus,
@@ -42,16 +49,20 @@ export function useEnquiries(filterByUser = null) {
 
   useEffect(() => {
     if (realtimeEnquiries) {
+      logInfo('useEnquiries', 'Using realtime enquiries:', realtimeEnquiries.length);
       setEnquiries(realtimeEnquiries);
       setLoading(Boolean(realtime?.loading?.enquiries));
       return undefined;
     }
 
     if (!filterByUser) {
+      logSkip('useEnquiries');
       setEnquiries([]);
       setLoading(false);
       return undefined;
     }
+
+    logFetch('useEnquiries', filterByUser);
 
     const enquiryQuery = query(
       collection(db, COLLECTIONS.enquiries),
@@ -62,6 +73,7 @@ export function useEnquiries(filterByUser = null) {
     const unsubscribe = onSnapshot(
       enquiryQuery,
       (snapshot) => {
+        logSnapshot('useEnquiries', snapshot);
         const nextEnquiries = snapshot.docs.map((enquiryDoc) => {
           const enquiry = { id: enquiryDoc.id, ...enquiryDoc.data() };
           enquiry.overdueDays = enquiry.status === 'closed' ? 0 : calculateOverdueDays(enquiry.targetDate);
@@ -73,7 +85,7 @@ export function useEnquiries(filterByUser = null) {
         setLoading(false);
       },
       (error) => {
-        console.error('Enquiries listener error:', error);
+        logError('useEnquiries', error);
         setLoading(false);
       },
     );
