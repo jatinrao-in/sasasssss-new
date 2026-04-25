@@ -20,14 +20,36 @@ import {
   COLLECTIONS,
   addDocument,
   calculateOverdueDays,
-  deriveOpenItemStatus,
   updateDocument,
 } from '../lib/firestore-helpers';
+
+const CLOSED_ENQUIRY_STATUSES = new Set(['closed', 'won', 'lost']);
+
+function normalizeEnquiryStatus(value) {
+  return String(value || 'open')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_');
+}
+
+function normalizeEnquiry(enquiry) {
+  const normalized = { ...enquiry };
+  normalized.status = normalizeEnquiryStatus(normalized.status);
+  normalized.isClosed = CLOSED_ENQUIRY_STATUSES.has(normalized.status);
+  normalized.overdueDays = normalized.isClosed ? 0 : calculateOverdueDays(normalized.targetDate);
+  normalized.statusCategory = normalized.isClosed
+    ? 'closed'
+    : normalized.overdueDays > 0
+      ? 'overdue'
+      : 'open';
+  return normalized;
+}
 
 export function useEnquiries(filterByUser = null) {
   const realtime = useRealtime();
   const [enquiries, setEnquiries] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const realtimeEnquiries = useMemo(() => {
     if (!realtime) {
@@ -38,12 +60,7 @@ export function useEnquiries(filterByUser = null) {
       ? realtime.enquiries.filter((item) => item.assignedTo === filterByUser)
       : realtime.enquiries;
 
-    return source.map((enquiry) => {
-      const normalized = { ...enquiry };
-      normalized.overdueDays = normalized.status === 'closed' ? 0 : calculateOverdueDays(normalized.targetDate);
-      normalized.status = deriveOpenItemStatus(normalized);
-      return normalized;
-    });
+    return source.map(normalizeEnquiry);
   }, [realtime, filterByUser]);
 
   useEffect(() => {
@@ -51,6 +68,7 @@ export function useEnquiries(filterByUser = null) {
       logInfo('useEnquiries', 'Using realtime enquiries:', realtimeEnquiries.length);
       setEnquiries(realtimeEnquiries);
       setLoading(Boolean(realtime?.loading?.enquiries));
+      setError(null);
       return undefined;
     }
 
@@ -58,6 +76,7 @@ export function useEnquiries(filterByUser = null) {
       logSkip('useEnquiries');
       setEnquiries([]);
       setLoading(false);
+      setError(null);
       return undefined;
     }
 
@@ -73,18 +92,18 @@ export function useEnquiries(filterByUser = null) {
       enquiryQuery,
       (snapshot) => {
         logSnapshot('useEnquiries', snapshot);
-        const nextEnquiries = snapshot.docs.map((enquiryDoc) => {
-          const enquiry = { id: enquiryDoc.id, ...enquiryDoc.data() };
-          enquiry.overdueDays = enquiry.status === 'closed' ? 0 : calculateOverdueDays(enquiry.targetDate);
-          enquiry.status = deriveOpenItemStatus(enquiry);
-          return enquiry;
-        });
+        const nextEnquiries = snapshot.docs.map((enquiryDoc) => normalizeEnquiry({
+          id: enquiryDoc.id,
+          ...enquiryDoc.data(),
+        }));
 
         setEnquiries(nextEnquiries);
         setLoading(false);
+        setError(null);
       },
       (error) => {
         logError('useEnquiries', error);
+        setError(error);
         setLoading(false);
       },
     );
@@ -112,5 +131,12 @@ export function useEnquiries(filterByUser = null) {
     updatedAt: serverTimestamp(),
   }, 'close enquiry');
 
-  return { enquiries, loading, addEnquiry, updateEnquiry, markClosed };
+  return {
+    enquiries,
+    loading,
+    error,
+    addEnquiry,
+    updateEnquiry,
+    markClosed,
+  };
 }

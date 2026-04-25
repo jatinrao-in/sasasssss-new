@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore';
 
 export const COLLECTIONS = {
+ audit_logs: 'audit_logs',
  enquiries: 'enquiries',
  expenses: 'expenses',
  followups: 'followups',

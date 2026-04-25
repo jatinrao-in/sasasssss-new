@@ -20,14 +20,52 @@ import {
   COLLECTIONS,
   addDocument,
   calculateOverdueDays,
-  deriveOpenItemStatus,
+  toDateValue,
   updateDocument,
 } from '../lib/firestore-helpers';
+
+function normalizeFollowupStatus(value) {
+  return String(value || 'open')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_');
+}
+
+function isSameDay(firstDate, secondDate) {
+  return firstDate.getFullYear() === secondDate.getFullYear()
+    && firstDate.getMonth() === secondDate.getMonth()
+    && firstDate.getDate() === secondDate.getDate();
+}
+
+function normalizeFollowUp(followUp) {
+  const normalized = { ...followUp };
+  normalized.status = normalizeFollowupStatus(normalized.status);
+  normalized.isClosed = normalized.status === 'closed';
+  normalized.dueDate = normalized.nextFollowupDate || normalized.targetDate;
+  normalized.overdueDays = normalized.isClosed ? 0 : calculateOverdueDays(normalized.dueDate);
+
+  const dueDateValue = toDateValue(normalized.dueDate);
+  const today = new Date();
+  normalized.isDueToday = normalized.isClosed
+    ? false
+    : Boolean(dueDateValue) && isSameDay(dueDateValue, today);
+
+  normalized.statusCategory = normalized.isClosed
+    ? 'closed'
+    : normalized.overdueDays > 0
+      ? 'overdue'
+      : normalized.isDueToday
+        ? 'due_today'
+        : 'open';
+
+  return normalized;
+}
 
 export function useFollowUps(filterByUser = null) {
   const realtime = useRealtime();
   const [followUps, setFollowUps] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const realtimeFollowUps = useMemo(() => {
     if (!realtime) {
@@ -38,12 +76,7 @@ export function useFollowUps(filterByUser = null) {
       ? realtime.followUps.filter((item) => item.assignedTo === filterByUser)
       : realtime.followUps;
 
-    return source.map((followUp) => {
-      const normalized = { ...followUp };
-      normalized.overdueDays = normalized.status === 'closed' ? 0 : calculateOverdueDays(normalized.targetDate);
-      normalized.status = deriveOpenItemStatus(normalized);
-      return normalized;
-    });
+    return source.map(normalizeFollowUp);
   }, [realtime, filterByUser]);
 
   useEffect(() => {
@@ -51,6 +84,7 @@ export function useFollowUps(filterByUser = null) {
       logInfo('useFollowUps', 'Using realtime follow-ups:', realtimeFollowUps.length);
       setFollowUps(realtimeFollowUps);
       setLoading(Boolean(realtime?.loading?.followUps));
+      setError(null);
       return undefined;
     }
 
@@ -58,6 +92,7 @@ export function useFollowUps(filterByUser = null) {
       logSkip('useFollowUps');
       setFollowUps([]);
       setLoading(false);
+      setError(null);
       return undefined;
     }
 
@@ -73,18 +108,18 @@ export function useFollowUps(filterByUser = null) {
       followupQuery,
       (snapshot) => {
         logSnapshot('useFollowUps', snapshot);
-        const nextFollowUps = snapshot.docs.map((followupDoc) => {
-          const followup = { id: followupDoc.id, ...followupDoc.data() };
-          followup.overdueDays = followup.status === 'closed' ? 0 : calculateOverdueDays(followup.targetDate);
-          followup.status = deriveOpenItemStatus(followup);
-          return followup;
-        });
+        const nextFollowUps = snapshot.docs.map((followupDoc) => normalizeFollowUp({
+          id: followupDoc.id,
+          ...followupDoc.data(),
+        }));
 
         setFollowUps(nextFollowUps);
         setLoading(false);
+        setError(null);
       },
       (error) => {
         logError('useFollowUps', error);
+        setError(error);
         setLoading(false);
       },
     );
@@ -112,5 +147,12 @@ export function useFollowUps(filterByUser = null) {
     updatedAt: serverTimestamp(),
   }, 'close follow-up');
 
-  return { followUps, loading, addFollowUp, updateFollowUp, markClosed };
+  return {
+    followUps,
+    loading,
+    error,
+    addFollowUp,
+    updateFollowUp,
+    markClosed,
+  };
 }

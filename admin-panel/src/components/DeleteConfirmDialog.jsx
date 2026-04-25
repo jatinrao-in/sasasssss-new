@@ -8,6 +8,8 @@ const DeleteConfirmDialog = ({
   title,
   description,
   isDeleting,
+  confirmLabel = 'Yes, Delete',
+  loadingLabel = 'Deleting...',
 }) => {
   return (
     <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -113,7 +115,7 @@ const DeleteConfirmDialog = ({
                 opacity: isDeleting ? 0.7 : 1,
               }}
             >
-              {isDeleting ? 'Deleting...' : 'Yes, Delete'}
+              {isDeleting ? loadingLabel : confirmLabel}
             </button>
           </div>
         </Dialog.Content>

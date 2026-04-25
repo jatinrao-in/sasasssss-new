@@ -40,7 +40,13 @@ export default function PaymentsPage() {
  if (!selectedPayment) return;
  setSaving(true);
  try { await updateStatus(selectedPayment.id, statusValue, remarks); toast.success('Status updated!'); setSheetOpen(false); }
- catch (err) { toast.error('Failed: ' + err.message); }
+ catch (err) {
+ if (err?.code === 'permission-denied') {
+ toast.error('Permission denied. Contact admin.');
+ } else {
+ toast.error('Failed: ' + err.message);
+ }
+ }
  finally { setSaving(false); }
  };
 

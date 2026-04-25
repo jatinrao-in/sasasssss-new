@@ -80,11 +80,16 @@ export function useNotifications(userId) {
       return;
     }
 
-    return updateDocumentRef(
-      getNotificationItemDoc(db, userId, notificationId),
-      { read: true },
-      { action: 'mark notification read', collectionName: 'notification_items' },
-    );
+    try {
+      return await updateDocumentRef(
+        getNotificationItemDoc(db, userId, notificationId),
+        { read: true },
+        { action: 'mark notification read', collectionName: 'notification_items' },
+      );
+    } catch (error) {
+      console.error('Notif update:', error);
+      return undefined;
+    }
   };
 
   const markAllRead = async () => {
@@ -92,15 +97,19 @@ export function useNotifications(userId) {
       return;
     }
 
-    await Promise.all(
-      notifications
-        .filter((notification) => !notification.read)
-        .map((notification) => updateDocumentRef(
-          getNotificationItemDoc(db, userId, notification.id),
-          { read: true },
-          { action: 'mark notification read', collectionName: 'notification_items' },
-        )),
-    );
+    try {
+      await Promise.all(
+        notifications
+          .filter((notification) => !notification.read)
+          .map((notification) => updateDocumentRef(
+            getNotificationItemDoc(db, userId, notification.id),
+            { read: true },
+            { action: 'mark notification read', collectionName: 'notification_items' },
+          )),
+      );
+    } catch (error) {
+      console.error('Notif update:', error);
+    }
   };
 
   const addNotification = async (targetUserId, notification) => addDocumentToCollection(

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   collection,
   doc,
-  getDoc,
   onSnapshot,
   orderBy,
   query,
@@ -24,7 +23,6 @@ import {
   calculateOverdueDays,
   deleteDocumentRef,
   deriveTaskStatus,
-  recalculateProjectCompletion,
   updateDocument,
   updateDocumentRef,
 } from '../lib/firestore-helpers';
@@ -118,31 +116,18 @@ export function useTasks(filterByUser = null) {
 
   const updateCompletion = async (taskId, percent) => {
     const taskRef = doc(db, COLLECTIONS.tasks, taskId);
-    const taskSnapshot = await getDoc(taskRef);
-    const taskData = taskSnapshot.exists() ? taskSnapshot.data() : null;
 
     await updateDocumentRef(taskRef, {
       completionPercent: Number(percent),
       status: percent >= 100 ? 'completed' : 'open',
       updatedAt: serverTimestamp(),
     }, { action: 'update task completion', collectionName: COLLECTIONS.tasks });
-
-    if (taskData?.projectId) {
-      await recalculateProjectCompletion(db, taskData.projectId);
-    }
   };
 
-  const deleteTask = async (taskId) => {
-    const taskRef = doc(db, COLLECTIONS.tasks, taskId);
-    const taskSnapshot = await getDoc(taskRef);
-    const taskData = taskSnapshot.exists() ? taskSnapshot.data() : null;
-
-    await deleteDocumentRef(taskRef, { action: 'delete task', collectionName: COLLECTIONS.tasks });
-
-    if (taskData?.projectId) {
-      await recalculateProjectCompletion(db, taskData.projectId);
-    }
-  };
+  const deleteTask = async (taskId) => deleteDocumentRef(
+    doc(db, COLLECTIONS.tasks, taskId),
+    { action: 'delete task', collectionName: COLLECTIONS.tasks },
+  );
 
   return { tasks, loading, addTask, updateTask, updateCompletion, deleteTask };
 }

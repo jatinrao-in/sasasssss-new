@@ -2,42 +2,60 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isAuthenticated() {
+    // Helper functions
+    function isLoggedIn() {
       return request.auth != null;
     }
 
+    function getUserData() {
+      return get(
+        /databases/$(database)/documents/users/$(request.auth.uid)
+      ).data;
+    }
+
     function isAdmin() {
-      return isAuthenticated()
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return isLoggedIn()
+        && getUserData().role == 'admin';
     }
 
-    function isOwner(uid) {
-      return isAuthenticated() && request.auth.uid == uid;
+    function isMember() {
+      return isLoggedIn()
+        && getUserData().role == 'member';
     }
 
-    function isAssignedTo() {
-      return isAuthenticated() && resource.data.assignedTo == request.auth.uid;
+    function isAssigned() {
+      return isLoggedIn()
+        && resource.data.assignedTo == request.auth.uid;
     }
 
+    // USERS
     match /users/{uid} {
-      allow read, write: if isAdmin();
-      allow read: if isOwner(uid);
-      allow update: if isOwner(uid)
+      allow read, write, delete: if isAdmin();
+      allow read: if isLoggedIn() && request.auth.uid == uid;
+      allow update: if isLoggedIn()
+        && request.auth.uid == uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'name',
+          'phone',
+          'whatsapp',
+          'designation',
           'fcmToken',
-          'fcmTokenUpdatedAt'
+          'fcmTokenUpdatedAt',
+          'updatedAt'
         ]);
     }
 
+    // PROJECTS
     match /projects/{projectId} {
       allow read, write, delete: if isAdmin();
-      allow read: if isAuthenticated();
+      allow read: if isLoggedIn();
     }
 
+    // TASKS
     match /tasks/{taskId} {
       allow read, write, delete: if isAdmin();
-      allow read: if isAssignedTo();
-      allow update: if isAssignedTo()
+      allow read: if isAssigned();
+      allow update: if isAssigned()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'completionPercent',
           'status',
@@ -45,93 +63,126 @@ service cloud.firestore {
         ]);
     }
 
+    // EXPENSES
     match /expenses/{expenseId} {
       allow read, write, delete: if isAdmin();
-      allow create: if isAuthenticated()
+      allow create: if isLoggedIn()
         && request.resource.data.assignedTo == request.auth.uid;
-      allow read: if isAuthenticated()
-        && resource.data.assignedTo == request.auth.uid;
+      allow read: if isAssigned();
     }
 
+    // ENQUIRIES
     match /enquiries/{enquiryId} {
       allow read, write, delete: if isAdmin();
-      allow read: if isAssignedTo();
-      allow update: if isAssignedTo()
+      allow read: if isAssigned();
+      allow update: if isAssigned()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'status',
-          'updatedAt'
-        ]);
-    }
-
-    match /followups/{followupId} {
-      allow read, write, delete: if isAdmin();
-      allow read: if isAssignedTo();
-      allow update: if isAssignedTo()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'status',
+          'remarks',
+          'lastNoteDate',
           'nextFollowupDate',
           'updatedAt'
         ]);
     }
 
-    match /payments/{paymentId} {
+    // FOLLOWUPS
+    match /followups/{followupId} {
       allow read, write, delete: if isAdmin();
-      allow read: if isAssignedTo();
-      allow update: if isAssignedTo()
+      allow read: if isAssigned();
+      allow update: if isAssigned()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'paymentStatus',
+          'status',
           'remarks',
-          'partialPayments',
-          'totalPaid',
-          'netPending',
+          'lastNoteDate',
+          'nextFollowupDate',
+          'rescheduleCount',
+          'rescheduleReason',
+          'outcome',
+          'closedAt',
           'updatedAt'
         ]);
     }
 
+    // PAYMENTS
+    match /payments/{paymentId} {
+      allow read, write, delete: if isAdmin();
+      allow read: if isAssigned();
+      allow update: if isAssigned()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'paymentStatus',
+          'remarks',
+          'updatedAt'
+        ]);
+    }
+
+    // OUTGOING PAYMENTS
     match /outgoing_payments/{id} {
       allow read, write, delete: if isAdmin();
-      allow read: if isAssignedTo();
+      allow read: if isAssigned();
     }
 
+    // RGP / CHALLAN
     match /rgp/{rgpId} {
       allow read, write, delete: if isAdmin();
-      allow read: if isAssignedTo();
+      allow read: if isAssigned();
+      allow update: if isAssigned()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status',
+          'remarks',
+          'docStep',
+          'updatedAt'
+        ]);
     }
 
+    // SALARY
     match /salary/{uid}/months/{month} {
       allow read, write, delete: if isAdmin();
-      allow read: if isOwner(uid);
+      allow read: if isLoggedIn() && request.auth.uid == uid;
     }
 
+    // TOOLS
     match /tools/{toolId} {
       allow read, write, delete: if isAdmin();
-      allow read: if isAssignedTo();
+      allow read: if isAssigned();
     }
 
+    // NOTIFICATIONS
     match /notifications/{uid}/items/{notifId} {
       allow write: if isAdmin();
-      allow read, update: if isOwner(uid);
-      allow delete: if isOwner(uid);
+      allow read: if isLoggedIn() && request.auth.uid == uid;
+      allow update: if isLoggedIn()
+        && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'read',
+          'readAt'
+        ]);
+      allow delete: if isLoggedIn() && request.auth.uid == uid;
     }
 
+    // WHATSAPP LOGS
     match /whatsapp_logs/{logId} {
       allow read, write: if isAdmin();
+      allow create: if isLoggedIn();
     }
 
-    match /audit_logs/{logId} {
-      allow read: if isAdmin();
-      allow create: if isAuthenticated();
-    }
-
+    // SETTINGS
     match /settings/{docId} {
-      allow read: if isAuthenticated();
+      allow read: if isLoggedIn();
       allow write: if isAdmin();
     }
 
+    // AUDIT LOGS
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isLoggedIn();
+    }
+
+    // AUTOMATION RULES
     match /automation_rules/{ruleId} {
       allow read, write, delete: if isAdmin();
     }
 
+    // DAILY SUMMARIES
     match /daily_summaries/{date} {
       allow read: if isAdmin();
       allow write: if isAdmin();

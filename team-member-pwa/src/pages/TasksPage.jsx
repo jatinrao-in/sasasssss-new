@@ -15,7 +15,7 @@ import { useProjects } from '../hooks/useProjects';
 import { useToast } from '../hooks/useToast';
 import { formatDate } from '../lib/formatters';
 import { db } from '../lib/firebase';
-import { COLLECTIONS, addDocument, recalculateProjectTotalExpense } from '../lib/firestore-helpers';
+import { COLLECTIONS, addDocument } from '../lib/firestore-helpers';
 import { notify } from '../lib/notify';
 import { formatDate as fmtDate } from '../lib/helpers';
 import { logInfo } from '../lib/firestoreDebug';
@@ -165,8 +165,12 @@ export default function TasksPage() {
       }
 
       setUpdateSheetOpen(false);
-    } catch (err) { 
-      toast.error('Failed: ' + err.message); 
+    } catch (err) {
+      if (err?.code === 'permission-denied') {
+        toast.error('Permission denied. Contact admin.');
+      } else {
+        toast.error('Failed: ' + err.message);
+      }
     } finally { 
       setSaving(false); 
     }
@@ -180,15 +184,19 @@ export default function TasksPage() {
         activity: expenseActivity,
         amount: Number(expenseAmount),
         assignedTo: userData?.uid || '',
+        assignedToName: userData?.displayName || userData?.name || '',
         createdAt: serverTimestamp(),
         projectId: selectedTask.projectId,
         taskId: selectedTask.id,
       }, 'save task expense');
-      await recalculateProjectTotalExpense(db, selectedTask.projectId);
       toast.success('Expense added!');
       setExpenseSheetOpen(false);
-    } catch (err) { 
-      toast.error('Failed: ' + err.message); 
+    } catch (err) {
+      if (err?.code === 'permission-denied') {
+        toast.error('Permission denied. Contact admin.');
+      } else {
+        toast.error('Failed: ' + err.message);
+      }
     } finally { 
       setSaving(false); 
     }
