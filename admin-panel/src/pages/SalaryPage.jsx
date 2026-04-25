@@ -13,9 +13,11 @@ import {
   formatMonthLabel,
 } from '../hooks/useSalary';
 import { useToast } from '../hooks/useToast';
+import useDelete from '../hooks/useDelete';
 import { formatCurrency, getInitials } from '../lib/formatters';
 import { notify } from '../lib/notify';
-import { formatMonth } from '../lib/helpers';
+import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
+import DeleteButton from '../components/DeleteButton';
 
 // Month options (next + last 12)
 function getMonthOptions() {
@@ -250,6 +252,7 @@ function SummaryCards({ rows, loading }) {
 // Main page
 export default function SalaryPage() {
   const toast = useToast();
+  const { deleteState, confirmDelete, handleConfirm, handleClose } = useDelete();
   const { members, loading: teamLoading } = useTeam();
   const [month, setMonth] = useState(currentMonth);
   const [editRow, setEditRow] = useState(null);
@@ -261,7 +264,7 @@ export default function SalaryPage() {
 
   // Fetch salary data with individual listeners per member.
   const { records, loading: salaryLoading } = useSalaryForMonth(teamMembers, month);
-  const { saveSalary, markPaid, bulkSetWorkingDays, bulkMarkPaid, initMonthForAllMembers } =
+  const { saveSalary, markPaid, deleteSalary, bulkSetWorkingDays, bulkMarkPaid, initMonthForAllMembers } =
     useSalaryActions();
 
   const loading = teamLoading || salaryLoading;
@@ -311,6 +314,20 @@ export default function SalaryPage() {
       }
     },
     [rows, month, saveSalary, toast]
+  );
+
+  const handleDeleteSalary = useCallback(
+    (row) => {
+      confirmDelete({
+        title: 'Delete Salary Record',
+        description: `Delete salary record for ${formatMonthLabel(month)}?`,
+        onConfirm: async () => {
+          await deleteSalary(row.uid, month);
+          toast.success('Salary record deleted');
+        },
+      });
+    },
+    [confirmDelete, deleteSalary, month, toast]
   );
 
     // Mark one member as paid.
@@ -656,6 +673,9 @@ export default function SalaryPage() {
                             <Check className="w-3 h-3" /> Pay
                           </button>
                         )}
+                        {row.hasData && (
+                          <DeleteButton onClick={() => handleDeleteSalary(row)} />
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -675,6 +695,14 @@ export default function SalaryPage() {
           onSave={(form) => handleSaveRow(editRow.uid, form)}
         />
       )}
+      <DeleteConfirmDialog
+        isOpen={deleteState.isOpen}
+        onClose={handleClose}
+        onConfirm={handleConfirm}
+        title={deleteState.title}
+        description={deleteState.description}
+        isDeleting={deleteState.isDeleting}
+      />
     </div>
   );
 }

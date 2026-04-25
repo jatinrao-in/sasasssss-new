@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
  addDoc,
  collection,
+ deleteDoc,
  doc,
  onSnapshot,
  orderBy,
@@ -57,11 +58,13 @@ export function usePayments(filterByUser = null) {
 
  const updatePayment = async (id, updates) => updateDoc(doc(db, COLLECTIONS.payments, id), updates);
 
+ const deletePayment = async (id) => deleteDoc(doc(db, COLLECTIONS.payments, id));
+
  const updateStatus = async (id, status, remarks = '') => updateDoc(doc(db, COLLECTIONS.payments, id), {
  paymentStatus: status,
  remarks,
  updatedAt: serverTimestamp(),
  });
 
- return { payments, loading, addPayment, updatePayment, updateStatus };
+ return { payments, loading, addPayment, updatePayment, deletePayment, updateStatus };
 }

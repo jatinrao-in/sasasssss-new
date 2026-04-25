@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
  addDoc,
  collection,
+ deleteDoc,
  doc,
  onSnapshot,
  orderBy,
@@ -61,10 +62,12 @@ export function useEnquiries(filterByUser = null) {
 
  const updateEnquiry = async (id, updates) => updateDoc(doc(db, COLLECTIONS.enquiries, id), updates);
 
+ const deleteEnquiry = async (id) => deleteDoc(doc(db, COLLECTIONS.enquiries, id));
+
  const markClosed = async (id) => updateDoc(doc(db, COLLECTIONS.enquiries, id), {
  status: 'closed',
  updatedAt: serverTimestamp(),
  });
 
- return { enquiries, loading, addEnquiry, updateEnquiry, markClosed };
+ return { enquiries, loading, addEnquiry, updateEnquiry, deleteEnquiry, markClosed };
 }

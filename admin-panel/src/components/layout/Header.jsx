@@ -3,7 +3,11 @@ import { Bell, Search, ChevronDown, X, CheckCheck, LogOut, Sun, Moon } from 'luc
 import { useAuth } from '../../hooks/useAuth';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useDarkMode } from '../../hooks/useDarkMode';
+import { useToast } from '../../hooks/useToast';
+import useDelete from '../../hooks/useDelete';
 import { getInitials } from '../../lib/formatters';
+import DeleteConfirmDialog from '../DeleteConfirmDialog';
+import DeleteButton from '../DeleteButton';
 
 const notificationBadges = {
  task: 'Task',
@@ -15,7 +19,16 @@ const notificationBadges = {
 
 export default function Header({ collapsed }) {
  const { userData, logout } = useAuth();
- const { notifications, markAsRead, markAllRead, unreadCount } = useNotifications(userData?.uid);
+ const toast = useToast();
+ const { deleteState, confirmDelete, handleConfirm, handleClose } = useDelete();
+ const {
+ notifications,
+ markAsRead,
+ markAllRead,
+ unreadCount,
+ deleteNotification,
+ clearAllNotifications,
+ } = useNotifications(userData?.uid);
  const { dark, toggle } = useDarkMode();
  const [showNotifications, setShowNotifications] = useState(false);
  const [showProfile, setShowProfile] = useState(false);
@@ -24,7 +37,7 @@ export default function Header({ collapsed }) {
  const formatTime = (timestamp) => {
  if (!timestamp) return 'Just now';
  const date = typeof timestamp.toDate === 'function' ? timestamp.toDate() : new Date(timestamp);
- const diff = Date.now() - date.getTime();
+ const diff = new Date().getTime() - date.getTime();
  const mins = Math.floor(diff / 60000);
  if (mins < 60) return `${mins}m ago`;
  const hours = Math.floor(mins / 60);
@@ -34,6 +47,28 @@ export default function Header({ collapsed }) {
 
  const handleLogout = async () => {
  try { await logout(); } catch (error) { console.error(error); }
+ };
+
+ const handleDeleteNotification = (notification) => {
+ confirmDelete({
+ title: 'Delete Notification',
+ description: 'Remove this notification?',
+ onConfirm: async () => {
+ await deleteNotification(notification.id);
+ toast.success('Notification deleted');
+ },
+ });
+ };
+
+ const handleClearAllNotifications = () => {
+ confirmDelete({
+ title: 'Clear All Notifications',
+ description: 'Remove all notifications?',
+ onConfirm: async () => {
+ await clearAllNotifications();
+ toast.success('All notifications cleared');
+ },
+ });
  };
 
  return (
@@ -130,6 +165,11 @@ export default function Header({ collapsed }) {
  <p className="text-xs text-gray-400 mt-0.5">{unreadCount} unread</p>
  </div>
  <div className="flex items-center gap-2">
+ {notifications.length > 0 && (
+ <button onClick={handleClearAllNotifications} className="text-xs text-red-600 hover:text-red-700 font-medium">
+ Clear all
+ </button>
+ )}
  {unreadCount > 0 && (
  <button onClick={markAllRead} className="flex items-center gap-1 text-xs text-teal-600 hover:text-teal-700 font-medium">
  <CheckCheck className="w-3.5 h-3.5" /> Mark all read
@@ -148,7 +188,7 @@ export default function Header({ collapsed }) {
  <div
  key={notification.id}
  onClick={() => markAsRead(notification.id)}
- className={`px-5 py-4 border-b border-[var(--border-primary)] cursor-pointer hover:bg-[var(--bg-hover)] transition-colors ${!notification.read ? 'bg-[var(--accent-light)]' : ''}`}
+ className={`group px-5 py-4 border-b border-[var(--border-primary)] cursor-pointer hover:bg-[var(--bg-hover)] transition-colors ${!notification.read ? 'bg-[var(--accent-light)]' : ''}`}
  >
  <div className="flex items-start gap-3">
  <span className="text-[11px] font-semibold leading-none mt-0.5 text-[var(--accent-primary)]">
@@ -160,6 +200,9 @@ export default function Header({ collapsed }) {
  </p>
  <p className="text-xs text-gray-400 mt-1">{formatTime(notification.createdAt)}</p>
  </div>
+ <div className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={(event) => event.stopPropagation()}>
+ <DeleteButton onClick={() => handleDeleteNotification(notification)} showLabel={false} />
+ </div>
  {!notification.read && <div className="w-2 h-2 bg-teal-500 rounded-full flex-shrink-0 mt-1.5" />}
  </div>
  </div>
@@ -169,6 +212,14 @@ export default function Header({ collapsed }) {
  </div>
  </>
  )}
+ <DeleteConfirmDialog
+ isOpen={deleteState.isOpen}
+ onClose={handleClose}
+ onConfirm={handleConfirm}
+ title={deleteState.title}
+ description={deleteState.description}
+ isDeleting={deleteState.isDeleting}
+ />
  </>
  );
 }

@@ -1,11 +1,16 @@
 ﻿import { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, orderBy, limit, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import {
   MessageSquare, CheckCircle2, XCircle, Clock, RefreshCw,
   Filter, AlertTriangle, Phone, Calendar
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../hooks/useToast';
+import useDelete from '../hooks/useDelete';
+import { clearCollection } from '../lib/deleteActions';
+import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
+import DeleteButton from '../components/DeleteButton';
 
 const STATUS_CONFIG = {
   sent:        { label: 'Sent',        icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
@@ -43,6 +48,8 @@ function formatTime(ts) {
 }
 
 export default function NotificationLogsPage() {
+  const toast = useToast();
+  const { deleteState, confirmDelete, handleConfirm, handleClose } = useDelete();
   const [logs, setLogs] = useState([]);
   const [queue, setQueue] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -86,6 +93,17 @@ export default function NotificationLogsPage() {
     failed: logs.filter(l => l.status === 'failed').length,
     pending: queue.filter(l => l.status === 'pending').length,
     total: logs.length,
+  };
+
+  const clearWhatsAppLogs = () => {
+    confirmDelete({
+      title: 'Clear WhatsApp Logs',
+      description: 'Delete all message logs?',
+      onConfirm: async () => {
+        await clearCollection('whatsapp_logs');
+        toast.success('Logs cleared');
+      },
+    });
   };
 
   return (
@@ -168,6 +186,11 @@ export default function NotificationLogsPage() {
               {s === 'all' ? 'All' : STATUS_CONFIG[s]?.label || s}
             </button>
           ))}
+          {logs.length > 0 && (
+            <div className="ml-auto">
+              <DeleteButton onClick={clearWhatsAppLogs} label="Clear Logs" title="Clear logs" />
+            </div>
+          )}
         </div>
       )}
 
@@ -295,6 +318,14 @@ export default function NotificationLogsPage() {
           )}
         </div>
       )}
+      <DeleteConfirmDialog
+        isOpen={deleteState.isOpen}
+        onClose={handleClose}
+        onConfirm={handleConfirm}
+        title={deleteState.title}
+        description={deleteState.description}
+        isDeleting={deleteState.isDeleting}
+      />
     </div>
   );
 }

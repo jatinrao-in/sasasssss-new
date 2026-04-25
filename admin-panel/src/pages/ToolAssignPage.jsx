@@ -1,15 +1,19 @@
 ﻿import { useState, useMemo } from 'react';
-import { Plus, Wrench, X, Search, RotateCcw, Trash2, Edit3, Package, Clock, CheckCircle2, AlertTriangle, BarChart3 } from 'lucide-react';
+import { Plus, Wrench, X, Search, RotateCcw, Edit3, Package, Clock, CheckCircle2, AlertTriangle, BarChart3 } from 'lucide-react';
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
 import { useTools } from '../hooks/useTools';
 import { useTeam } from '../hooks/useTeam';
 import { useToast } from '../hooks/useToast';
+import useDelete from '../hooks/useDelete';
 import { formatDate } from '../lib/formatters';
 import { Timestamp } from 'firebase/firestore';
 import { SkeletonTable } from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
 import CountUpNumber from '../components/ui/CountUpNumber';
 import ExportButton from '../components/ui/ExportButton';
+import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
+import DeleteButton from '../components/DeleteButton';
+import BulkDeleteBar from '../components/BulkDeleteBar';
 
 function AssignToolModal({ onClose, onSubmit, members, editing }) {
  const [form, setForm] = useState({
@@ -77,6 +81,7 @@ function AssignToolModal({ onClose, onSubmit, members, editing }) {
 
 export default function ToolAssignPage() {
  const toast = useToast();
+ const { deleteState, confirmDelete, handleConfirm, handleClose } = useDelete();
  const { tools, loading, assignTool, updateTool, markReturned, deleteTool } = useTools();
  const { members } = useTeam();
  const [showModal, setShowModal] = useState(false);
@@ -85,6 +90,7 @@ export default function ToolAssignPage() {
  const [filterReturn, setFilterReturn] = useState('All');
  const [search, setSearch] = useState('');
  const [showAnalytics, setShowAnalytics] = useState(false);
+ const [selectedToolIds, setSelectedToolIds] = useState([]);
 
  const analytics = useMemo(() => {
  const condMap = { Good: 0, Fair: 0, Poor: 0, Damaged: 0 };
@@ -120,6 +126,29 @@ export default function ToolAssignPage() {
  return matchMember && matchReturn && matchSearch;
  });
 
+ const selectedToolSet = useMemo(() => new Set(selectedToolIds), [selectedToolIds]);
+ const visibleToolIds = useMemo(() => filtered.map((tool) => tool.id), [filtered]);
+ const allVisibleSelected = visibleToolIds.length > 0
+ && visibleToolIds.every((toolId) => selectedToolSet.has(toolId));
+
+ const toggleToolSelection = (toolId) => {
+ setSelectedToolIds((prev) => (
+ prev.includes(toolId)
+ ? prev.filter((id) => id !== toolId)
+ : [...prev, toolId]
+ ));
+ };
+
+ const toggleAllVisibleTools = () => {
+ setSelectedToolIds((prev) => {
+ if (allVisibleSelected) {
+ return prev.filter((toolId) => !visibleToolIds.includes(toolId));
+ }
+
+ return Array.from(new Set([...prev, ...visibleToolIds]));
+ });
+ };
+
  const pendingReturn = tools.filter(t => t.returnStatus === 'pending').length;
 
  const handleAssign = async (data) => {
@@ -143,12 +172,31 @@ export default function ToolAssignPage() {
  } catch (err) { toast.error('Failed: ' + err.message); }
  };
 
- const handleDelete = async (id) => {
- if (!confirm('Delete this tool record?')) return;
- try {
+ const handleDelete = (id, toolName) => {
+ confirmDelete({
+ title: 'Delete Tool Record',
+ description: `Remove "${toolName}" assignment record?`,
+ onConfirm: async () => {
  await deleteTool(id);
- toast.success('Tool record deleted!');
- } catch (err) { toast.error('Failed: ' + err.message); }
+ setSelectedToolIds((prev) => prev.filter((toolId) => toolId !== id));
+ toast.success('Tool record deleted');
+ },
+ });
+ };
+
+ const bulkDeleteTools = () => {
+ const idsToDelete = selectedToolIds.filter((id) => tools.some((tool) => tool.id === id));
+ if (idsToDelete.length === 0) return;
+
+ confirmDelete({
+ title: `Delete ${idsToDelete.length} Items`,
+ description: `Permanently delete ${idsToDelete.length} selected tool records? This cannot be undone.`,
+ onConfirm: async () => {
+ await Promise.all(idsToDelete.map((id) => deleteTool(id)));
+ setSelectedToolIds([]);
+ toast.success(`${idsToDelete.length} items deleted`);
+ },
+ });
  };
 
  return (
@@ -240,15 +288,29 @@ export default function ToolAssignPage() {
  <span className="ml-auto text-sm text-gray-500">{filtered.length} records</span>
  </div>
  </div>
+ <BulkDeleteBar
+ selectedCount={selectedToolIds.length}
+ onDelete={bulkDeleteTools}
+ onClear={() => setSelectedToolIds([])}
+ />
  <div className="card p-0 overflow-hidden">
  {loading ? (
- <SkeletonTable rows={5} cols={7} />
+ <SkeletonTable rows={5} cols={8} />
  ) : filtered.length === 0 ? (
  <EmptyState icon="noData" title="No tools assigned yet" actionLabel="Assign Tool" onAction={() => { setEditing(null); setShowModal(true); }} />
  ) : (
  <div className="overflow-x-auto">
  <table className="w-full">
  <thead><tr className="bg-gray-50">
+ <th className="table-header w-10">
+ <input
+ type="checkbox"
+ checked={allVisibleSelected}
+ onChange={toggleAllVisibleTools}
+ className="rounded accent-teal-600"
+ title="Select all tools"
+ />
+ </th>
  <th className="table-header">Tool Name</th><th className="table-header">Assigned To</th>
  <th className="table-header">Handed Over</th><th className="table-header">Condition</th>
  <th className="table-header">Return Status</th><th className="table-header">Return Date</th>
@@ -259,7 +321,16 @@ export default function ToolAssignPage() {
  const handed = item.handedOverDate?.toDate ? item.handedOverDate.toDate() : new Date(item.handedOverDate);
  const daysSince = handed && !isNaN(handed.getTime()) ? Math.floor((new Date() - handed) / (1000*60*60*24)) : 0;
  return (
- <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+ <tr key={item.id} className="group hover:bg-gray-50 transition-colors">
+ <td className="table-cell">
+ <input
+ type="checkbox"
+ checked={selectedToolSet.has(item.id)}
+ onChange={() => toggleToolSelection(item.id)}
+ className="rounded accent-teal-600"
+ title="Select tool"
+ />
+ </td>
  <td className="table-cell font-medium text-gray-900">{item.toolName}</td>
  <td className="table-cell text-gray-600">{item.assignedToName || '-'}</td>
  <td className="table-cell text-[var(--text-muted)] text-xs">
@@ -278,12 +349,12 @@ export default function ToolAssignPage() {
  <td className="table-cell"><span className={`badge ${item.returnStatus === 'returned' ? 'badge-green' : 'badge-yellow'}`}>{item.returnStatus}</span></td>
  <td className="table-cell text-[var(--text-muted)] text-xs">{formatDate(item.returnDate)}</td>
  <td className="table-cell">
- <div className="flex items-center gap-1">
+ <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
  {item.returnStatus === 'pending' && (
  <button onClick={() => handleMarkReturned(item.id)} className="p-1.5 rounded-lg hover:bg-green-50 text-green-600" title="Mark Returned"><RotateCcw className="w-3.5 h-3.5" /></button>
  )}
  <button onClick={() => { setEditing(item); setShowModal(true); }} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500" title="Edit"><Edit3 className="w-3.5 h-3.5" /></button>
- <button onClick={() => handleDelete(item.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+ <DeleteButton onClick={() => handleDelete(item.id, item.toolName)} />
  </div>
  </td>
  </tr>
@@ -295,6 +366,14 @@ export default function ToolAssignPage() {
  )}
  </div>
  {showModal && <AssignToolModal onClose={() => { setShowModal(false); setEditing(null); }} onSubmit={editing ? handleEdit : handleAssign} members={activeMembers} editing={editing} />}
+ <DeleteConfirmDialog
+ isOpen={deleteState.isOpen}
+ onClose={handleClose}
+ onConfirm={handleConfirm}
+ title={deleteState.title}
+ description={deleteState.description}
+ isDeleting={deleteState.isDeleting}
+ />
  </div>
  );
 }

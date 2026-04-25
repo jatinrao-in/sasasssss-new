@@ -8,11 +8,15 @@ import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Toolti
 import { usePayments } from '../hooks/usePayments';
 import { useTeam } from '../hooks/useTeam';
 import { useToast } from '../hooks/useToast';
+import useDelete from '../hooks/useDelete';
 import { formatDate, formatCurrency } from '../lib/formatters';
 import { exportCSV, exportExcel, flattenForExport } from '../lib/exportUtils';
 import { SkeletonTable, SkeletonStatCards } from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
 import CountUpNumber from '../components/ui/CountUpNumber';
+import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
+import DeleteButton from '../components/DeleteButton';
+import BulkDeleteBar from '../components/BulkDeleteBar';
 
 const PAYMENT_COLUMNS = [
  { key: 'customerName', label: 'Customer' },
@@ -178,7 +182,8 @@ function ReceiptModal({ payment, onClose }) {
 
 export default function PaymentsPage() {
  const toast = useToast();
- const { payments, loading, addPayment, updatePayment } = usePayments();
+ const { deleteState, confirmDelete, handleConfirm, handleClose } = useDelete();
+ const { payments, loading, addPayment, updatePayment, deletePayment } = usePayments();
  const { members } = useTeam();
  const [showModal, setShowModal] = useState(false);
  const [editing, setEditing] = useState(null);
@@ -187,6 +192,7 @@ export default function PaymentsPage() {
  const [showReceipt, setShowReceipt] = useState(null);
  const [showAging, setShowAging] = useState(false);
  const [showAnalytics, setShowAnalytics] = useState(false);
+ const [selectedPaymentIds, setSelectedPaymentIds] = useState([]);
 
  const activeMembers = members.filter(m => m.role === 'member' && m.status === 'active');
 
@@ -199,6 +205,29 @@ export default function PaymentsPage() {
  return matchSearch && matchStatus;
  });
  }, [payments, search, filterStatus]);
+
+ const selectedPaymentSet = useMemo(() => new Set(selectedPaymentIds), [selectedPaymentIds]);
+ const visiblePaymentIds = useMemo(() => filtered.map((payment) => payment.id), [filtered]);
+ const allVisibleSelected = visiblePaymentIds.length > 0
+ && visiblePaymentIds.every((paymentId) => selectedPaymentSet.has(paymentId));
+
+ const togglePaymentSelection = (paymentId) => {
+ setSelectedPaymentIds((prev) => (
+ prev.includes(paymentId)
+ ? prev.filter((id) => id !== paymentId)
+ : [...prev, paymentId]
+ ));
+ };
+
+ const toggleAllVisiblePayments = () => {
+ setSelectedPaymentIds((prev) => {
+ if (allVisibleSelected) {
+ return prev.filter((paymentId) => !visiblePaymentIds.includes(paymentId));
+ }
+
+ return Array.from(new Set([...prev, ...visiblePaymentIds]));
+ });
+ };
 
  // Dashboard metrics
  const metrics = useMemo(() => {
@@ -239,6 +268,33 @@ export default function PaymentsPage() {
  const handleEdit = async (data) => {
  try { await updatePayment(editing.id, data); toast.success('Payment updated!'); }
  catch (err) { toast.error('Failed: ' + err.message); throw err; }
+ };
+
+ const deletePaymentRecord = (id, customerName) => {
+ confirmDelete({
+ title: 'Delete Payment Record',
+ description: `Delete payment record for "${customerName}"?`,
+ onConfirm: async () => {
+ await deletePayment(id);
+ setSelectedPaymentIds((prev) => prev.filter((paymentId) => paymentId !== id));
+ toast.success('Payment record deleted');
+ },
+ });
+ };
+
+ const bulkDeletePayments = () => {
+ const idsToDelete = selectedPaymentIds.filter((id) => payments.some((payment) => payment.id === id));
+ if (idsToDelete.length === 0) return;
+
+ confirmDelete({
+ title: `Delete ${idsToDelete.length} Items`,
+ description: `Permanently delete ${idsToDelete.length} selected payments? This cannot be undone.`,
+ onConfirm: async () => {
+ await Promise.all(idsToDelete.map((id) => deletePayment(id)));
+ setSelectedPaymentIds([]);
+ toast.success(`${idsToDelete.length} items deleted`);
+ },
+ });
  };
 
  const handleExport = (format) => {
@@ -359,6 +415,12 @@ export default function PaymentsPage() {
  </div>
  </div>
 
+ <BulkDeleteBar
+ selectedCount={selectedPaymentIds.length}
+ onDelete={bulkDeletePayments}
+ onClear={() => setSelectedPaymentIds([])}
+ />
+
  {/* Aging View */}
  {showAging && (
  <div className="grid grid-cols-4 gap-4">
@@ -389,6 +451,15 @@ export default function PaymentsPage() {
  <div className="card p-0 overflow-hidden">
  <table className="w-full" data-export-table>
  <thead><tr className="bg-gray-50">
+ <th className="table-header w-10">
+ <input
+ type="checkbox"
+ checked={allVisibleSelected}
+ onChange={toggleAllVisiblePayments}
+ className="rounded accent-teal-600"
+ title="Select all payments"
+ />
+ </th>
  <th className="table-header">Customer</th><th className="table-header">Invoice</th>
  <th className="table-header text-right">Amount</th><th className="table-header text-right">Paid</th>
  <th className="table-header text-right">Pending</th><th className="table-header">Due Date</th>
@@ -398,7 +469,16 @@ export default function PaymentsPage() {
  {filtered.map(p => {
  const pending = Number(p.amount || 0) - Number(p.totalPaid || 0);
  return (
- <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+ <tr key={p.id} className="group hover:bg-gray-50 transition-colors">
+ <td className="table-cell">
+ <input
+ type="checkbox"
+ checked={selectedPaymentSet.has(p.id)}
+ onChange={() => togglePaymentSelection(p.id)}
+ className="rounded accent-teal-600"
+ title="Select payment"
+ />
+ </td>
  <td className="table-cell font-medium text-gray-900">{p.customerName}</td>
  <td className="table-cell text-[var(--text-muted)] text-xs">{p.invoiceNumber || '-'}</td>
  <td className="table-cell text-right font-medium">{formatCurrency(p.amount)}</td>
@@ -410,11 +490,12 @@ export default function PaymentsPage() {
  </td>
  <td className="table-cell"><span className={`badge ${statusColors[p.paymentStatus] || 'badge-gray'}`}>{p.paymentStatus}</span></td>
  <td className="table-cell">
- <div className="flex items-center gap-1">
+ <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
  <button onClick={() => setShowReceipt(p)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400" title="Receipt">
  <FileText className="w-3.5 h-3.5" />
  </button>
  <button onClick={() => { setEditing(p); setShowModal(true); }} className="text-xs text-teal-600 hover:bg-teal-50 px-2 py-1 rounded font-medium">Edit</button>
+ <DeleteButton onClick={() => deletePaymentRecord(p.id, p.customerName)} />
  </div>
  </td>
  </tr>
@@ -427,6 +508,14 @@ export default function PaymentsPage() {
 
  {showModal && <PaymentModal onClose={() => { setShowModal(false); setEditing(null); }} onSubmit={editing ? handleEdit : handleAdd} members={activeMembers} editing={editing} />}
  {showReceipt && <ReceiptModal payment={showReceipt} onClose={() => setShowReceipt(null)} />}
+ <DeleteConfirmDialog
+ isOpen={deleteState.isOpen}
+ onClose={handleClose}
+ onConfirm={handleConfirm}
+ title={deleteState.title}
+ description={deleteState.description}
+ isDeleting={deleteState.isDeleting}
+ />
  </div>
  );
 }

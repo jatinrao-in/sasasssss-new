@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
+  deleteDoc,
   onSnapshot,
   orderBy,
   query,
@@ -155,6 +156,10 @@ export function useSalaryActions() {
     });
   }, []);
 
+  const deleteSalary = useCallback(async (uid, month) => {
+    await deleteDoc(getSalaryMonthDoc(db, uid, month));
+  }, []);
+
   const bulkSetWorkingDays = useCallback(async (uids, month, workingDays) => {
     await Promise.all(
       uids.map((uid) =>
@@ -213,6 +218,7 @@ export function useSalaryActions() {
   return {
     saveSalary,
     markPaid,
+    deleteSalary,
     bulkSetWorkingDays,
     bulkMarkPaid,
     initMonthForAllMembers,

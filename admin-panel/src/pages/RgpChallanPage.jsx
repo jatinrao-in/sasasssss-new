@@ -8,11 +8,15 @@ import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Toolti
 import { useRgpChallans } from '../hooks/useRgpChallans';
 import { useTeam } from '../hooks/useTeam';
 import { useToast } from '../hooks/useToast';
+import useDelete from '../hooks/useDelete';
 import { formatDate, formatCurrency } from '../lib/formatters';
 import { SkeletonTable } from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
 import CountUpNumber from '../components/ui/CountUpNumber';
 import ExportButton from '../components/ui/ExportButton';
+import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
+import DeleteButton from '../components/DeleteButton';
+import BulkDeleteBar from '../components/BulkDeleteBar';
 
 const RGP_TYPES = ['RGP', 'Challan'];
 const RGP_STATUSES = ['open', 'in_transit', 'delivered', 'returned', 'closed'];
@@ -131,7 +135,8 @@ function RgpModal({ onClose, onSubmit, members, editing }) {
 
 export default function RgpChallanPage() {
  const toast = useToast();
- const { rgpChallans, loading, addRgpChallan, updateRgpChallan } = useRgpChallans();
+ const { deleteState, confirmDelete, handleConfirm, handleClose } = useDelete();
+ const { rgpChallans, loading, addRgpChallan, updateRgpChallan, deleteRgpChallan } = useRgpChallans();
  const { members } = useTeam();
  const [showModal, setShowModal] = useState(false);
  const [editing, setEditing] = useState(null);
@@ -139,6 +144,7 @@ export default function RgpChallanPage() {
  const [filterStatus, setFilterStatus] = useState('All');
  const [filterType, setFilterType] = useState('All');
  const [showCharts, setShowCharts] = useState(false);
+ const [selectedRgpIds, setSelectedRgpIds] = useState([]);
 
  const activeMembers = members.filter(m => m.role === 'member' && m.status === 'active');
 
@@ -150,6 +156,29 @@ export default function RgpChallanPage() {
  return matchSearch && matchStatus && matchType;
  });
  }, [rgpChallans, search, filterStatus, filterType]);
+
+ const selectedRgpSet = useMemo(() => new Set(selectedRgpIds), [selectedRgpIds]);
+ const visibleRgpIds = useMemo(() => filtered.map((record) => record.id), [filtered]);
+ const allVisibleSelected = visibleRgpIds.length > 0
+ && visibleRgpIds.every((recordId) => selectedRgpSet.has(recordId));
+
+ const toggleRgpSelection = (recordId) => {
+ setSelectedRgpIds((prev) => (
+ prev.includes(recordId)
+ ? prev.filter((id) => id !== recordId)
+ : [...prev, recordId]
+ ));
+ };
+
+ const toggleAllVisibleRgp = () => {
+ setSelectedRgpIds((prev) => {
+ if (allVisibleSelected) {
+ return prev.filter((recordId) => !visibleRgpIds.includes(recordId));
+ }
+
+ return Array.from(new Set([...prev, ...visibleRgpIds]));
+ });
+ };
 
  const openCount = rgpChallans.filter(r => r.status === 'open' || r.status === 'in_transit').length;
  const totalValue = rgpChallans.reduce((s, r) => s + Number(r.value || 0), 0);
@@ -185,6 +214,33 @@ export default function RgpChallanPage() {
  const handleEdit = async (data) => {
  try { await updateRgpChallan(editing.id, data); toast.success('Updated!'); }
  catch (err) { toast.error('Failed: ' + err.message); throw err; }
+ };
+
+ const deleteRgp = (id, docNumber) => {
+ confirmDelete({
+ title: 'Delete RGP/Challan',
+ description: `Delete document #${docNumber || id}?`,
+ onConfirm: async () => {
+ await deleteRgpChallan(id);
+ setSelectedRgpIds((prev) => prev.filter((recordId) => recordId !== id));
+ toast.success('Entry deleted');
+ },
+ });
+ };
+
+ const bulkDeleteRgp = () => {
+ const idsToDelete = selectedRgpIds.filter((id) => rgpChallans.some((record) => record.id === id));
+ if (idsToDelete.length === 0) return;
+
+ confirmDelete({
+ title: `Delete ${idsToDelete.length} Items`,
+ description: `Permanently delete ${idsToDelete.length} selected RGP/Challan records? This cannot be undone.`,
+ onConfirm: async () => {
+ await Promise.all(idsToDelete.map((id) => deleteRgpChallan(id)));
+ setSelectedRgpIds([]);
+ toast.success(`${idsToDelete.length} items deleted`);
+ },
+ });
  };
 
  const statusColors = { open: 'badge-blue', in_transit: 'badge-yellow', delivered: 'badge-teal', returned: 'badge-green', closed: 'badge-gray' };
@@ -283,12 +339,27 @@ export default function RgpChallanPage() {
  </div>
  </div>
 
+ <BulkDeleteBar
+ selectedCount={selectedRgpIds.length}
+ onDelete={bulkDeleteRgp}
+ onClear={() => setSelectedRgpIds([])}
+ />
+
  {loading ? <SkeletonTable rows={5} cols={8} /> : filtered.length === 0 ? (
  <EmptyState icon="noData" title="No RGP/Challan entries found" actionLabel="Add Record" onAction={() => { setEditing(null); setShowModal(true); }} />
  ) : (
  <div className="card p-0 overflow-hidden">
  <table className="w-full" data-export-table>
  <thead><tr className="bg-gray-50">
+ <th className="table-header w-10">
+ <input
+ type="checkbox"
+ checked={allVisibleSelected}
+ onChange={toggleAllVisibleRgp}
+ className="rounded accent-teal-600"
+ title="Select all records"
+ />
+ </th>
  <th className="table-header">Type</th><th className="table-header">Company</th><th className="table-header">Challan No.</th>
  <th className="table-header">Description</th><th className="table-header">Sent Date</th>
  <th className="table-header">Doc Stage</th><th className="table-header">Status</th><th className="table-header">Actions</th>
@@ -298,7 +369,16 @@ export default function RgpChallanPage() {
  const sent = r.sentDate?.toDate ? r.sentDate.toDate() : new Date(r.sentDate);
  const aging = sent && !isNaN(sent.getTime()) ? Math.max(0, Math.floor((new Date() - sent) / (1000 * 60 * 60 * 24))) : 0;
  return (
- <tr key={r.id} className="hover:bg-gray-50 transition-colors">
+ <tr key={r.id} className="group hover:bg-gray-50 transition-colors">
+ <td className="table-cell">
+ <input
+ type="checkbox"
+ checked={selectedRgpSet.has(r.id)}
+ onChange={() => toggleRgpSelection(r.id)}
+ className="rounded accent-teal-600"
+ title="Select record"
+ />
+ </td>
  <td className="table-cell"><span className={`badge ${r.type === 'RGP' ? 'badge-blue' : 'badge-yellow'}`}>{r.type}</span></td>
  <td className="table-cell font-medium text-gray-900">{r.companyName}</td>
  <td className="table-cell text-[var(--text-muted)] text-xs">{r.challanNumber || '-'}</td>
@@ -318,7 +398,10 @@ export default function RgpChallanPage() {
  </td>
  <td className="table-cell"><span className={`badge ${statusColors[r.status] || 'badge-gray'}`}>{(r.status || '').replace('_', ' ')}</span></td>
  <td className="table-cell">
+ <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
  <button onClick={() => { setEditing(r); setShowModal(true); }} className="text-xs text-teal-600 hover:bg-teal-50 px-2 py-1 rounded font-medium">Edit</button>
+ <DeleteButton onClick={() => deleteRgp(r.id, r.challanNumber || r.type)} />
+ </div>
  </td>
  </tr>
  );
@@ -329,6 +412,14 @@ export default function RgpChallanPage() {
  )}
 
  {showModal && <RgpModal onClose={() => { setShowModal(false); setEditing(null); }} onSubmit={editing ? handleEdit : handleAdd} members={activeMembers} editing={editing} />}
+ <DeleteConfirmDialog
+ isOpen={deleteState.isOpen}
+ onClose={handleClose}
+ onConfirm={handleConfirm}
+ title={deleteState.title}
+ description={deleteState.description}
+ isDeleting={deleteState.isDeleting}
+ />
  </div>
  );
 }

@@ -7,11 +7,16 @@ import {
 import { Timestamp } from 'firebase/firestore';
 import { useProjects } from '../hooks/useProjects';
 import { useToast } from '../hooks/useToast';
+import useDelete from '../hooks/useDelete';
 import { formatLakhs } from '../lib/formatters';
+import { deleteProjectCascade } from '../lib/deleteActions';
 import { SkeletonCards, SkeletonTable, SkeletonKanban } from '../components/ui/Skeleton';
 import KanbanBoard from '../components/ui/KanbanBoard';
 import EmptyState from '../components/ui/EmptyState';
 import { StatusDot, StatusPill, getProjectHealthMeta } from '../components/ui/TextIndicators';
+import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
+import DeleteButton from '../components/DeleteButton';
+import BulkDeleteBar from '../components/BulkDeleteBar';
 
 const PROJECT_STATUSES = ['planning', 'in_progress', 'review', 'completed', 'on_hold'];
 
@@ -115,6 +120,7 @@ function getHealthIndicator(project) {
 export default function ProjectsPage() {
  const navigate = useNavigate();
  const toast = useToast();
+ const { deleteState, confirmDelete, handleConfirm, handleClose } = useDelete();
  const { projects, loading, addProject, updateProject } = useProjects();
  const [showModal, setShowModal] = useState(false);
  const [editing, setEditing] = useState(null);
@@ -122,6 +128,7 @@ export default function ProjectsPage() {
  const [search, setSearch] = useState('');
  const [filterStatus, setFilterStatus] = useState('All');
  const [filterHealth, setFilterHealth] = useState('All');
+ const [selectedProjectIds, setSelectedProjectIds] = useState([]);
 
  const filtered = useMemo(() => {
  return projects.filter(project => {
@@ -135,6 +142,29 @@ export default function ProjectsPage() {
  return matchSearch && matchStatus && matchHealth;
  });
  }, [projects, search, filterStatus, filterHealth]);
+
+ const selectedProjectSet = useMemo(() => new Set(selectedProjectIds), [selectedProjectIds]);
+ const visibleProjectIds = useMemo(() => filtered.map((project) => project.id), [filtered]);
+ const allVisibleSelected = visibleProjectIds.length > 0
+ && visibleProjectIds.every((projectId) => selectedProjectSet.has(projectId));
+
+ const toggleProjectSelection = (projectId) => {
+ setSelectedProjectIds((prev) => (
+ prev.includes(projectId)
+ ? prev.filter((id) => id !== projectId)
+ : [...prev, projectId]
+ ));
+ };
+
+ const toggleAllVisibleProjects = () => {
+ setSelectedProjectIds((prev) => {
+ if (allVisibleSelected) {
+ return prev.filter((projectId) => !visibleProjectIds.includes(projectId));
+ }
+
+ return Array.from(new Set([...prev, ...visibleProjectIds]));
+ });
+ };
 
  const handleAdd = async (data) => {
  try {
@@ -163,6 +193,33 @@ export default function ProjectsPage() {
  } catch (err) {
  toast.error('Failed: ' + err.message);
  }
+ };
+
+ const deleteProject = (projectId, projectName) => {
+ confirmDelete({
+ title: 'Delete Project',
+ description: `Delete "${projectName}"? All tasks and expenses will also be permanently deleted.`,
+ onConfirm: async () => {
+ await deleteProjectCascade(projectId);
+ setSelectedProjectIds((prev) => prev.filter((id) => id !== projectId));
+ toast.success(`Project "${projectName}" deleted`);
+ },
+ });
+ };
+
+ const bulkDeleteProjects = () => {
+ const idsToDelete = selectedProjectIds.filter((projectId) => projects.some((project) => project.id === projectId));
+ if (idsToDelete.length === 0) return;
+
+ confirmDelete({
+ title: `Delete ${idsToDelete.length} Projects`,
+ description: `Permanently delete ${idsToDelete.length} selected projects? All tasks and expenses for those projects will also be deleted. This cannot be undone.`,
+ onConfirm: async () => {
+ await Promise.all(idsToDelete.map((projectId) => deleteProjectCascade(projectId)));
+ setSelectedProjectIds([]);
+ toast.success(`${idsToDelete.length} projects deleted`);
+ },
+ });
  };
 
  const statusColors = {
@@ -259,6 +316,12 @@ export default function ProjectsPage() {
  </div>
  </div>
 
+ <BulkDeleteBar
+ selectedCount={selectedProjectIds.length}
+ onDelete={bulkDeleteProjects}
+ onClear={() => setSelectedProjectIds([])}
+ />
+
  {loading ? (
  view === 'kanban' ? <SkeletonKanban columns={5} /> :
  view === 'list' ? <SkeletonTable rows={5} cols={7} /> :
@@ -279,7 +342,21 @@ export default function ProjectsPage() {
  renderCard={(item) => {
  const health = getHealthIndicator(item);
  return (
- <div onClick={() => navigate(`/projects/${item.id}`)}>
+ <div onClick={() => navigate(`/projects/${item.id}`)} className="group">
+ <div className="mb-2 flex items-center justify-between gap-2" onClick={(event) => event.stopPropagation()}>
+ <input
+ type="checkbox"
+ checked={selectedProjectSet.has(item.id)}
+ onChange={() => toggleProjectSelection(item.id)}
+ className="rounded accent-teal-600"
+ title="Select project"
+ />
+ <DeleteButton
+ onClick={() => deleteProject(item.id, item.name)}
+ showLabel={false}
+ className="opacity-0 group-hover:opacity-100 transition-opacity"
+ />
+ </div>
  <div className="flex items-center justify-between mb-1.5 gap-2">
  <span className="text-sm font-semibold text-[var(--text-primary)] truncate">{item.name}</span>
  <StatusDot label={health.label} color={health.color} style={{ fontSize: '10px', fontWeight: 600 }} />
@@ -302,16 +379,34 @@ export default function ProjectsPage() {
  <div className="card p-0 overflow-hidden">
  <table className="w-full" data-export-table>
  <thead><tr className="bg-gray-50">
+ <th className="table-header w-10">
+ <input
+ type="checkbox"
+ checked={allVisibleSelected}
+ onChange={toggleAllVisibleProjects}
+ className="rounded accent-teal-600"
+ title="Select all projects"
+ />
+ </th>
  <th className="table-header">Project</th><th className="table-header">Client</th>
  <th className="table-header">PO Value</th><th className="table-header">Expense</th>
  <th className="table-header">Completion</th><th className="table-header">Health</th>
- <th className="table-header">Status</th>
+ <th className="table-header">Status</th><th className="table-header">Actions</th>
  </tr></thead>
  <tbody>
  {filtered.map(project => {
  const health = getHealthIndicator(project);
  return (
- <tr key={project.id} className="hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => navigate(`/projects/${project.id}`)}>
+ <tr key={project.id} className="group hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => navigate(`/projects/${project.id}`)}>
+ <td className="table-cell" onClick={(event) => event.stopPropagation()}>
+ <input
+ type="checkbox"
+ checked={selectedProjectSet.has(project.id)}
+ onChange={() => toggleProjectSelection(project.id)}
+ className="rounded accent-teal-600"
+ title="Select project"
+ />
+ </td>
  <td className="table-cell font-medium text-gray-900">{project.name}</td>
  <td className="table-cell text-gray-500">{project.client || '-'}</td>
  <td className="table-cell font-medium">{formatLakhs(project.poValue)}</td>
@@ -328,6 +423,12 @@ export default function ProjectsPage() {
  <StatusDot label={health.label} color={health.color} style={{ fontSize: '12px', fontWeight: 600 }} />
  </td>
  <td className="table-cell"><span className={`badge ${statusColors[project.status] || 'badge-gray'}`}>{(project.status || '').replace('_', ' ')}</span></td>
+ <td className="table-cell" onClick={(event) => event.stopPropagation()}>
+ <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+ <button onClick={() => { setEditing(project); setShowModal(true); }} className="text-xs text-teal-600 hover:bg-teal-50 px-2 py-1 rounded font-medium">Edit</button>
+ <DeleteButton onClick={() => deleteProject(project.id, project.name)} />
+ </div>
+ </td>
  </tr>
  );
  })}
@@ -344,6 +445,14 @@ export default function ProjectsPage() {
  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-teal-400 to-teal-600 opacity-0 group-hover:opacity-100 transition-opacity" />
  <div className="flex items-start justify-between mb-4">
  <div className="flex items-center gap-2">
+ <input
+ type="checkbox"
+ checked={selectedProjectSet.has(project.id)}
+ onClick={(event) => event.stopPropagation()}
+ onChange={() => toggleProjectSelection(project.id)}
+ className="rounded accent-teal-600"
+ title="Select project"
+ />
  <StatusPill
  label={health.label}
  color={health.color}
@@ -355,12 +464,16 @@ export default function ProjectsPage() {
  {(project.status || '').replace('_', ' ')}
  </span>
  </div>
+ <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(event) => event.stopPropagation()}>
  <button
- onClick={e => { e.stopPropagation(); setEditing(project); setShowModal(true); }}
- className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-gray-400 hover:text-teal-600 hover:bg-teal-50 transition-all"
+ onClick={() => { setEditing(project); setShowModal(true); }}
+ className="p-1.5 rounded-lg text-gray-400 hover:text-teal-600 hover:bg-teal-50 transition-all"
+ title="Edit"
  >
  <Edit3 className="w-4 h-4" />
  </button>
+ <DeleteButton onClick={() => deleteProject(project.id, project.name)} showLabel={false} />
+ </div>
  </div>
  <h3 className="font-bold text-[var(--text-primary)] text-[15px] mb-1 truncate group-hover:text-teal-700 transition-colors">{project.name}</h3>
  <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-5">
@@ -401,6 +514,14 @@ export default function ProjectsPage() {
  editing={editing}
  />
  )}
+ <DeleteConfirmDialog
+ isOpen={deleteState.isOpen}
+ onClose={handleClose}
+ onConfirm={handleConfirm}
+ title={deleteState.title}
+ description={deleteState.description}
+ isDeleting={deleteState.isDeleting}
+ />
  </div>
  );
 }

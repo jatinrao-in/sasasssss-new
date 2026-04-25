@@ -3,8 +3,12 @@ import { Save, MessageSquare, Clock, ToggleLeft, ToggleRight, Search, CheckCircl
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
 import { useWhatsAppConfig } from '../hooks/useWhatsAppConfig';
 import { useToast } from '../hooks/useToast';
+import useDelete from '../hooks/useDelete';
 import { formatDate } from '../lib/formatters';
+import { clearCollection } from '../lib/deleteActions';
 import CountUpNumber from '../components/ui/CountUpNumber';
+import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
+import DeleteButton from '../components/DeleteButton';
 
 function Toggle({ checked, onChange }) {
  return (
@@ -17,6 +21,7 @@ function Toggle({ checked, onChange }) {
 
 export default function WhatsAppAutomationPage() {
   const toast = useToast();
+  const { deleteState, confirmDelete, handleConfirm, handleClose } = useDelete();
   const { logs, saveConfig, getConfig } = useWhatsAppConfig();
 
   const dailyConfig = getConfig('daily_reminder') || {};
@@ -94,6 +99,17 @@ export default function WhatsAppAutomationPage() {
  };
 
  const filteredLogs = filterType === 'All' ? logs : logs.filter(l => l.type === filterType);
+
+ const clearWhatsAppLogs = () => {
+ confirmDelete({
+ title: 'Clear WhatsApp Logs',
+ description: 'Delete all message logs?',
+ onConfirm: async () => {
+ await clearCollection('whatsapp_logs');
+ toast.success('Logs cleared');
+ },
+ });
+ };
 
  const chartData = useMemo(() => {
  const map = {};
@@ -247,12 +263,15 @@ export default function WhatsAppAutomationPage() {
  <div className="space-y-4">
  <div className="flex items-center justify-between">
  <h2 className="text-lg font-semibold text-gray-900">Message Log / History</h2>
+ <div className="flex items-center gap-3">
  <select className="input-field w-44" value={filterType} onChange={e => setFilterType(e.target.value)}>
  <option value="All">All Types</option>
  <option value="daily_reminder">Daily Reminder</option>
  <option value="admin_summary">Admin Summary</option>
  <option value="task_complete">Task Complete</option>
  </select>
+ {logs.length > 0 && <DeleteButton onClick={clearWhatsAppLogs} label="Clear Logs" title="Clear logs" />}
+ </div>
  </div>
 
  <div className="overflow-x-auto">
@@ -307,6 +326,14 @@ export default function WhatsAppAutomationPage() {
  )}
  </div>
  </div>
+ <DeleteConfirmDialog
+ isOpen={deleteState.isOpen}
+ onClose={handleClose}
+ onConfirm={handleConfirm}
+ title={deleteState.title}
+ description={deleteState.description}
+ isDeleting={deleteState.isDeleting}
+ />
  </div>
  );
 }

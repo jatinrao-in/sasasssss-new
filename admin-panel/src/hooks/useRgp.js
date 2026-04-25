@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
  addDoc,
  collection,
+ deleteDoc,
  doc,
  onSnapshot,
  orderBy,
@@ -42,7 +43,9 @@ export function useRgp() {
 
  const updateRgp = async (id, updates) => updateDoc(doc(db, COLLECTIONS.rgp, id), updates);
 
+ const deleteRgp = async (id) => deleteDoc(doc(db, COLLECTIONS.rgp, id));
+
  const markClosed = async (id) => updateDoc(doc(db, COLLECTIONS.rgp, id), { status: 'closed' });
 
- return { rgpList, loading, addRgp, updateRgp, markClosed };
+ return { rgpList, loading, addRgp, updateRgp, deleteRgp, markClosed };
 }

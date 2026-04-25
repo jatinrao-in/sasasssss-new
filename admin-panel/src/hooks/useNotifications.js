@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import {
  addDoc,
+ deleteDoc,
+ getDocs,
  onSnapshot,
  orderBy,
  query,
@@ -77,5 +79,31 @@ export function useNotifications(userId) {
  buildNotificationPayload(notification),
  );
 
- return { notifications, loading, unreadCount, markAsRead, markAllRead, addNotification };
+ const deleteNotification = async (notificationId) => {
+ if (!userId) {
+ return;
+ }
+
+ return deleteDoc(getNotificationItemDoc(db, userId, notificationId));
+ };
+
+ const clearAllNotifications = async () => {
+ if (!userId) {
+ return;
+ }
+
+ const snapshot = await getDocs(getNotificationItemsCollection(db, userId));
+ await Promise.all(snapshot.docs.map((notificationDoc) => deleteDoc(notificationDoc.ref)));
+ };
+
+ return {
+ notifications,
+ loading,
+ unreadCount,
+ markAsRead,
+ markAllRead,
+ addNotification,
+ deleteNotification,
+ clearAllNotifications,
+ };
 }

@@ -8,9 +8,14 @@ import { useProjects, useExpenses } from '../hooks/useProjects';
 import { useTasks } from '../hooks/useTasks';
 import { useTeam } from '../hooks/useTeam';
 import { useToast } from '../hooks/useToast';
+import useDelete from '../hooks/useDelete';
 import { formatDate, formatCurrency, formatLakhs } from '../lib/formatters';
+import { deleteExpenseAndRecalculate, deleteTaskCascade } from '../lib/deleteActions';
 import { notify } from '../lib/notify';
 import { formatDate as fmtDate } from '../lib/helpers';
+import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
+import DeleteButton from '../components/DeleteButton';
+import BulkDeleteBar from '../components/BulkDeleteBar';
 
 
 function AddTaskModal({ onClose, onSubmit, members, projectId }) {
@@ -183,6 +188,7 @@ export default function ProjectDetailPage() {
  const { id } = useParams();
  const navigate = useNavigate();
  const toast = useToast();
+ const { deleteState, confirmDelete, handleConfirm, handleClose } = useDelete();
  const { userData } = useAuth();
  const { addNotification } = useNotifications(userData?.uid);
  const { projects, recalcTotalExpense, recalcCompletion } = useProjects();
@@ -191,10 +197,31 @@ export default function ProjectDetailPage() {
  const { members } = useTeam();
  const [showTaskModal, setShowTaskModal] = useState(false);
  const [showExpenseModal, setShowExpenseModal] = useState(false);
+ const [selectedTaskIds, setSelectedTaskIds] = useState([]);
 
  const project = projects.find((projectItem) => projectItem.id === id);
  const projectTasks = tasks.filter((task) => task.projectId === id);
  const activeMembers = members.filter((member) => member.role === 'member' && member.status === 'active');
+ const selectedTaskSet = new Set(selectedTaskIds);
+ const allTasksSelected = projectTasks.length > 0 && projectTasks.every((task) => selectedTaskSet.has(task.id));
+
+ const toggleTaskSelection = (taskId) => {
+ setSelectedTaskIds((prev) => (
+ prev.includes(taskId)
+ ? prev.filter((selectedId) => selectedId !== taskId)
+ : [...prev, taskId]
+ ));
+ };
+
+ const toggleAllTasks = () => {
+ setSelectedTaskIds((prev) => {
+ if (allTasksSelected) {
+ return prev.filter((taskId) => !projectTasks.some((task) => task.id === taskId));
+ }
+
+ return Array.from(new Set([...prev, ...projectTasks.map((task) => task.id)]));
+ });
+ };
 
  if (!project) {
  return (
@@ -251,6 +278,44 @@ export default function ProjectDetailPage() {
  }
  };
 
+ const deleteTask = (taskId, taskName) => {
+ confirmDelete({
+ title: 'Delete Task',
+ description: `Delete task "${taskName}"? Related task expenses will also be removed. This cannot be undone.`,
+ onConfirm: async () => {
+ await deleteTaskCascade(taskId, id);
+ setSelectedTaskIds((prev) => prev.filter((selectedId) => selectedId !== taskId));
+ toast.success('Task deleted');
+ },
+ });
+ };
+
+ const deleteExpense = (expenseId) => {
+ confirmDelete({
+ title: 'Delete Expense',
+ description: 'Remove this expense entry?',
+ onConfirm: async () => {
+ await deleteExpenseAndRecalculate(expenseId, id);
+ toast.success('Expense deleted');
+ },
+ });
+ };
+
+ const bulkDeleteTasks = () => {
+ const taskIdsToDelete = selectedTaskIds.filter((taskId) => projectTasks.some((task) => task.id === taskId));
+ if (taskIdsToDelete.length === 0) return;
+
+ confirmDelete({
+ title: `Delete ${taskIdsToDelete.length} Tasks`,
+ description: `Permanently delete ${taskIdsToDelete.length} selected tasks? Related task expenses will also be deleted. This cannot be undone.`,
+ onConfirm: async () => {
+ await Promise.all(taskIdsToDelete.map((taskId) => deleteTaskCascade(taskId, id)));
+ setSelectedTaskIds([]);
+ toast.success(`${taskIdsToDelete.length} tasks deleted`);
+ },
+ });
+ };
+
  const statusColors = { open: 'badge-blue', completed: 'badge-green', overdue: 'badge-red' };
 
  return (
@@ -291,6 +356,11 @@ export default function ProjectDetailPage() {
  <Plus className="w-3.5 h-3.5" /> Add Task
  </button>
  </div>
+ <BulkDeleteBar
+ selectedCount={selectedTaskIds.length}
+ onDelete={bulkDeleteTasks}
+ onClear={() => setSelectedTaskIds([])}
+ />
  {tasksLoading ? (
  <div className="py-4 text-center text-gray-400">Loading...</div>
  ) : projectTasks.length === 0 ? (
@@ -299,16 +369,35 @@ export default function ProjectDetailPage() {
  <table className="w-full">
  <thead>
  <tr className="bg-gray-50">
+ <th className="table-header w-10">
+ <input
+ type="checkbox"
+ checked={allTasksSelected}
+ onChange={toggleAllTasks}
+ className="rounded accent-teal-600"
+ title="Select all tasks"
+ />
+ </th>
  <th className="table-header">Task</th>
  <th className="table-header">Assigned To</th>
  <th className="table-header">Target Date</th>
  <th className="table-header">Completion</th>
  <th className="table-header">Status</th>
+ <th className="table-header">Actions</th>
  </tr>
  </thead>
  <tbody>
  {projectTasks.map((task) => (
- <tr key={task.id} className="hover:bg-gray-50">
+ <tr key={task.id} className="group hover:bg-gray-50">
+ <td className="table-cell">
+ <input
+ type="checkbox"
+ checked={selectedTaskSet.has(task.id)}
+ onChange={() => toggleTaskSelection(task.id)}
+ className="rounded accent-teal-600"
+ title="Select task"
+ />
+ </td>
  <td className="table-cell font-medium">{task.title}</td>
  <td className="table-cell text-gray-600">{task.assignedToName || '-'}</td>
  <td className="table-cell text-xs text-gray-500">{formatDate(task.targetDate)}</td>
@@ -322,6 +411,11 @@ export default function ProjectDetailPage() {
  </td>
  <td className="table-cell">
  <span className={`badge ${statusColors[task.status] || 'badge-gray'}`}>{task.status}</span>
+ </td>
+ <td className="table-cell">
+ <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+ <DeleteButton onClick={() => deleteTask(task.id, task.title)} />
+ </div>
  </td>
  </tr>
  ))}
@@ -347,13 +441,19 @@ export default function ProjectDetailPage() {
  <tr className="bg-gray-50">
  <th className="table-header">Activity</th>
  <th className="table-header text-right">Amount</th>
+ <th className="table-header">Actions</th>
  </tr>
  </thead>
  <tbody>
  {expenses.map((expense) => (
- <tr key={expense.id} className="hover:bg-gray-50">
+ <tr key={expense.id} className="group hover:bg-gray-50">
  <td className="table-cell">{expense.activity}</td>
  <td className="table-cell text-right font-semibold">{formatCurrency(expense.amount)}</td>
+ <td className="table-cell">
+ <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+ <DeleteButton onClick={() => deleteExpense(expense.id)} />
+ </div>
+ </td>
  </tr>
  ))}
  </tbody>
@@ -376,6 +476,14 @@ export default function ProjectDetailPage() {
  projectId={id}
  />
  )}
+ <DeleteConfirmDialog
+ isOpen={deleteState.isOpen}
+ onClose={handleClose}
+ onConfirm={handleConfirm}
+ title={deleteState.title}
+ description={deleteState.description}
+ isDeleting={deleteState.isDeleting}
+ />
  </div>
  );
 }

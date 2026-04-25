@@ -1,19 +1,23 @@
 ﻿import { useState, useMemo } from 'react';
 import {
  Plus, X, LayoutGrid, Columns3, Search, FileText,
- TrendingUp, Clock, BarChart3, Eye, Calendar, Trash2,
+ TrendingUp, Clock, BarChart3, Eye, Calendar,
 } from 'lucide-react';
 import { Timestamp } from 'firebase/firestore';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { useEnquiries } from '../hooks/useEnquiries';
 import { useTeam } from '../hooks/useTeam';
 import { useToast } from '../hooks/useToast';
+import useDelete from '../hooks/useDelete';
 import { formatDate, formatCurrency } from '../lib/formatters';
 import { SkeletonTable, SkeletonKanban } from '../components/ui/Skeleton';
 import KanbanBoard from '../components/ui/KanbanBoard';
 import EmptyState from '../components/ui/EmptyState';
 import CountUpNumber from '../components/ui/CountUpNumber';
 import ExportButton from '../components/ui/ExportButton';
+import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
+import DeleteButton from '../components/DeleteButton';
+import BulkDeleteBar from '../components/BulkDeleteBar';
 import { notify } from '../lib/notify';
 import { formatDate as fmtDate } from '../lib/helpers';
 
@@ -175,7 +179,8 @@ function EnquiryDetailPanel({ enquiry, onClose }) {
 
 export default function EnquiryPage() {
  const toast = useToast();
- const { enquiries, loading, addEnquiry, updateEnquiry } = useEnquiries();
+ const { deleteState, confirmDelete, handleConfirm, handleClose } = useDelete();
+ const { enquiries, loading, addEnquiry, updateEnquiry, deleteEnquiry } = useEnquiries();
  const { members } = useTeam();
  const [showModal, setShowModal] = useState(false);
  const [editing, setEditing] = useState(null);
@@ -184,6 +189,7 @@ export default function EnquiryPage() {
  const [filterStatus, setFilterStatus] = useState('All');
  const [filterType, setFilterType] = useState('All');
  const [selectedEnquiry, setSelectedEnquiry] = useState(null);
+ const [selectedEnquiryIds, setSelectedEnquiryIds] = useState([]);
  const [showAnalytics, setShowAnalytics] = useState(false);
 
  const activeMembers = members.filter(m => m.role === 'member' && m.status === 'active');
@@ -199,6 +205,29 @@ export default function EnquiryPage() {
  return matchSearch && matchStatus && matchType;
  });
  }, [enquiries, search, filterStatus, filterType]);
+
+ const selectedEnquirySet = useMemo(() => new Set(selectedEnquiryIds), [selectedEnquiryIds]);
+ const visibleEnquiryIds = useMemo(() => filtered.map((enquiry) => enquiry.id), [filtered]);
+ const allVisibleSelected = visibleEnquiryIds.length > 0
+ && visibleEnquiryIds.every((enquiryId) => selectedEnquirySet.has(enquiryId));
+
+ const toggleEnquirySelection = (enquiryId) => {
+ setSelectedEnquiryIds((prev) => (
+ prev.includes(enquiryId)
+ ? prev.filter((id) => id !== enquiryId)
+ : [...prev, enquiryId]
+ ));
+ };
+
+ const toggleAllVisibleEnquiries = () => {
+ setSelectedEnquiryIds((prev) => {
+ if (allVisibleSelected) {
+ return prev.filter((enquiryId) => !visibleEnquiryIds.includes(enquiryId));
+ }
+
+ return Array.from(new Set([...prev, ...visibleEnquiryIds]));
+ });
+ };
 
  // Analytics
  const analytics = useMemo(() => {
@@ -259,6 +288,33 @@ export default function EnquiryPage() {
  await updateEnquiry(item.id, { pipelineStage: newStage, status: newStatus });
  toast.success(`Moved to ${newStage}`);
  } catch (err) { toast.error('Failed: ' + err.message); }
+ };
+
+ const deleteEnquiryRecord = (id, type = 'this') => {
+ confirmDelete({
+ title: 'Delete Enquiry',
+ description: `Delete this ${type} enquiry? Cannot be undone.`,
+ onConfirm: async () => {
+ await deleteEnquiry(id);
+ setSelectedEnquiryIds((prev) => prev.filter((enquiryId) => enquiryId !== id));
+ toast.success('Enquiry deleted');
+ },
+ });
+ };
+
+ const bulkDeleteEnquiries = () => {
+ const idsToDelete = selectedEnquiryIds.filter((id) => enquiries.some((enquiry) => enquiry.id === id));
+ if (idsToDelete.length === 0) return;
+
+ confirmDelete({
+ title: `Delete ${idsToDelete.length} Items`,
+ description: `Permanently delete ${idsToDelete.length} selected enquiries? This cannot be undone.`,
+ onConfirm: async () => {
+ await Promise.all(idsToDelete.map((id) => deleteEnquiry(id)));
+ setSelectedEnquiryIds([]);
+ toast.success(`${idsToDelete.length} items deleted`);
+ },
+ });
  };
 
  const statusColors = { open: 'badge-blue', overdue: 'badge-red', closed: 'badge-green' };
@@ -423,6 +479,12 @@ export default function EnquiryPage() {
  </div>
  </div>
 
+ <BulkDeleteBar
+ selectedCount={selectedEnquiryIds.length}
+ onDelete={bulkDeleteEnquiries}
+ onClear={() => setSelectedEnquiryIds([])}
+ />
+
  {/* Content */}
  {loading ? (
  view === 'kanban' ? <SkeletonKanban columns={6} /> : <SkeletonTable rows={5} cols={7} />
@@ -434,7 +496,10 @@ export default function EnquiryPage() {
  items={filtered.map(e => ({ ...e, column: e.pipelineStage || 'new' }))}
  onDrop={handleKanbanDrop}
  renderCard={(item) => (
- <div onClick={() => setSelectedEnquiry(item)}>
+ <div onClick={() => setSelectedEnquiry(item)} className="group">
+ <div className="mb-2 flex justify-end opacity-0 group-hover:opacity-100 transition-opacity" onClick={(event) => event.stopPropagation()}>
+ <DeleteButton onClick={() => deleteEnquiryRecord(item.id, item.taskType || 'general')} showLabel={false} />
+ </div>
  <p className="text-sm font-semibold text-[var(--text-primary)] mb-1">{item.customerName}</p>
  <p className="text-[10px] text-gray-400">{item.taskType || 'General'}</p>
  {item.amount > 0 && <p className="text-[10px] font-medium text-teal-600 mt-1">{formatCurrency(item.amount)}</p>}
@@ -451,6 +516,15 @@ export default function EnquiryPage() {
  <div className="card p-0 overflow-hidden">
  <table className="w-full" data-export-table>
  <thead><tr className="bg-gray-50">
+ <th className="table-header w-10">
+ <input
+ type="checkbox"
+ checked={allVisibleSelected}
+ onChange={toggleAllVisibleEnquiries}
+ className="rounded accent-teal-600"
+ title="Select all enquiries"
+ />
+ </th>
  <th className="table-header">Customer</th><th className="table-header">Type</th>
  <th className="table-header">Assigned</th><th className="table-header">Target Date</th>
  <th className="table-header">Value</th><th className="table-header">Priority</th>
@@ -458,7 +532,16 @@ export default function EnquiryPage() {
  </tr></thead>
  <tbody>
  {filtered.map(e => (
- <tr key={e.id} className="hover:bg-gray-50 transition-colors">
+ <tr key={e.id} className="group hover:bg-gray-50 transition-colors">
+ <td className="table-cell">
+ <input
+ type="checkbox"
+ checked={selectedEnquirySet.has(e.id)}
+ onChange={() => toggleEnquirySelection(e.id)}
+ className="rounded accent-teal-600"
+ title="Select enquiry"
+ />
+ </td>
  <td className="table-cell">
  <div><p className="font-medium text-gray-900">{e.customerName}</p>
  <p className="text-[10px] text-gray-400">{e.phone || ''}</p></div>
@@ -477,11 +560,12 @@ export default function EnquiryPage() {
  {(e.overdueDays || 0) > 0 && <span className="text-[10px] text-red-400 ml-1">{e.overdueDays}d</span>}
  </td>
  <td className="table-cell">
- <div className="flex items-center gap-1">
+ <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
  <button onClick={() => setSelectedEnquiry(e)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400" title="View">
  <Eye className="w-3.5 h-3.5" />
  </button>
  <button onClick={() => { setEditing(e); setShowModal(true); }} className="text-xs text-teal-600 hover:bg-teal-50 px-2 py-1 rounded font-medium">Edit</button>
+ <DeleteButton onClick={() => deleteEnquiryRecord(e.id, e.taskType || 'general')} />
  </div>
  </td>
  </tr>
@@ -493,6 +577,14 @@ export default function EnquiryPage() {
 
  {showModal && <EnquiryModal onClose={() => { setShowModal(false); setEditing(null); }} onSubmit={editing ? handleEdit : handleAdd} members={activeMembers} editing={editing} />}
  {selectedEnquiry && <EnquiryDetailPanel enquiry={selectedEnquiry} onClose={() => setSelectedEnquiry(null)} />}
+ <DeleteConfirmDialog
+ isOpen={deleteState.isOpen}
+ onClose={handleClose}
+ onConfirm={handleConfirm}
+ title={deleteState.title}
+ description={deleteState.description}
+ isDeleting={deleteState.isDeleting}
+ />
  </div>
  );
 }

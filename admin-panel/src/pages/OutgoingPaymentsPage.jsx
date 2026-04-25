@@ -1,7 +1,7 @@
 ﻿import { useState, useMemo } from 'react';
 import {
  Plus, X, Search, DollarSign, TrendingDown, Clock,
- AlertTriangle, Download, CheckCircle2, BarChart3, Trash2,
+ AlertTriangle, CheckCircle2, BarChart3,
 } from 'lucide-react';
 import { Timestamp } from 'firebase/firestore';
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
@@ -9,12 +9,14 @@ import { useOutgoingPayments } from '../hooks/useOutgoingPayments';
 import { usePayments } from '../hooks/usePayments';
 import { useTeam } from '../hooks/useTeam';
 import { useToast } from '../hooks/useToast';
+import useDelete from '../hooks/useDelete';
 import { formatDate, formatCurrency } from '../lib/formatters';
-import { exportCSV, exportExcel, flattenForExport } from '../lib/exportUtils';
 import { SkeletonTable } from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
 import CountUpNumber from '../components/ui/CountUpNumber';
 import ExportButton from '../components/ui/ExportButton';
+import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
+import DeleteButton from '../components/DeleteButton';
 
 const APPROVAL_STATUSES = ['draft', 'pending', 'approved', 'paid'];
 
@@ -132,6 +134,7 @@ function OutgoingModal({ onClose, onSubmit, members, editing }) {
 
 export default function OutgoingPaymentsPage() {
  const toast = useToast();
+ const { deleteState, confirmDelete, handleConfirm, handleClose } = useDelete();
  const { outgoingPayments, loading, addOutgoingPayment, updateOutgoingPayment, deleteOutgoingPayment } = useOutgoingPayments();
  const { payments: incomingPayments } = usePayments();
  const { members } = useTeam();
@@ -188,6 +191,17 @@ export default function OutgoingPaymentsPage() {
  const handleEdit = async (data) => {
  try { await updateOutgoingPayment(editing.id, data); toast.success('Updated!'); }
  catch (err) { toast.error('Failed: ' + err.message); throw err; }
+ };
+
+ const deleteOutgoing = (id, vendorName) => {
+ confirmDelete({
+ title: 'Delete Outgoing Payment',
+ description: `Delete outgoing payment for "${vendorName}"?`,
+ onConfirm: async () => {
+ await deleteOutgoingPayment(id);
+ toast.success('Payment deleted');
+ },
+ });
  };
 
  const approvalColors = { draft: 'badge-gray', pending: 'badge-yellow', approved: 'badge-blue', paid: 'badge-green' };
@@ -277,7 +291,7 @@ export default function OutgoingPaymentsPage() {
  </tr></thead>
  <tbody>
  {filtered.map(p => (
- <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+ <tr key={p.id} className="group hover:bg-gray-50 transition-colors">
  <td className="table-cell font-medium text-gray-900">{p.vendorName}</td>
  <td className="table-cell text-[var(--text-muted)] text-xs">{p.invoiceNumber || '-'}</td>
  <td className="table-cell text-[var(--text-muted)] text-xs">{p.category || '-'}</td>
@@ -287,7 +301,7 @@ export default function OutgoingPaymentsPage() {
  {(p.overdueDays || 0) > 0 && <span className="text-red-400 ml-1">({p.overdueDays}d)</span>}</td>
  <td className="table-cell"><span className={`badge ${approvalColors[p.approvalStatus] || 'badge-gray'}`}>{p.approvalStatus || 'draft'}</span></td>
  <td className="table-cell"><span className={`badge ${p.paymentStatus === 'paid' ? 'badge-green' : 'badge-yellow'}`}>{p.paymentStatus}</span></td>
- <td className="table-cell"><div className="flex items-center gap-1"><button onClick={() => { setEditing(p); setShowModal(true); }} className="text-xs text-teal-600 hover:bg-teal-50 px-2 py-1 rounded font-medium">Edit</button><button onClick={() => handleDelete(p.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button></div></td>
+ <td className="table-cell"><div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={() => { setEditing(p); setShowModal(true); }} className="text-xs text-teal-600 hover:bg-teal-50 px-2 py-1 rounded font-medium">Edit</button><DeleteButton onClick={() => deleteOutgoing(p.id, p.vendorName)} /></div></td>
  </tr>
  ))}
  </tbody>
@@ -296,6 +310,14 @@ export default function OutgoingPaymentsPage() {
  )}
 
  {showModal && <OutgoingModal onClose={() => { setShowModal(false); setEditing(null); }} onSubmit={editing ? handleEdit : handleAdd} members={activeMembers} editing={editing} />}
+ <DeleteConfirmDialog
+ isOpen={deleteState.isOpen}
+ onClose={handleClose}
+ onConfirm={handleConfirm}
+ title={deleteState.title}
+ description={deleteState.description}
+ isDeleting={deleteState.isDeleting}
+ />
  </div>
  );
 }

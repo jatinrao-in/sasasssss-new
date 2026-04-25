@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
  addDoc,
  collection,
+ deleteDoc,
  doc,
  onSnapshot,
  orderBy,
@@ -61,22 +62,25 @@ export function useFollowUps(filterByUser = null) {
 
  const updateFollowUp = async (id, updates) => updateDoc(doc(db, COLLECTIONS.followups, id), updates);
 
+ const deleteFollowUp = async (id) => deleteDoc(doc(db, COLLECTIONS.followups, id));
+
  const markClosed = async (id) => updateDoc(doc(db, COLLECTIONS.followups, id), {
  status: 'closed',
  updatedAt: serverTimestamp(),
  });
 
- return { followUps, loading, addFollowUp, updateFollowUp, markClosed };
+ return { followUps, loading, addFollowUp, updateFollowUp, deleteFollowUp, markClosed };
 }
 
 // Lowercase alias used by page components
 export function useFollowups(filterByUser = null) {
- const { followUps, loading, addFollowUp, updateFollowUp, markClosed } = useFollowUps(filterByUser);
+ const { followUps, loading, addFollowUp, updateFollowUp, deleteFollowUp, markClosed } = useFollowUps(filterByUser);
  return {
  followups: followUps,
  loading,
  addFollowup: addFollowUp,
  updateFollowup: updateFollowUp,
+ deleteFollowup: deleteFollowUp,
  markClosed,
  };
 }

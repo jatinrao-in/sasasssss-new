@@ -1,17 +1,20 @@
 import { useState, useMemo } from 'react';
 import { Plus, Users, Mail, Phone, X, Shield, Search, Award, BarChart3, CheckCircle2 } from 'lucide-react';
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
 import { db, firebaseConfig } from '../lib/firebase';
 import { createTeamMember as createMemberApi } from '../lib/backendApi';
 import { useTeam } from '../hooks/useTeam';
 import { useTasks } from '../hooks/useTasks';
 import { useToast } from '../hooks/useToast';
+import useDelete from '../hooks/useDelete';
 import { COLLECTIONS } from '../lib/firestore-helpers';
 import { getInitials } from '../lib/formatters';
 import { SkeletonCards } from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
 import CountUpNumber from '../components/ui/CountUpNumber';
+import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
+import DeleteButton from '../components/DeleteButton';
 
 const ALL_PAGE_KEYS = [
  { key: 'dashboard', label: 'Dashboard' },
@@ -160,7 +163,8 @@ function AddMemberModal({ onClose, onAdd, editing }) {
 
 export default function TeamPage() {
  const toast = useToast();
- const { members, loading, toggleStatus, updateMember } = useTeam();
+ const { deleteState, confirmDelete, handleConfirm, handleClose } = useDelete();
+ const { members, loading, toggleStatus, updateMember, deleteMember } = useTeam();
  const [showModal, setShowModal] = useState(false);
  const [editingMember, setEditingMember] = useState(null);
  const [filterStatus, setFilterStatus] = useState('All');
@@ -204,6 +208,24 @@ export default function TeamPage() {
  const handleEditPermissions = (member) => {
  setEditingMember(member);
  setShowModal(true);
+ };
+
+ const handleDeleteMember = (uid, name) => {
+ confirmDelete({
+ title: 'Delete Team Member',
+ description: `Delete "${name}" permanently? Their tasks will remain but become unassigned. This cannot be undone.`,
+ onConfirm: async () => {
+ const taskSnapshot = await getDocs(
+ query(collection(db, COLLECTIONS.tasks), where('assignedTo', '==', uid)),
+ );
+ await Promise.all(taskSnapshot.docs.map((taskDoc) => updateDoc(taskDoc.ref, {
+ assignedTo: '',
+ assignedToName: '',
+ })));
+ await deleteMember(uid);
+ toast.success(`${name} removed from team`);
+ },
+ });
  };
 
  const handleAddMember = async (form) => {
@@ -300,7 +322,7 @@ export default function TeamPage() {
  ) : (
  <div className="grid grid-cols-4 gap-5">
  {filteredMembers.map((member, index) => (
- <div key={member.id} className={`card stat-card transition-all duration-200 hover:shadow-md stagger-item ${member.status === 'inactive' ? 'opacity-60' : ''}`}>
+ <div key={member.id} className={`card stat-card group transition-all duration-200 hover:shadow-md stagger-item ${member.status === 'inactive' ? 'opacity-60' : ''}`}>
  <div className="flex items-start justify-between mb-4">
  <div className={`w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-lg ${avatarColors[index % avatarColors.length]}`}>
  {getInitials(member.name)}
@@ -325,12 +347,23 @@ export default function TeamPage() {
  {member.status === 'active' ? 'Deactivate' : 'Activate'}
  </button>
  </div>
+ <div className="mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+ <DeleteButton onClick={() => handleDeleteMember(member.id, member.name)} />
+ </div>
  </div>
  ))}
  </div>
  )}
 
  {showModal && <AddMemberModal onClose={() => { setShowModal(false); setEditingMember(null); }} onAdd={handleAddMember} editing={editingMember} />}
+ <DeleteConfirmDialog
+ isOpen={deleteState.isOpen}
+ onClose={handleClose}
+ onConfirm={handleConfirm}
+ title={deleteState.title}
+ description={deleteState.description}
+ isDeleting={deleteState.isDeleting}
+ />
  </div>
  );
 }

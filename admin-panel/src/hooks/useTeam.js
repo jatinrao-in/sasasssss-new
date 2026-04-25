@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
  collection,
+ deleteDoc,
  doc,
  getDocs,
  onSnapshot,
@@ -46,6 +47,8 @@ export function useTeam() {
 
  const updateMember = async (uid, updates) => updateDoc(doc(db, COLLECTIONS.users, uid), updates);
 
+ const deleteMember = async (uid) => deleteDoc(doc(db, COLLECTIONS.users, uid));
+
  const toggleStatus = async (uid, currentStatus) => updateDoc(doc(db, COLLECTIONS.users, uid), {
  status: currentStatus === 'active' ? 'inactive' : 'active',
  });
@@ -64,5 +67,5 @@ export function useTeam() {
  return teamSnapshot.docs.map((memberDoc) => ({ id: memberDoc.id, ...memberDoc.data() }));
  };
 
- return { members, loading, updateMember, toggleStatus, getActiveMembers, fetchActiveMembers };
+ return { members, loading, updateMember, deleteMember, toggleStatus, getActiveMembers, fetchActiveMembers };
 }

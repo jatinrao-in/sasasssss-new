@@ -1,20 +1,24 @@
-﻿import { useState, useMemo, useRef } from 'react';
+﻿import { useState, useMemo } from 'react';
 import {
  Plus, X, Search, Calendar, LayoutGrid, Clock,
  CheckCircle2, XCircle, MinusCircle, MessageSquare,
- TrendingUp, BarChart3, Download,
+ TrendingUp, BarChart3,
 } from 'lucide-react';
 import { Timestamp } from 'firebase/firestore';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { useFollowups } from '../hooks/useFollowUps';
 import { useTeam } from '../hooks/useTeam';
 import { useToast } from '../hooks/useToast';
+import useDelete from '../hooks/useDelete';
 import { formatDate } from '../lib/formatters';
 import { SkeletonTable, SkeletonCalendar } from '../components/ui/Skeleton';
 import CalendarView from '../components/ui/CalendarView';
 import EmptyState from '../components/ui/EmptyState';
 import CountUpNumber from '../components/ui/CountUpNumber';
 import ExportButton from '../components/ui/ExportButton';
+import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
+import DeleteButton from '../components/DeleteButton';
+import BulkDeleteBar from '../components/BulkDeleteBar';
 
 const FOLLOWUP_TYPES = ['Phone Call', 'Meeting', 'Site Visit', 'Email', 'WhatsApp', 'Other'];
 const OUTCOMES = [
@@ -133,7 +137,8 @@ function FollowupModal({ onClose, onSubmit, members, editing }) {
 
 export default function FollowupPage() {
  const toast = useToast();
- const { followups, loading, addFollowup, updateFollowup } = useFollowups();
+ const { deleteState, confirmDelete, handleConfirm, handleClose } = useDelete();
+ const { followups, loading, addFollowup, updateFollowup, deleteFollowup } = useFollowups();
  const { members } = useTeam();
  const [showModal, setShowModal] = useState(false);
  const [editing, setEditing] = useState(null);
@@ -141,6 +146,7 @@ export default function FollowupPage() {
  const [search, setSearch] = useState('');
  const [filterStatus, setFilterStatus] = useState('All');
  const [filterType, setFilterType] = useState('All');
+ const [selectedFollowupIds, setSelectedFollowupIds] = useState([]);
   const [rescheduleItem, setRescheduleItem] = useState(null);
   const [newRescheduleDate, setNewRescheduleDate] = useState('');
   const [rescheduleSaving, setRescheduleSaving] = useState(false);
@@ -157,6 +163,29 @@ export default function FollowupPage() {
  return matchSearch && matchStatus && matchType;
  });
  }, [followups, search, filterStatus, filterType]);
+
+ const selectedFollowupSet = useMemo(() => new Set(selectedFollowupIds), [selectedFollowupIds]);
+ const visibleFollowupIds = useMemo(() => filtered.map((followup) => followup.id), [filtered]);
+ const allVisibleSelected = visibleFollowupIds.length > 0
+ && visibleFollowupIds.every((followupId) => selectedFollowupSet.has(followupId));
+
+ const toggleFollowupSelection = (followupId) => {
+ setSelectedFollowupIds((prev) => (
+ prev.includes(followupId)
+ ? prev.filter((id) => id !== followupId)
+ : [...prev, followupId]
+ ));
+ };
+
+ const toggleAllVisibleFollowups = () => {
+ setSelectedFollowupIds((prev) => {
+ if (allVisibleSelected) {
+ return prev.filter((followupId) => !visibleFollowupIds.includes(followupId));
+ }
+
+ return Array.from(new Set([...prev, ...visibleFollowupIds]));
+ });
+ };
 
  // Today's follow-ups
  const todayFollowups = useMemo(() => {
@@ -198,6 +227,33 @@ export default function FollowupPage() {
  const handleEdit = async (data) => {
  try { await updateFollowup(editing.id, data); toast.success('Follow-up updated!'); }
  catch (err) { toast.error('Failed: ' + err.message); throw err; }
+ };
+
+ const deleteFollowupRecord = (id) => {
+ confirmDelete({
+ title: 'Delete Follow-up',
+ description: 'Delete this follow-up record permanently?',
+ onConfirm: async () => {
+ await deleteFollowup(id);
+ setSelectedFollowupIds((prev) => prev.filter((followupId) => followupId !== id));
+ toast.success('Follow-up deleted');
+ },
+ });
+ };
+
+ const bulkDeleteFollowups = () => {
+ const idsToDelete = selectedFollowupIds.filter((id) => followups.some((followup) => followup.id === id));
+ if (idsToDelete.length === 0) return;
+
+ confirmDelete({
+ title: `Delete ${idsToDelete.length} Items`,
+ description: `Permanently delete ${idsToDelete.length} selected follow-ups? This cannot be undone.`,
+ onConfirm: async () => {
+ await Promise.all(idsToDelete.map((id) => deleteFollowup(id)));
+ setSelectedFollowupIds([]);
+ toast.success(`${idsToDelete.length} items deleted`);
+ },
+ });
  };
 
   const openReschedule = (item) => {
@@ -339,6 +395,12 @@ export default function FollowupPage() {
  </div>
  </div>
 
+ <BulkDeleteBar
+ selectedCount={selectedFollowupIds.length}
+ onDelete={bulkDeleteFollowups}
+ onClear={() => setSelectedFollowupIds([])}
+ />
+
  {/* Content */}
  {loading ? (
  view === 'calendar' ? <div className="card"><SkeletonCalendar /></div> : <SkeletonTable rows={5} cols={7} />
@@ -358,6 +420,15 @@ export default function FollowupPage() {
  <div className="card p-0 overflow-hidden">
  <table className="w-full" data-export-table>
  <thead><tr className="bg-gray-50">
+ <th className="table-header w-10">
+ <input
+ type="checkbox"
+ checked={allVisibleSelected}
+ onChange={toggleAllVisibleFollowups}
+ className="rounded accent-teal-600"
+ title="Select all follow-ups"
+ />
+ </th>
  <th className="table-header">Customer</th><th className="table-header">Type</th>
  <th className="table-header">Assigned</th><th className="table-header">Target Date</th>
  <th className="table-header">Reschedules</th><th className="table-header">Outcome</th>
@@ -365,7 +436,16 @@ export default function FollowupPage() {
  </tr></thead>
  <tbody>
  {filtered.map(f => (
- <tr key={f.id} className="hover:bg-gray-50 transition-colors">
+ <tr key={f.id} className="group hover:bg-gray-50 transition-colors">
+ <td className="table-cell">
+ <input
+ type="checkbox"
+ checked={selectedFollowupSet.has(f.id)}
+ onChange={() => toggleFollowupSelection(f.id)}
+ className="rounded accent-teal-600"
+ title="Select follow-up"
+ />
+ </td>
  <td className="table-cell">
  <div><p className="font-medium text-gray-900">{f.customerName}</p>
  <p className="text-[10px] text-gray-400">{f.phone || ''}</p></div>
@@ -390,11 +470,12 @@ export default function FollowupPage() {
  {(f.overdueDays || 0) > 0 && <span className="text-[10px] text-red-400 ml-1">{f.overdueDays}d</span>}
  </td>
  <td className="table-cell">
- <div className="flex items-center gap-1">
+ <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
  <button onClick={() => { setEditing(f); setShowModal(true); }} className="text-xs text-teal-600 hover:bg-teal-50 px-2 py-1 rounded font-medium">Edit</button>
  {f.status !== 'closed' && (
  <button onClick={() => openReschedule(f)} className="text-xs text-amber-600 hover:bg-amber-50 px-2 py-1 rounded font-medium">Reschedule</button>
  )}
+ <DeleteButton onClick={() => deleteFollowupRecord(f.id)} />
  </div>
  </td>
  </tr>
@@ -422,6 +503,14 @@ export default function FollowupPage() {
   </div>
   </div>
   )}
+ <DeleteConfirmDialog
+ isOpen={deleteState.isOpen}
+ onClose={handleClose}
+ onConfirm={handleConfirm}
+ title={deleteState.title}
+ description={deleteState.description}
+ isDeleting={deleteState.isDeleting}
+ />
  </div>
  );
 }

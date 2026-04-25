@@ -9,7 +9,6 @@ import {
  serverTimestamp,
  updateDoc,
  deleteDoc,
- where,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { COLLECTIONS } from '../lib/firestore-helpers';
