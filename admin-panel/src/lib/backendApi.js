@@ -8,8 +8,4 @@ export async function updateTeamMember(memberData) {
   return securePost('/api/update-member', memberData);
 }
 
-export async function sendWhatsAppMessage({ to, templateName, components }) {
-  return securePost('/api/whatsapp/send-text', { to, templateName, components });
-}
-
-export default { createTeamMember, updateTeamMember, sendWhatsAppMessage };
+export default { createTeamMember, updateTeamMember };

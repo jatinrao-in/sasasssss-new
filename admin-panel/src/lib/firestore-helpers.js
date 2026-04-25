@@ -26,7 +26,6 @@ export const COLLECTIONS = {
  tasks: 'tasks',
  tools: 'tools',
  users: 'users',
- whatsapp_config: 'whatsapp_config',
  whatsapp_logs: 'whatsapp_logs',
 };
 
@@ -50,11 +49,7 @@ function createFirestoreActionError(error, fallbackMessage) {
 
 export async function runFirestoreMutation({
  action,
- collectionName,
- documentPath = '',
- payload,
- operation,
- successDetails,
+  operation,
 }) {
  try {
   return await operation();
@@ -156,6 +151,8 @@ export function toDateValue(value) {
  const parsed = value instanceof Date ? value : new Date(value);
  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
+
+export const timestampToDate = toDateValue;
 
 export function calculateOverdueDays(targetDate) {
  const parsedTargetDate = toDateValue(targetDate);
