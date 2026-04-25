@@ -4,8 +4,9 @@ import { collection, onSnapshot } from 'firebase/firestore';
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { db } from '../../lib/firebase';
 import BasePopup, { SummaryCard, FooterBtn, ProgressBar } from './BasePopup';
-import { PopupSkeletonSummary, PopupSkeletonList, isToday, getInitials } from './popupUtils';
+import { PopupSkeletonSummary, PopupSkeletonList, isToday } from './popupUtils';
 import { RankBadge, StatusPill } from '../ui/TextIndicators';
+import UserAvatar from '../UserAvatar';
 
 function getMemberStatusPill(status) {
   if (status === 'active') {
@@ -159,9 +160,7 @@ export default function TeamPopup({ isOpen, onClose }) {
                     }}
                   >
                     <RankBadge rank={index + 1} />
-                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#0D9488', color: 'white', fontWeight: 800, fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      {getInitials(member.name)}
-                    </div>
+                    <UserAvatar user={member} size={40} />
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                         <span style={{ fontWeight: 700, fontSize: 14, color: '#111827' }}>{member.name}</span>
@@ -199,9 +198,7 @@ export default function TeamPopup({ isOpen, onClose }) {
                 return (
                   <div key={member.id} style={{ border: '1px solid #e5e7eb', borderRadius: 14, overflow: 'hidden', background: 'white' }}>
                     <div style={{ padding: '14px 16px', background: 'linear-gradient(135deg, #f0fdfa 0%, #e0f2fe 100%)', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid #e5e7eb' }}>
-                      <div style={{ width: 38, height: 38, borderRadius: '50%', background: '#0D9488', color: 'white', fontWeight: 800, fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {getInitials(member.name)}
-                      </div>
+                      <UserAvatar user={member} size={38} />
                       <div>
                         <div style={{ fontWeight: 700, fontSize: 14, color: '#111827' }}>{member.name}</div>
                         <div style={{ fontSize: 12, color: '#6b7280' }}>{member.designation || 'Team Member'}</div>

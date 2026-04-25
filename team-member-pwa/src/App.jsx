@@ -234,14 +234,7 @@ export default function App() {
                     )}
                   />
                   <Route path="/notifications" element={<NotificationsPage />} />
-                  <Route
-                    path="/profile"
-                    element={(
-                      <MemberPageRoute pageKey="profile">
-                        <ProfilePage />
-                      </MemberPageRoute>
-                    )}
-                  />
+                  <Route path="/profile" element={<ProfilePage />} />
                 </Route>
 
                 <Route path="*" element={<Navigate to="/login" replace />} />

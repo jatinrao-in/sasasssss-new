@@ -36,11 +36,11 @@ import { useToast } from '../hooks/useToast';
 import useDelete from '../hooks/useDelete';
 import { useAuth } from '../hooks/useAuth';
 import { COLLECTIONS, updateDocumentRef } from '../lib/firestore-helpers';
-import { getInitials } from '../lib/formatters';
 import { SkeletonCards } from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
 import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
 import DeleteButton from '../components/DeleteButton';
+import UserAvatar from '../components/UserAvatar';
 import {
   USER_ROLE_OPTIONS,
   getAllPageKeys,
@@ -477,17 +477,6 @@ export default function TeamPage() {
     });
   }, [filterRole, filterStatus, members, search]);
 
-  const avatarColors = [
-    'bg-blue-500',
-    'bg-purple-500',
-    'bg-teal-500',
-    'bg-pink-500',
-    'bg-orange-500',
-    'bg-green-500',
-    'bg-indigo-500',
-    'bg-red-500',
-  ];
-
   const openCreateModal = () => {
     setEditingMember(null);
     setShowModal(true);
@@ -749,7 +738,7 @@ export default function TeamPage() {
         />
       ) : (
         <div className="grid grid-cols-3 gap-5">
-          {filteredMembers.map((member, index) => {
+          {filteredMembers.map((member) => {
             const normalizedRole = normalizeRole(member.role);
             const isMainAdmin = member.id === mainAdminUid;
             const permissions = isMainAdmin
@@ -764,9 +753,7 @@ export default function TeamPage() {
                 }`}
               >
                 <div className="mb-4 flex items-start justify-between gap-3">
-                  <div className={`flex h-14 w-14 items-center justify-center rounded-full text-lg font-bold text-white ${avatarColors[index % avatarColors.length]}`}>
-                    {getInitials(member.name)}
-                  </div>
+                  <UserAvatar user={member} size={48} />
                   <div className="flex flex-wrap justify-end gap-2">
                     <span className={`badge ${isMainAdmin ? 'badge-yellow' : normalizedRole === 'admin' ? 'badge-blue' : 'badge-teal'}`}>
                       {isMainAdmin ? 'Main Admin' : normalizedRole === 'admin' ? 'Admin' : 'Member'}

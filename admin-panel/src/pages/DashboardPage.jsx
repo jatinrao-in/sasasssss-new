@@ -21,7 +21,7 @@ import { useTeam } from '../hooks/useTeam';
 import { usePayments } from '../hooks/usePayments';
 import { useEnquiries } from '../hooks/useEnquiries';
 import { useFollowups } from '../hooks/useFollowUps';
-import { formatCurrency, formatLakhs, getInitials } from '../lib/formatters';
+import { formatCurrency, formatLakhs } from '../lib/formatters';
 import CountUpNumber from '../components/ui/CountUpNumber';
 import { SkeletonDashboard } from '../components/ui/Skeleton';
 import ProjectsPopup from '../components/popups/ProjectsPopup';
@@ -29,6 +29,7 @@ import TasksPopup    from '../components/popups/TasksPopup';
 import PaymentsPopup from '../components/popups/PaymentsPopup';
 import TeamPopup     from '../components/popups/TeamPopup';
 import { RankBadge } from '../components/ui/TextIndicators';
+import UserAvatar from '../components/UserAvatar';
 
 // Live clock
 
@@ -709,9 +710,7 @@ export default function DashboardPage() {
  <tr key={m.id} className="hover:bg-gray-50/50 transition-colors">
  <td className="py-2.5 px-3">
  <div className="flex items-center gap-3">
- <div className="w-8 h-8 rounded-full bg-teal-500 flex items-center justify-center text-white text-xs font-bold">
- {getInitials(m.name)}
- </div>
+ <UserAvatar user={m} size={32} />
  <div>
  <p className="text-sm font-medium text-gray-800">{m.name}</p>
  <p className="text-[10px] text-gray-400">{m.designation || 'Member'}</p>
@@ -985,8 +984,8 @@ export default function DashboardPage() {
  'bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200'
  }`}>
  <div className="mb-3 flex justify-center"><RankBadge rank={i + 1} style={{ fontSize: '14px', padding: '4px 10px' }} /></div>
- <div className="w-12 h-12 rounded-full bg-teal-500 flex items-center justify-center text-white font-bold mx-auto mb-2">
- {getInitials(m.name)}
+ <div className="mb-2 flex justify-center">
+ <UserAvatar user={m} size={48} />
  </div>
  <p className="font-semibold text-[var(--text-primary)] text-sm">{m.name}</p>
  <p className="text-[10px] text-gray-400 mt-0.5">{m.designation || 'Team Member'}</p>

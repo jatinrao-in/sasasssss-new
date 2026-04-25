@@ -1,10 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Avatar } from '../components/ui/avatar';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../components/ui/sheet';
 import {
   Mail, Phone, MessageCircle, CheckCircle, Clock, AlertTriangle,
@@ -17,6 +15,7 @@ import { useMemberSalary, useMemberSalaryMonth, formatMonthLabel, calcSalary } f
 import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { logInfo } from '../lib/firestoreDebug';
+import UserAvatar from '../components/UserAvatar';
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
 function fmt(amount) {
@@ -242,14 +241,15 @@ function MySalarySection({ uid }) {
 
 // ─── Profile Page ─────────────────────────────────────────────────────────────
 export default function ProfilePage() {
-  const { userData, logout } = useAuth();
+  const { currentUser, userData, logout } = useAuth();
   const toast = useToast();
-  const { tasks } = useTasks(userData?.uid);
+  const { tasks } = useTasks(currentUser?.uid || userData?.uid);
   const [passwordSheetOpen, setPasswordSheetOpen] = useState(false);
   const [currentPwd, setCurrentPwd] = useState('');
   const [newPwd, setNewPwd] = useState('');
   const [confirmPwd, setConfirmPwd] = useState('');
   const [saving, setSaving] = useState(false);
+  const profileUser = currentUser || userData;
 
   const myTasks = tasks;
   const completedTasks = myTasks.filter(t => t.status === 'completed');
@@ -294,10 +294,21 @@ export default function ProfilePage() {
   return (
     <div className="pb-4">
       {/* Avatar + Name */}
-      <div className="flex flex-col items-center pt-6 pb-5 px-4">
-        <Avatar size="xl" alt={userData?.name || 'User'} fallback={(userData?.name || 'U').split(' ').map(n => n[0]).join('')} />
-        <h2 className="text-xl font-bold text-[var(--text-primary)] mt-3">{userData?.name || 'Team Member'}</h2>
-        <Badge variant="default" className="mt-1.5">{userData?.designation || userData?.role || 'Member'}</Badge>
+      <div className="mb-3 flex flex-col items-center bg-[var(--bg-card)] px-5 py-8">
+        <UserAvatar
+          user={profileUser}
+          size={80}
+          showRing
+        />
+        <h2 className="mt-3 text-xl font-bold text-[var(--text-primary)]">
+          {profileUser?.name || 'Team Member'}
+        </h2>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">
+          {profileUser?.designation || 'Team Member'}
+        </p>
+        <span className="mt-2 rounded-full bg-[var(--accent-light)] px-3 py-1 text-xs font-semibold text-[var(--accent-primary)]">
+          {profileUser?.role === 'admin' ? 'Administrator' : 'Team Member'}
+        </span>
       </div>
 
       {/* Contact Info */}
@@ -335,7 +346,7 @@ export default function ProfilePage() {
       </div>
 
       {/* ── MY SALARY SECTION ── */}
-      {userData?.uid && <MySalarySection uid={userData.uid} />}
+      {profileUser?.uid && <MySalarySection uid={profileUser.uid} />}
 
       {/* Actions */}
       <div className="px-4 space-y-3">
