@@ -1,3 +1,4 @@
+import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './firebase';
 
 function normalizeApiBaseUrl(value) {
@@ -46,14 +47,53 @@ const buildUrl = (endpoint) => {
     : normalizedEndpoint;
 };
 
-const getAuthToken = async () => {
-  const user = auth.currentUser;
+const waitForAuthenticatedUser = async () => {
+  if (auth.currentUser) {
+    return auth.currentUser;
+  }
+
+  if (typeof auth.authStateReady === 'function') {
+    await auth.authStateReady();
+
+    if (auth.currentUser) {
+      return auth.currentUser;
+    }
+  }
+
+  return new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      unsubscribe();
+      reject(new Error('Not authenticated'));
+    }, 5000);
+
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      (user) => {
+        if (!user) {
+          return;
+        }
+
+        clearTimeout(timeoutId);
+        unsubscribe();
+        resolve(user);
+      },
+      (error) => {
+        clearTimeout(timeoutId);
+        unsubscribe();
+        reject(error);
+      },
+    );
+  });
+};
+
+const getAuthToken = async ({ forceRefresh = false } = {}) => {
+  const user = await waitForAuthenticatedUser();
 
   if (!user) {
     throw new Error('Not authenticated');
   }
 
-  return user.getIdToken();
+  return user.getIdToken(forceRefresh);
 };
 
 const parseResponse = async (response) => {
@@ -67,9 +107,10 @@ const parseResponse = async (response) => {
   return text ? { message: text } : null;
 };
 
-export const securePost = async (endpoint, data = {}) => {
-  const token = await getAuthToken();
-  const response = await fetch(buildUrl(endpoint), {
+const authorizedPost = async (endpoint, data = {}, options = {}) => {
+  const token = await getAuthToken(options);
+
+  return fetch(buildUrl(endpoint), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -77,6 +118,14 @@ export const securePost = async (endpoint, data = {}) => {
     },
     body: JSON.stringify(data),
   });
+};
+
+export const securePost = async (endpoint, data = {}) => {
+  let response = await authorizedPost(endpoint, data);
+
+  if (response.status === 401) {
+    response = await authorizedPost(endpoint, data, { forceRefresh: true });
+  }
 
   const payload = await parseResponse(response);
 

@@ -9,13 +9,15 @@ const httpError = (statusCode, message) => {
 };
 
 const readBearerToken = (req) => {
-  const authHeader = req.headers.authorization || '';
+  const authHeader = String(req.headers.authorization || req.headers.Authorization || '').trim();
 
-  if (!authHeader.startsWith('Bearer ')) {
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+
+  if (!match) {
     throw httpError(401, 'No token provided');
   }
 
-  return authHeader.slice('Bearer '.length).trim();
+  return match[1].trim();
 };
 
 export async function verifyFirebaseRequest(req) {
