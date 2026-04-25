@@ -1,13 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  addDoc,
   collection,
-  doc,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
-  updateDoc,
   where,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -21,8 +18,10 @@ import {
 } from '../lib/firestoreDebug';
 import {
   COLLECTIONS,
+  addDocument,
   calculateOverdueDays,
   deriveOpenItemStatus,
+  updateDocument,
 } from '../lib/firestore-helpers';
 
 export function useFollowUps(filterByUser = null) {
@@ -93,19 +92,25 @@ export function useFollowUps(filterByUser = null) {
     return () => unsubscribe();
   }, [filterByUser, realtimeFollowUps, realtime?.loading?.followUps]);
 
-  const addFollowUp = async (followupData) => addDoc(collection(db, COLLECTIONS.followups), {
+  const addFollowUp = async (followupData) => addDocument(db, COLLECTIONS.followups, {
     ...followupData,
     assignedDate: serverTimestamp(),
     createdAt: serverTimestamp(),
     status: 'open',
-  });
+  }, 'save follow-up');
 
-  const updateFollowUp = async (id, updates) => updateDoc(doc(db, COLLECTIONS.followups, id), updates);
+  const updateFollowUp = async (id, updates) => updateDocument(
+    db,
+    COLLECTIONS.followups,
+    id,
+    updates,
+    'update follow-up',
+  );
 
-  const markClosed = async (id) => updateDoc(doc(db, COLLECTIONS.followups, id), {
+  const markClosed = async (id) => updateDocument(db, COLLECTIONS.followups, id, {
     status: 'closed',
     updatedAt: serverTimestamp(),
-  });
+  }, 'close follow-up');
 
   return { followUps, loading, addFollowUp, updateFollowUp, markClosed };
 }

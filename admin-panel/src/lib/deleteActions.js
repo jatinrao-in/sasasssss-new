@@ -1,7 +1,5 @@
 import {
   collection,
-  deleteDoc,
-  doc,
   getDocs,
   query,
   where,
@@ -9,12 +7,14 @@ import {
 import { db } from './firebase';
 import {
   COLLECTIONS,
+  deleteDocument,
+  deleteDocumentRef,
   recalculateProjectCompletion,
   recalculateProjectTotalExpense,
 } from './firestore-helpers';
 
 export async function deleteDocsByIds(collectionName, ids) {
-  await Promise.all(ids.map((id) => deleteDoc(doc(db, collectionName, id))));
+  await Promise.all(ids.map((id) => deleteDocument(db, collectionName, id, `delete ${collectionName}`)));
 }
 
 export async function deleteProjectCascade(projectId) {
@@ -26,9 +26,9 @@ export async function deleteProjectCascade(projectId) {
   );
 
   await Promise.all([
-    ...tasksSnap.docs.map((taskDoc) => deleteDoc(taskDoc.ref)),
-    ...expensesSnap.docs.map((expenseDoc) => deleteDoc(expenseDoc.ref)),
-    deleteDoc(doc(db, COLLECTIONS.projects, projectId)),
+    ...tasksSnap.docs.map((taskDoc) => deleteDocumentRef(taskDoc.ref, { action: 'delete project task', collectionName: COLLECTIONS.tasks })),
+    ...expensesSnap.docs.map((expenseDoc) => deleteDocumentRef(expenseDoc.ref, { action: 'delete project expense', collectionName: COLLECTIONS.expenses })),
+    deleteDocument(db, COLLECTIONS.projects, projectId, 'delete project'),
   ]);
 }
 
@@ -38,8 +38,8 @@ export async function deleteTaskCascade(taskId, projectId = null) {
   );
 
   await Promise.all([
-    ...expensesSnap.docs.map((expenseDoc) => deleteDoc(expenseDoc.ref)),
-    deleteDoc(doc(db, COLLECTIONS.tasks, taskId)),
+    ...expensesSnap.docs.map((expenseDoc) => deleteDocumentRef(expenseDoc.ref, { action: 'delete task expense', collectionName: COLLECTIONS.expenses })),
+    deleteDocument(db, COLLECTIONS.tasks, taskId, 'delete task'),
   ]);
 
   if (projectId) {
@@ -51,7 +51,7 @@ export async function deleteTaskCascade(taskId, projectId = null) {
 }
 
 export async function deleteExpenseAndRecalculate(expenseId, projectId) {
-  await deleteDoc(doc(db, COLLECTIONS.expenses, expenseId));
+  await deleteDocument(db, COLLECTIONS.expenses, expenseId, 'delete expense');
 
   if (projectId) {
     await recalculateProjectTotalExpense(db, projectId);
@@ -60,5 +60,8 @@ export async function deleteExpenseAndRecalculate(expenseId, projectId) {
 
 export async function clearCollection(collectionName) {
   const snapshot = await getDocs(collection(db, collectionName));
-  await Promise.all(snapshot.docs.map((itemDoc) => deleteDoc(itemDoc.ref)));
+  await Promise.all(snapshot.docs.map((itemDoc) => deleteDocumentRef(
+    itemDoc.ref,
+    { action: `delete ${collectionName}`, collectionName },
+  )));
 }

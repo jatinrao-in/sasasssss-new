@@ -1,4 +1,13 @@
+import { handleConfigError, requireEnv } from '../../server/config.js';
+import { handlePreflight, setCorsHeaders } from '../../server/cors.js';
+import { requireAdmin, verifyFirebaseRequest } from '../../server/auth.js';
+
 export const sendViaMsg91 = async (toNumber, message) => {
+  const {
+    MSG91_AUTH_KEY,
+    MSG91_INTEGRATED_NUMBER,
+  } = requireEnv(['MSG91_AUTH_KEY', 'MSG91_INTEGRATED_NUMBER']);
+
   const phone = toNumber
     .replace(/\D/g, '')
     .replace(/^0/, '')
@@ -6,7 +15,7 @@ export const sendViaMsg91 = async (toNumber, message) => {
   const fullPhone = `91${phone}`;
 
   const payload = {
-    integrated_number: process.env.MSG91_INTEGRATED_NUMBER,
+    integrated_number: MSG91_INTEGRATED_NUMBER,
     content_type: 'text',
     payload: {
       messaging_product: 'whatsapp',
@@ -22,7 +31,7 @@ export const sendViaMsg91 = async (toNumber, message) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authkey': process.env.MSG91_AUTH_KEY
+        Authkey: MSG91_AUTH_KEY
       },
       body: JSON.stringify(payload)
     }
@@ -30,21 +39,42 @@ export const sendViaMsg91 = async (toNumber, message) => {
 
   const result = await response.json();
 
-  if (!response.ok) {
-    console.error('[MSG91] Error:', JSON.stringify(result));
-  }
-
   return result;
 };
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end();
-  const { toNumber, message } = req.body;
+  setCorsHeaders(req, res);
+
+  if (handlePreflight(req, res)) {
+    return;
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
   try {
+    const authContext = await verifyFirebaseRequest(req);
+    requireAdmin(authContext);
+
+    const { toNumber, message } = req.body || {};
+    if (!toNumber || !message) {
+      return res.status(400).json({ error: 'toNumber and message are required' });
+    }
+
     const result = await sendViaMsg91(toNumber, message);
     return res.status(200).json({ success: true, result });
   } catch (error) {
-    console.error('[send-text]', error.message);
-    return res.status(500).json({ error: error.message });
+    console.error('Critical:', error.message);
+
+    if (handleConfigError(res, error)) {
+      return;
+    }
+
+    const statusCode = error.statusCode
+      || (String(error.code || '').startsWith('auth/') ? 401 : 0)
+      || 500;
+
+    return res.status(statusCode).json({ error: statusCode === 401 ? 'Unauthorized' : error.message });
   }
 }

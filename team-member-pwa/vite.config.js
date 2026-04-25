@@ -1,11 +1,21 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { createVersionPlugin, resolveBuildId } from '../scripts/vite-version-plugin.mjs'
+
+const buildId = resolveBuildId('team-member-pwa');
 
 export default defineConfig({
+  define: {
+    __APP_BUILD_ID__: JSON.stringify(buildId),
+  },
   plugins: [
     react({
       include: /\.[jt]sx?$/,
+    }),
+    createVersionPlugin({
+      appName: 'team-member-pwa',
+      buildId,
     }),
     VitePWA({
       registerType: 'autoUpdate',
@@ -62,6 +72,7 @@ export default defineConfig({
 
         // ✅ FIX: Denylist Firebase + API from SW interception entirely
         navigateFallbackDenylist: [
+          /^\/admin(?:\/.*)?$/,
           /^\/_/,
           /\/[^/?]+\.[^/]+$/,  // URLs with file extensions
           /firestore\.googleapis\.com/,
@@ -136,7 +147,10 @@ export default defineConfig({
           // ✅ App HTML navigation — NetworkFirst with generous 8s timeout
           // Falls back to cached index.html only if TRULY offline (not just slow)
           {
-            urlPattern: ({ request }) => request.mode === 'navigate',
+            urlPattern: ({ request, url }) => (
+              request.mode === 'navigate'
+              && !url.pathname.startsWith('/admin')
+            ),
             handler: 'NetworkFirst',
             options: {
               cacheName: 'html-nav-cache',
@@ -159,12 +173,20 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: false,
     chunkSizeWarningLimit: 1500,
-    rollupOptions: {
+    rolldownOptions: {
       output: {
-        manualChunks: (id) => {
-          if (id.includes('node_modules/react') || id.includes('react-router-dom')) return 'vendor-react';
-          if (id.includes('node_modules/firebase')) return 'vendor-firebase';
-          if (id.includes('node_modules/lucide-react')) return 'vendor-ui';
+        advancedChunks: {
+          groups: [
+            { name: 'vendor-react', test: /node_modules\/(react|react-dom|react-router-dom)/ },
+            { name: 'vendor-firebase', test: /node_modules\/firebase/ },
+            { name: 'vendor-ui', test: /node_modules\/lucide-react/ },
+          ],
+        },
+        minify: {
+          compress: {
+            dropConsole: true,
+            dropDebugger: true,
+          },
         },
       },
     },

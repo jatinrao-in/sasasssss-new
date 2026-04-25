@@ -8,14 +8,14 @@ import { Label } from '../components/ui/label';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../components/ui/sheet';
 import { Percent, IndianRupee, Folder, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
+import { serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../hooks/useAuth';
 import { useTasks } from '../hooks/useTasks';
 import { useProjects } from '../hooks/useProjects';
 import { useToast } from '../hooks/useToast';
 import { formatDate } from '../lib/formatters';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { COLLECTIONS, recalculateProjectTotalExpense } from '../lib/firestore-helpers';
+import { COLLECTIONS, addDocument, recalculateProjectTotalExpense } from '../lib/firestore-helpers';
 import { notify } from '../lib/notify';
 import { formatDate as fmtDate } from '../lib/helpers';
 import { logInfo } from '../lib/firestoreDebug';
@@ -176,14 +176,14 @@ export default function TasksPage() {
     if (!selectedTask || !expenseActivity || !expenseAmount) return;
     setSaving(true);
     try {
-      await addDoc(collection(db, COLLECTIONS.expenses), {
+      await addDocument(db, COLLECTIONS.expenses, {
         activity: expenseActivity,
         amount: Number(expenseAmount),
         assignedTo: userData?.uid || '',
         createdAt: serverTimestamp(),
         projectId: selectedTask.projectId,
         taskId: selectedTask.id,
-      });
+      }, 'save task expense');
       await recalculateProjectTotalExpense(db, selectedTask.projectId);
       toast.success('Expense added!');
       setExpenseSheetOpen(false);

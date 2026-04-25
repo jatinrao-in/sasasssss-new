@@ -6,8 +6,6 @@ import {
   getDocs,
   onSnapshot,
   serverTimestamp,
-  setDoc,
-  updateDoc,
 } from 'firebase/firestore';
 import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 import { useAuth } from '../hooks/useAuth';
@@ -15,7 +13,7 @@ import useAuditLog from '../hooks/useAuditLog';
 import { useToast } from '../hooks/useToast';
 import { auth, db } from '../lib/firebase';
 import { getInitials } from '../lib/formatters';
-import { COLLECTIONS } from '../lib/firestore-helpers';
+import { COLLECTIONS, setDocument, updateDocumentRef } from '../lib/firestore-helpers';
 
 const settingsSections = [
   { id: 'profile', label: 'Profile', icon: User },
@@ -94,11 +92,11 @@ export default function SettingsPage() {
 
     setSaving(true);
     try {
-      await updateDoc(doc(db, COLLECTIONS.users, userData.uid), {
+      await updateDocumentRef(doc(db, COLLECTIONS.users, userData.uid), {
         name: profile.name,
         phone: profile.phone,
         notificationPreferences: notifs,
-      });
+      }, { action: 'save profile settings', collectionName: COLLECTIONS.users });
       await log('admin_profile_updated', {
         userUid: userData.uid,
         name: profile.name,
@@ -116,13 +114,14 @@ export default function SettingsPage() {
   const handleSaveCompany = async () => {
     setSaving(true);
     try {
-      await setDoc(
+      await setDocument(
         doc(db, COLLECTIONS.settings, 'company'),
         {
           ...company,
           updatedAt: serverTimestamp(),
         },
         { merge: true },
+        { action: 'save company settings', collectionName: COLLECTIONS.settings },
       );
       await log('company_settings_updated', company);
       toast.success('Company info saved!');

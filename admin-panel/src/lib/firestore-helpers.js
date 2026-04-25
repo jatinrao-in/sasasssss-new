@@ -1,9 +1,12 @@
 import {
+ addDoc,
  collection,
+ deleteDoc,
  doc,
  getDocs,
  query,
  serverTimestamp,
+ setDoc,
  updateDoc,
  where,
 } from 'firebase/firestore';
@@ -25,6 +28,120 @@ export const COLLECTIONS = {
  whatsapp_config: 'whatsapp_config',
  whatsapp_logs: 'whatsapp_logs',
 };
+
+function createFirestoreActionError(error, fallbackMessage) {
+ const code = String(error?.code || '').trim();
+ let message = fallbackMessage;
+
+ if (code === 'permission-denied') {
+  message = 'Permission denied. Check Firebase security rules.';
+ } else if (code === 'unavailable') {
+  message = 'Firebase unavailable. Check your internet connection.';
+ } else if (error?.message) {
+  message = error.message;
+ }
+
+ const wrappedError = new Error(message);
+ wrappedError.code = error?.code;
+ wrappedError.cause = error;
+ return wrappedError;
+}
+
+export async function runFirestoreMutation({
+ action,
+ collectionName,
+ documentPath = '',
+ payload,
+ operation,
+ successDetails,
+}) {
+ try {
+  return await operation();
+ } catch (error) {
+  throw createFirestoreActionError(error, `${action} failed.`);
+ }
+}
+
+export function addDocument(db, collectionName, data, action = `save ${collectionName}`) {
+ return runFirestoreMutation({
+  action,
+  collectionName,
+  payload: data,
+  operation: () => addDoc(collection(db, collectionName), data),
+  successDetails: (docRef) => ({ id: docRef.id }),
+ });
+}
+
+export function addDocumentToCollection(collectionRef, data, {
+ action = `save ${collectionRef.id}`,
+ collectionName = collectionRef.id,
+} = {}) {
+ return runFirestoreMutation({
+  action,
+  collectionName,
+  documentPath: collectionRef.path,
+  payload: data,
+  operation: () => addDoc(collectionRef, data),
+  successDetails: (docRef) => ({ id: docRef.id }),
+ });
+}
+
+export function setDocument(documentRef, data, options = {}, {
+ action = `save ${documentRef.parent?.id || documentRef.id}`,
+ collectionName = documentRef.parent?.id || documentRef.id,
+} = {}) {
+ return runFirestoreMutation({
+  action,
+  collectionName,
+  documentPath: documentRef.path,
+  payload: data,
+  operation: () => setDoc(documentRef, data, options),
+ });
+}
+
+export function updateDocument(db, collectionName, documentId, data, action = `update ${collectionName}`) {
+ return runFirestoreMutation({
+  action,
+  collectionName,
+  documentPath: `${collectionName}/${documentId}`,
+  payload: data,
+  operation: () => updateDoc(doc(db, collectionName, documentId), data),
+ });
+}
+
+export function updateDocumentRef(documentRef, data, {
+ action = `update ${documentRef.parent?.id || documentRef.id}`,
+ collectionName = documentRef.parent?.id || documentRef.id,
+} = {}) {
+ return runFirestoreMutation({
+  action,
+  collectionName,
+  documentPath: documentRef.path,
+  payload: data,
+  operation: () => updateDoc(documentRef, data),
+ });
+}
+
+export function deleteDocument(db, collectionName, documentId, action = `delete ${collectionName}`) {
+ return runFirestoreMutation({
+  action,
+  collectionName,
+  documentPath: `${collectionName}/${documentId}`,
+  operation: () => deleteDoc(doc(db, collectionName, documentId)),
+ });
+}
+
+export function deleteDocumentRef(documentRef, {
+ action = `delete ${documentRef.parent?.id || documentRef.id}`,
+ collectionName = documentRef.parent?.id || documentRef.id,
+} = {}) {
+ return runFirestoreMutation({
+  action,
+  collectionName,
+  documentPath: documentRef.path,
+  operation: () => deleteDoc(documentRef),
+ });
+}
 
 export function toDateValue(value) {
  if (!value) {
@@ -112,7 +229,7 @@ export async function recalculateProjectTotalExpense(db, projectId) {
  0,
  );
 
- await updateDoc(doc(db, COLLECTIONS.projects, projectId), { totalExpense });
+ await updateDocument(db, COLLECTIONS.projects, projectId, { totalExpense }, 'sync project total expense');
  return totalExpense;
 }
 
@@ -134,6 +251,6 @@ export async function recalculateProjectCompletion(db, projectId) {
  ) / taskSnapshot.size,
  );
 
- await updateDoc(doc(db, COLLECTIONS.projects, projectId), { completionPercent });
+ await updateDocument(db, COLLECTIONS.projects, projectId, { completionPercent }, 'sync project completion');
  return completionPercent;
 }

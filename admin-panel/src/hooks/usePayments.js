@@ -1,19 +1,21 @@
 import { useEffect, useState } from 'react';
 import {
- addDoc,
  collection,
- deleteDoc,
- doc,
  onSnapshot,
  orderBy,
  query,
  serverTimestamp,
- updateDoc,
  where,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import useAuditLog from './useAuditLog';
-import { COLLECTIONS, calculateOverdueDays } from '../lib/firestore-helpers';
+import {
+ COLLECTIONS,
+ addDocument,
+ calculateOverdueDays,
+ deleteDocument,
+ updateDocument,
+} from '../lib/firestore-helpers';
 
 export function usePayments(filterByUser = null) {
  const [payments, setPayments] = useState([]);
@@ -53,11 +55,11 @@ export function usePayments(filterByUser = null) {
  }, [filterByUser]);
 
  const addPayment = async (paymentData) => {
-  const paymentRef = await addDoc(collection(db, COLLECTIONS.payments), {
+  const paymentRef = await addDocument(db, COLLECTIONS.payments, {
    ...paymentData,
    createdAt: serverTimestamp(),
    paymentStatus: 'pending',
-  });
+  }, 'save payment');
 
   await log('payment_created', {
    paymentId: paymentRef.id,
@@ -70,21 +72,21 @@ export function usePayments(filterByUser = null) {
  };
 
  const updatePayment = async (id, updates) => {
-  await updateDoc(doc(db, COLLECTIONS.payments, id), updates);
+  await updateDocument(db, COLLECTIONS.payments, id, updates, 'update payment');
   await log('payment_updated', { paymentId: id, updates });
  };
 
  const deletePayment = async (id) => {
-  await deleteDoc(doc(db, COLLECTIONS.payments, id));
+  await deleteDocument(db, COLLECTIONS.payments, id, 'delete payment');
   await log('payment_deleted', { paymentId: id });
  };
 
  const updateStatus = async (id, status, remarks = '') => {
-  await updateDoc(doc(db, COLLECTIONS.payments, id), {
+  await updateDocument(db, COLLECTIONS.payments, id, {
    paymentStatus: status,
    remarks,
    updatedAt: serverTimestamp(),
-  });
+  }, 'update payment status');
   await log('payment_status_updated', { paymentId: id, status, remarks });
  };
 

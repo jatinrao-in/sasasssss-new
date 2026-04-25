@@ -1,19 +1,19 @@
 import { useEffect, useState } from 'react';
 import {
- addDoc,
- deleteDoc,
  getDocs,
  onSnapshot,
  orderBy,
  query,
- updateDoc,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import useAuditLog from './useAuditLog';
 import {
+ addDocumentToCollection,
  buildNotificationPayload,
+ deleteDocumentRef,
  getNotificationItemDoc,
  getNotificationItemsCollection,
+ updateDocumentRef,
 } from '../lib/firestore-helpers';
 
 export function useNotifications(userId) {
@@ -61,7 +61,11 @@ export function useNotifications(userId) {
  return;
  }
 
- return updateDoc(getNotificationItemDoc(db, userId, notificationId), { read: true });
+ return updateDocumentRef(
+  getNotificationItemDoc(db, userId, notificationId),
+  { read: true },
+  { action: 'mark notification read', collectionName: 'notification_items' },
+ );
  };
 
  const markAllRead = async () => {
@@ -72,14 +76,19 @@ export function useNotifications(userId) {
  await Promise.all(
  notifications
  .filter((notification) => !notification.read)
- .map((notification) => updateDoc(getNotificationItemDoc(db, userId, notification.id), { read: true })),
+ .map((notification) => updateDocumentRef(
+  getNotificationItemDoc(db, userId, notification.id),
+  { read: true },
+  { action: 'mark notification read', collectionName: 'notification_items' },
+ )),
  );
  };
 
  const addNotification = async (targetUserId, notification) => {
-  const notificationRef = await addDoc(
+  const notificationRef = await addDocumentToCollection(
    getNotificationItemsCollection(db, targetUserId),
    buildNotificationPayload(notification),
+   { action: 'save notification', collectionName: 'notification_items' },
   );
   await log('notification_created', {
    notificationId: notificationRef.id,
@@ -95,7 +104,10 @@ export function useNotifications(userId) {
  return;
  }
 
- await deleteDoc(getNotificationItemDoc(db, userId, notificationId));
+ await deleteDocumentRef(
+  getNotificationItemDoc(db, userId, notificationId),
+  { action: 'delete notification', collectionName: 'notification_items' },
+ );
  await log('notification_deleted', { notificationId, targetUserId: userId });
  };
 
@@ -105,7 +117,10 @@ export function useNotifications(userId) {
  }
 
  const snapshot = await getDocs(getNotificationItemsCollection(db, userId));
- await Promise.all(snapshot.docs.map((notificationDoc) => deleteDoc(notificationDoc.ref)));
+ await Promise.all(snapshot.docs.map((notificationDoc) => deleteDocumentRef(
+  notificationDoc.ref,
+  { action: 'delete notification', collectionName: 'notification_items' },
+ )));
  await log('notifications_cleared', { targetUserId: userId, count: snapshot.docs.length });
  };
 

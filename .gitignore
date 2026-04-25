@@ -7,3 +7,6 @@ dist/
 .DS_Store
 
 .vercel
+firebase-debug.log
+*firebase-adminsdk-*.json
+.codex-logs/*

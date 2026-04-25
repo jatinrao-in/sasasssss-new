@@ -1,22 +1,21 @@
 import { useEffect, useState } from 'react';
 import {
- addDoc,
  collection,
- deleteDoc,
- doc,
  onSnapshot,
  orderBy,
  query,
  serverTimestamp,
- updateDoc,
  where,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import useAuditLog from './useAuditLog';
 import {
  COLLECTIONS,
+ addDocument,
+ deleteDocument,
  recalculateProjectCompletion,
  recalculateProjectTotalExpense,
+ updateDocument,
 } from '../lib/firestore-helpers';
 
 export function useProjects() {
@@ -43,13 +42,13 @@ export function useProjects() {
  }, []);
 
  const addProject = async (projectData) => {
-  const projectRef = await addDoc(collection(db, COLLECTIONS.projects), {
+  const projectRef = await addDocument(db, COLLECTIONS.projects, {
    ...projectData,
    completionPercent: 0,
    createdAt: serverTimestamp(),
    status: 'active',
    totalExpense: 0,
-  });
+  }, 'save project');
 
   await log('project_created', {
    projectId: projectRef.id,
@@ -61,12 +60,12 @@ export function useProjects() {
  };
 
  const updateProject = async (projectId, updates) => {
-  await updateDoc(doc(db, COLLECTIONS.projects, projectId), updates);
+  await updateDocument(db, COLLECTIONS.projects, projectId, updates, 'update project');
   await log('project_updated', { projectId, updates });
  };
 
  const deleteProject = async (projectId) => {
-  await deleteDoc(doc(db, COLLECTIONS.projects, projectId));
+  await deleteDocument(db, COLLECTIONS.projects, projectId, 'delete project');
   await log('project_deleted', { projectId });
  };
 
@@ -123,14 +122,14 @@ export function useExpenses(projectId = null) {
  throw new Error('projectId is required for an expense');
  }
 
- const expenseRef = await addDoc(collection(db, COLLECTIONS.expenses), {
+ const expenseRef = await addDocument(db, COLLECTIONS.expenses, {
  activity: expenseData.activity,
  amount: Number(expenseData.amount || 0),
  assignedTo: expenseData.assignedTo || '',
  createdAt: serverTimestamp(),
  projectId: expenseData.projectId,
  taskId: expenseData.taskId || '',
- });
+ }, 'save project expense');
 
  await recalculateProjectTotalExpense(db, expenseData.projectId);
  await log('expense_created', {

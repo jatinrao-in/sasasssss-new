@@ -12,14 +12,29 @@ import {
 } from 'firebase/auth';
 import { getMessaging } from 'firebase/messaging';
 
+function sanitizeFirebaseEnv(value) {
+  return String(value ?? '')
+    .replace(/\\[rn]/g, '')
+    .replace(/[\r\n]+/g, '')
+    .trim();
+}
+
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: sanitizeFirebaseEnv(import.meta.env.VITE_FIREBASE_API_KEY),
+  authDomain: sanitizeFirebaseEnv(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN),
+  projectId: sanitizeFirebaseEnv(import.meta.env.VITE_FIREBASE_PROJECT_ID),
+  storageBucket: sanitizeFirebaseEnv(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET),
+  messagingSenderId: sanitizeFirebaseEnv(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID),
+  appId: sanitizeFirebaseEnv(import.meta.env.VITE_FIREBASE_APP_ID),
 };
+
+const missingFirebaseConfigKeys = Object.entries(firebaseConfig)
+  .filter(([, value]) => !value)
+  .map(([key]) => key);
+
+if (missingFirebaseConfigKeys.length > 0) {
+  throw new Error(`Missing Firebase client config: ${missingFirebaseConfigKeys.join(', ')}`);
+}
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
@@ -36,9 +51,7 @@ export const db = (() => {
 })();
 
 export const auth = getAuth(app);
-void setPersistence(auth, indexedDBLocalPersistence).catch((error) => {
-  console.warn('Auth persistence setup failed:', error);
-});
+void setPersistence(auth, indexedDBLocalPersistence).catch(() => {});
 
 export const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
 

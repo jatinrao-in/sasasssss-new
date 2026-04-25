@@ -1,12 +1,13 @@
 import { Timestamp } from 'firebase-admin/firestore';
-import { getAdminServices } from './_lib/firebaseAdmin.js';
-import { requireAdmin, verifyFirebaseRequest } from './_lib/auth.js';
+import { handleConfigError } from '../server/config.js';
+import { getAdminServices } from '../server/firebaseAdmin.js';
+import { requireAdmin, verifyFirebaseRequest } from '../server/auth.js';
 import {
   ensureMainAdminUid,
   normalizeRole,
   normalizeStatus,
   sanitizePermissions,
-} from './_lib/accessControl.js';
+} from '../server/accessControl.js';
 
 const setCorsHeaders = (req, res) => {
   const origin = req.headers.origin || '*';
@@ -84,7 +85,11 @@ export default async function handler(req, res) {
       message: `${normalizedRole === 'admin' ? 'Admin' : 'Member'} ${name.trim()} created successfully`,
     });
   } catch (error) {
-    console.error('[create-member]', error.message);
+    console.error('Critical:', error.message);
+
+    if (handleConfigError(res, error)) {
+      return;
+    }
 
     const statusCode = error.statusCode
       || (error.code === 'auth/email-already-exists' ? 409 : 0)

@@ -7,12 +7,11 @@ import {
   orderBy,
   query,
   serverTimestamp,
-  setDoc,
   limit,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import useAuditLog from './useAuditLog';
-import { COLLECTIONS } from '../lib/firestore-helpers';
+import { COLLECTIONS, setDocument } from '../lib/firestore-helpers';
 
 export function useWhatsAppConfig() {
   const [configs, setConfigs] = useState([]);
@@ -70,14 +69,15 @@ export function useWhatsAppConfig() {
 
   const saveConfig = async (messageType, configData) => {
     try {
-      await setDoc(
+      await setDocument(
         doc(db, COLLECTIONS.whatsapp_config, messageType),
         {
           ...configData,
           messageType,
           updatedAt: serverTimestamp(),
         },
-        { merge: true }
+        { merge: true },
+        { action: 'save whatsapp config', collectionName: COLLECTIONS.whatsapp_config },
       );
       await log('whatsapp_config_saved', {
         messageType,

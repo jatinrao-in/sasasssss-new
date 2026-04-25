@@ -1,7 +1,8 @@
 import { Timestamp } from 'firebase-admin/firestore';
 import { draftMessage } from './ai/draft-whatsapp.js';
-import { getAdminServices } from './_lib/firebaseAdmin.js';
-import { requireNotifyPermission, verifyFirebaseRequest } from './_lib/auth.js';
+import { handleConfigError } from '../server/config.js';
+import { getAdminServices } from '../server/firebaseAdmin.js';
+import { requireNotifyPermission, verifyFirebaseRequest } from '../server/auth.js';
 import { sendViaMsg91 } from './whatsapp/send-text.js';
 
 const setCorsHeaders = (req, res) => {
@@ -30,7 +31,6 @@ const resolveCompanyContext = async (firestore, context) => {
       company_name: companyName,
     };
   } catch (error) {
-    console.warn('[notify] company settings lookup failed:', error.message);
     return context;
   }
 };
@@ -68,9 +68,10 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing eventType or context' });
   }
 
-  const { db } = getAdminServices();
+  let db;
 
   try {
+    ({ db } = getAdminServices());
     const authContext = await verifyFirebaseRequest(req);
     requireNotifyPermission(authContext, eventType);
 
@@ -116,7 +117,11 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ success: true, message, sent: success });
   } catch (error) {
-    console.error('[notify]', error.message);
+    console.error('Critical:', error.message);
+
+    if (handleConfigError(res, error)) {
+      return;
+    }
 
     try {
       await db.collection('whatsapp_logs').add({

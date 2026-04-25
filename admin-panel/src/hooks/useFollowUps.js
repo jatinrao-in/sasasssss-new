@@ -1,22 +1,21 @@
 import { useEffect, useState } from 'react';
 import {
- addDoc,
  collection,
- deleteDoc,
- doc,
  onSnapshot,
  orderBy,
  query,
  serverTimestamp,
- updateDoc,
  where,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import useAuditLog from './useAuditLog';
 import {
  COLLECTIONS,
+ addDocument,
  calculateOverdueDays,
+ deleteDocument,
  deriveOpenItemStatus,
+ updateDocument,
 } from '../lib/firestore-helpers';
 
 export function useFollowUps(filterByUser = null) {
@@ -56,12 +55,12 @@ export function useFollowUps(filterByUser = null) {
  }, [filterByUser]);
 
  const addFollowUp = async (followupData) => {
-  const followUpRef = await addDoc(collection(db, COLLECTIONS.followups), {
+  const followUpRef = await addDocument(db, COLLECTIONS.followups, {
    ...followupData,
    assignedDate: serverTimestamp(),
    createdAt: serverTimestamp(),
    status: 'open',
-  });
+  }, 'save follow-up');
 
   await log('followup_created', {
    followupId: followUpRef.id,
@@ -73,20 +72,20 @@ export function useFollowUps(filterByUser = null) {
  };
 
  const updateFollowUp = async (id, updates) => {
-  await updateDoc(doc(db, COLLECTIONS.followups, id), updates);
+  await updateDocument(db, COLLECTIONS.followups, id, updates, 'update follow-up');
   await log('followup_updated', { followupId: id, updates });
  };
 
  const deleteFollowUp = async (id) => {
-  await deleteDoc(doc(db, COLLECTIONS.followups, id));
+  await deleteDocument(db, COLLECTIONS.followups, id, 'delete follow-up');
   await log('followup_deleted', { followupId: id });
  };
 
  const markClosed = async (id) => {
-  await updateDoc(doc(db, COLLECTIONS.followups, id), {
+  await updateDocument(db, COLLECTIONS.followups, id, {
    status: 'closed',
    updatedAt: serverTimestamp(),
-  });
+  }, 'close follow-up');
   await log('followup_closed', { followupId: id });
  };
 

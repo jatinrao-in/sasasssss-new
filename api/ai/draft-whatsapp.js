@@ -1,10 +1,9 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+import { generateText } from '../../server/ai.js';
+import { handleConfigError } from '../../server/config.js';
+import { handlePreflight, setCorsHeaders } from '../../server/cors.js';
+import { requireAdmin, verifyFirebaseRequest } from '../../server/auth.js';
 
 export const draftMessage = async (eventType, context) => {
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
   const prompts = {
     task_assigned: `
       Draft a professional WhatsApp message
@@ -216,8 +215,11 @@ export const draftMessage = async (eventType, context) => {
   };
 
   try {
-    const result = await model.generateContent(prompts[eventType]);
-    return result.response.text().trim();
+    return await generateText(prompts[eventType], {
+      model: 'gemini-1.5-flash',
+      temperature: 0.5,
+      maxOutputTokens: 512,
+    });
   } catch (error) {
     // Fallback messages if Gemini fails
     const fallbacks = {
@@ -275,10 +277,38 @@ export const draftMessage = async (eventType, context) => {
 };
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).end();
+  setCorsHeaders(req, res);
+
+  if (handlePreflight(req, res)) {
+    return;
   }
-  const { eventType, context } = req.body;
-  const message = await draftMessage(eventType, context);
-  return res.status(200).json({ success: true, message });
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const authContext = await verifyFirebaseRequest(req);
+    requireAdmin(authContext);
+
+    const { eventType, context } = req.body || {};
+    if (!eventType || !context) {
+      return res.status(400).json({ error: 'Missing eventType or context' });
+    }
+
+    const message = await draftMessage(eventType, context);
+    return res.status(200).json({ success: true, message });
+  } catch (error) {
+    console.error('Critical:', error.message);
+
+    if (handleConfigError(res, error)) {
+      return;
+    }
+
+    const statusCode = error.statusCode
+      || (String(error.code || '').startsWith('auth/') ? 401 : 0)
+      || 500;
+
+    return res.status(statusCode).json({ error: statusCode === 401 ? 'Unauthorized' : error.message });
+  }
 }

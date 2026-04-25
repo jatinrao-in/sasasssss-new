@@ -1,7 +1,5 @@
-// ═══════════════════════════════════════
 // Firebase Messaging Service Worker
-// Must stay in /public/ — served at root
-// ═══════════════════════════════════════
+// Must stay in /public/ so it is served from the app root.
 
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
@@ -22,16 +20,12 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((cacheNames) =>
-        Promise.all(
-          cacheNames
-            .filter(
-              (cacheName) => !ACTIVE_CACHE_PREFIXES.some((prefix) => cacheName.startsWith(prefix))
-            )
-            .map((cacheName) => caches.delete(cacheName))
-        )
-      )
-      .then(() => self.clients.claim())
+      .then((cacheNames) => Promise.all(
+        cacheNames
+          .filter((cacheName) => !ACTIVE_CACHE_PREFIXES.some((prefix) => cacheName.startsWith(prefix)))
+          .map((cacheName) => caches.delete(cacheName)),
+      ))
+      .then(() => self.clients.claim()),
   );
 });
 
@@ -52,7 +46,6 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// ─── Route map: notification type → deep link ───
 const URL_MAP = {
   task: '/tasks',
   task_complete: '/tasks',
@@ -63,11 +56,7 @@ const URL_MAP = {
   general: '/dashboard',
 };
 
-// ─── Background message handler ─────────────────
-// Fires when app is CLOSED or in BACKGROUND
 messaging.onBackgroundMessage((payload) => {
-  console.log('[SW] Background message received:', JSON.stringify(payload));
-
   const title =
     payload.notification?.title ||
     payload.data?.title ||
@@ -90,19 +79,20 @@ messaging.onBackgroundMessage((payload) => {
     requireInteraction: false,
     vibrate: [200, 100, 200],
     actions: [
-      { action: 'open', title: '👁 Open' },
-      { action: 'dismiss', title: '✕ Dismiss' },
+      { action: 'open', title: 'Open' },
+      { action: 'dismiss', title: 'Dismiss' },
     ],
   };
 
   return self.registration.showNotification(title, options);
 });
 
-// ─── Notification click handler ──────────────────
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
-  if (event.action === 'dismiss') return;
+  if (event.action === 'dismiss') {
+    return;
+  }
 
   const targetUrl = event.notification.data?.url || '/dashboard';
   const fullUrl = self.registration.scope.replace(/\/$/, '') + targetUrl;
@@ -111,17 +101,18 @@ self.addEventListener('notificationclick', (event) => {
     clients
       .matchAll({ type: 'window', includeUncontrolled: true })
       .then((clientList) => {
-        // Focus existing window if open
         for (const client of clientList) {
           if ('focus' in client) {
             client.navigate(fullUrl);
             return client.focus();
           }
         }
-        // Otherwise open a new window
+
         if (clients.openWindow) {
           return clients.openWindow(fullUrl);
         }
-      })
+
+        return undefined;
+      }),
   );
 });

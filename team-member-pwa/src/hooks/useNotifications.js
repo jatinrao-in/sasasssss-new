@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react';
 import {
-  addDoc,
   limit,
   onSnapshot,
   orderBy,
   query,
-  updateDoc,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useRealtime } from '../context/RealtimeContext';
@@ -17,9 +15,11 @@ import {
   logSnapshot,
 } from '../lib/firestoreDebug';
 import {
+  addDocumentToCollection,
   buildNotificationPayload,
   getNotificationItemDoc,
   getNotificationItemsCollection,
+  updateDocumentRef,
 } from '../lib/firestore-helpers';
 
 export function useNotifications(userId) {
@@ -80,7 +80,11 @@ export function useNotifications(userId) {
       return;
     }
 
-    return updateDoc(getNotificationItemDoc(db, userId, notificationId), { read: true });
+    return updateDocumentRef(
+      getNotificationItemDoc(db, userId, notificationId),
+      { read: true },
+      { action: 'mark notification read', collectionName: 'notification_items' },
+    );
   };
 
   const markAllRead = async () => {
@@ -91,13 +95,18 @@ export function useNotifications(userId) {
     await Promise.all(
       notifications
         .filter((notification) => !notification.read)
-        .map((notification) => updateDoc(getNotificationItemDoc(db, userId, notification.id), { read: true })),
+        .map((notification) => updateDocumentRef(
+          getNotificationItemDoc(db, userId, notification.id),
+          { read: true },
+          { action: 'mark notification read', collectionName: 'notification_items' },
+        )),
     );
   };
 
-  const addNotification = async (targetUserId, notification) => addDoc(
+  const addNotification = async (targetUserId, notification) => addDocumentToCollection(
     getNotificationItemsCollection(db, targetUserId),
     buildNotificationPayload(notification),
+    { action: 'save notification', collectionName: 'notification_items' },
   );
 
   return { notifications, loading, unreadCount, markAsRead, markAllRead, addNotification };

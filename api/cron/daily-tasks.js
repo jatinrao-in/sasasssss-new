@@ -1,17 +1,14 @@
-import { initializeApp, cert, getApps } from 'firebase-admin/app';
-import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { Timestamp } from 'firebase-admin/firestore';
 import { draftMessage } from '../ai/draft-whatsapp.js';
 import { sendViaMsg91 } from '../whatsapp/send-text.js';
+import { handleConfigError, requireEnv } from '../../server/config.js';
+import { getAdminServices } from '../../server/firebaseAdmin.js';
 
-// Initialize Firebase Admin (with check to prevent multiple instances)
-const apps = getApps();
-const app = apps.length > 0 ? apps[0] : initializeApp({
-  credential: cert({
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
-  })
-});
+const {
+  CRON_SECRET,
+} = requireEnv([
+  'CRON_SECRET',
+]);
 
 const formatDateIST = (date) => {
   if (!date) return 'Not set';
@@ -59,19 +56,19 @@ const sendNotification = async (db, eventType, context) => {
       });
     }
   } catch (err) {
-    console.error(`Failed to send ${eventType} notification:`, err.message);
+    return null;
   }
 };
 
 export default async function handler(req, res) {
   // Verify cron secret
   const authHeader = req.headers.authorization;
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (authHeader !== `Bearer ${CRON_SECRET}`) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
   try {
-    const db = getFirestore();
+    const { db } = getAdminServices();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayStr = today.toISOString().split('T')[0];
@@ -221,7 +218,11 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Cron error:', error);
+    if (handleConfigError(res, error)) {
+      return;
+    }
+
+    console.error('Critical:', error.message);
     return res.status(500).json({ error: error.message });
   }
 }

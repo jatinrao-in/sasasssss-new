@@ -1,22 +1,21 @@
 import { useEffect, useState } from 'react';
 import {
- addDoc,
  collection,
- deleteDoc,
- doc,
  onSnapshot,
  orderBy,
  query,
  serverTimestamp,
- updateDoc,
  where,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import useAuditLog from './useAuditLog';
 import {
  COLLECTIONS,
+ addDocument,
  calculateOverdueDays,
+ deleteDocument,
  deriveOpenItemStatus,
+ updateDocument,
 } from '../lib/firestore-helpers';
 
 export function useEnquiries(filterByUser = null) {
@@ -56,12 +55,12 @@ export function useEnquiries(filterByUser = null) {
  }, [filterByUser]);
 
  const addEnquiry = async (enquiryData) => {
-  const enquiryRef = await addDoc(collection(db, COLLECTIONS.enquiries), {
+  const enquiryRef = await addDocument(db, COLLECTIONS.enquiries, {
    ...enquiryData,
    assignedDate: serverTimestamp(),
    createdAt: serverTimestamp(),
    status: 'open',
-  });
+  }, 'save enquiry');
 
   await log('enquiry_created', {
    enquiryId: enquiryRef.id,
@@ -73,20 +72,20 @@ export function useEnquiries(filterByUser = null) {
  };
 
  const updateEnquiry = async (id, updates) => {
-  await updateDoc(doc(db, COLLECTIONS.enquiries, id), updates);
+  await updateDocument(db, COLLECTIONS.enquiries, id, updates, 'update enquiry');
   await log('enquiry_updated', { enquiryId: id, updates });
  };
 
  const deleteEnquiry = async (id) => {
-  await deleteDoc(doc(db, COLLECTIONS.enquiries, id));
+  await deleteDocument(db, COLLECTIONS.enquiries, id, 'delete enquiry');
   await log('enquiry_deleted', { enquiryId: id });
  };
 
  const markClosed = async (id) => {
-  await updateDoc(doc(db, COLLECTIONS.enquiries, id), {
+  await updateDocument(db, COLLECTIONS.enquiries, id, {
    status: 'closed',
    updatedAt: serverTimestamp(),
-  });
+  }, 'close enquiry');
   await log('enquiry_closed', { enquiryId: id });
  };
 

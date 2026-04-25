@@ -23,7 +23,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { collection, getDocs, query, updateDoc, where } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import {
   createTeamMember as createMemberApi,
@@ -35,7 +35,7 @@ import { useTasks } from '../hooks/useTasks';
 import { useToast } from '../hooks/useToast';
 import useDelete from '../hooks/useDelete';
 import { useAuth } from '../hooks/useAuth';
-import { COLLECTIONS } from '../lib/firestore-helpers';
+import { COLLECTIONS, updateDocumentRef } from '../lib/firestore-helpers';
 import { getInitials } from '../lib/formatters';
 import { SkeletonCards } from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
@@ -589,10 +589,14 @@ export default function TeamPage() {
           query(collection(db, COLLECTIONS.tasks), where('assignedTo', '==', member.id)),
         );
 
-        await Promise.all(taskSnapshot.docs.map((taskDoc) => updateDoc(taskDoc.ref, {
-          assignedTo: '',
-          assignedToName: '',
-        })));
+        await Promise.all(taskSnapshot.docs.map((taskDoc) => updateDocumentRef(
+          taskDoc.ref,
+          {
+            assignedTo: '',
+            assignedToName: '',
+          },
+          { action: 'unassign member tasks', collectionName: COLLECTIONS.tasks },
+        )));
 
         await deleteMember(member.id);
         await log('member_unassigned_from_tasks', {

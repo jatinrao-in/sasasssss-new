@@ -1,13 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  addDoc,
   collection,
-  doc,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
-  updateDoc,
   where,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -19,7 +16,12 @@ import {
   logSkip,
   logSnapshot,
 } from '../lib/firestoreDebug';
-import { COLLECTIONS, calculateOverdueDays } from '../lib/firestore-helpers';
+import {
+  COLLECTIONS,
+  addDocument,
+  calculateOverdueDays,
+  updateDocument,
+} from '../lib/firestore-helpers';
 
 export function usePayments(filterByUser = null) {
   const realtime = useRealtime();
@@ -91,19 +93,25 @@ export function usePayments(filterByUser = null) {
     return () => unsubscribe();
   }, [filterByUser, realtimePayments, realtime?.loading?.payments]);
 
-  const addPayment = async (paymentData) => addDoc(collection(db, COLLECTIONS.payments), {
+  const addPayment = async (paymentData) => addDocument(db, COLLECTIONS.payments, {
     ...paymentData,
     createdAt: serverTimestamp(),
     paymentStatus: 'pending',
-  });
+  }, 'save payment');
 
-  const updatePayment = async (id, updates) => updateDoc(doc(db, COLLECTIONS.payments, id), updates);
+  const updatePayment = async (id, updates) => updateDocument(
+    db,
+    COLLECTIONS.payments,
+    id,
+    updates,
+    'update payment',
+  );
 
-  const updateStatus = async (id, status, remarks = '') => updateDoc(doc(db, COLLECTIONS.payments, id), {
+  const updateStatus = async (id, status, remarks = '') => updateDocument(db, COLLECTIONS.payments, id, {
     paymentStatus: status,
     remarks,
     updatedAt: serverTimestamp(),
-  });
+  }, 'update payment status');
 
   return { payments, loading, addPayment, updatePayment, updateStatus };
 }

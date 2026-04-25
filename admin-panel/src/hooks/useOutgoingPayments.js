@@ -1,19 +1,21 @@
 import { useEffect, useState } from 'react';
 import {
- addDoc,
  collection,
- doc,
  onSnapshot,
  orderBy,
  query,
  serverTimestamp,
- updateDoc,
- deleteDoc,
  where,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import useAuditLog from './useAuditLog';
-import { COLLECTIONS, calculateOverdueDays } from '../lib/firestore-helpers';
+import {
+ COLLECTIONS,
+ addDocument,
+ calculateOverdueDays,
+ deleteDocument,
+ updateDocument,
+} from '../lib/firestore-helpers';
 
 export function useOutgoingPayments(filterByUser = null) {
  const [outgoingPayments, setOutgoingPayments] = useState([]);
@@ -58,12 +60,12 @@ export function useOutgoingPayments(filterByUser = null) {
  if (netPendingAmount <= 0 && (Number(data.amount) || 0) > 0) paymentStatus = 'paid';
  else if ((Number(data.paidAmount) || 0) > 0) paymentStatus = 'partial';
 
- const paymentRef = await addDoc(collection(db, COLLECTIONS.outgoing_payments), {
+ const paymentRef = await addDocument(db, COLLECTIONS.outgoing_payments, {
  ...data,
  netPendingAmount,
  paymentStatus,
  createdAt: serverTimestamp(),
- });
+ }, 'save outgoing payment');
  await log('outgoing_payment_created', {
   paymentId: paymentRef.id,
   vendorName: data.vendorName || '',
@@ -78,17 +80,17 @@ export function useOutgoingPayments(filterByUser = null) {
  if (netPendingAmount <= 0 && (Number(updates.amount) || 0) > 0) paymentStatus = 'paid';
  else if ((Number(updates.paidAmount) || 0) > 0) paymentStatus = 'partial';
 
- await updateDoc(doc(db, COLLECTIONS.outgoing_payments, id), {
+ await updateDocument(db, COLLECTIONS.outgoing_payments, id, {
  ...updates,
  netPendingAmount,
  paymentStatus,
  updatedAt: serverTimestamp(),
- });
+ }, 'update outgoing payment');
  await log('outgoing_payment_updated', { paymentId: id, updates });
  };
 
  const deleteOutgoingPayment = async (id) => {
-  await deleteDoc(doc(db, COLLECTIONS.outgoing_payments, id));
+  await deleteDocument(db, COLLECTIONS.outgoing_payments, id, 'delete outgoing payment');
   await log('outgoing_payment_deleted', { paymentId: id });
  };
 

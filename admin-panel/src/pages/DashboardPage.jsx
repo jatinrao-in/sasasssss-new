@@ -14,7 +14,7 @@ import {
  Briefcase, Receipt, BarChart3, Sparkles, Loader2
 } from 'lucide-react';
 import { useAIManager } from '../hooks/useAIManager';
-import { generateBusinessSummary } from '../lib/gemini';
+import { getDashboardInsights } from '../lib/api';
 import { useProjects } from '../hooks/useProjects';
 import { useTasks } from '../hooks/useTasks';
 import { useTeam } from '../hooks/useTeam';
@@ -325,8 +325,8 @@ export default function DashboardPage() {
     };
 
     try {
-      const result = await generateBusinessSummary(payload);
-      setBusinessSummary(result);
+      const result = await getDashboardInsights(payload);
+      setBusinessSummary(result.summary || '');
       setPopup('businessSummary');
     } catch (err) {
       console.error(err);

@@ -1,8 +1,8 @@
 import { securePost } from './secureApi';
 
 const API_BASE = (
-  import.meta.env.VITE_BACKEND_URL ||
   import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_BACKEND_URL ||
   ''
 ).trim();
 
@@ -16,6 +16,10 @@ export const suggestDeadline = async (taskDescription, projectId) => (
 
 export const draftWhatsAppMessage = async (context) => (
   securePost('/api/ai/draft-whatsapp', context)
+);
+
+export const getDashboardInsights = async (data) => (
+  securePost('/api/ai/business-summary', { data })
 );
 
 export { API_BASE };

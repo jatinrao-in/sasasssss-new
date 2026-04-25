@@ -18,31 +18,64 @@
   ],
   "headers": [
     {
+      "source": "/version.json",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" }
+      ]
+    },
+    {
+      "source": "/admin/version.json",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "X-XSS-Protection", "value": "1; mode=block" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" },
+        { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" }
+      ]
+    },
+    {
       "source": "/api/(.*)",
       "headers": [
         { "key": "Access-Control-Allow-Origin", "value": "*" },
         { "key": "Access-Control-Allow-Methods", "value": "GET,POST,PUT,DELETE,OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization, x-cron-secret" }
       ]
     }
   ],
-  "routes": [
+  "redirects": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
+      "source": "/admin",
+      "destination": "/admin/",
+      "permanent": true
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1.js"
     },
     {
-      "src": "/admin",
-      "headers": { "Location": "/admin/" },
-      "status": 308
+      "source": "/admin/(.*\\..*)",
+      "destination": "/admin-panel/$1"
     },
     {
-      "src": "/admin/(.*)",
-      "dest": "/admin-panel/$1"
+      "source": "/admin/(.*)",
+      "destination": "/admin-panel/index.html"
     },
     {
-      "src": "/(.*)",
-      "dest": "/team-member-pwa/$1"
+      "source": "/(.*\\..*)",
+      "destination": "/team-member-pwa/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/team-member-pwa/index.html"
     }
   ],
   "crons": [
@@ -52,4 +85,3 @@
     }
   ]
 }
-

@@ -23,6 +23,7 @@ import SettingsPage from './pages/SettingsPage';
 import NotificationLogsPage from './pages/NotificationLogsPage';
 import SplashScreen from './components/SplashScreen';
 import AIAssistantPanel from './components/ui/AIAssistantPanel';
+import AutoUpdateHandler from './components/AutoUpdateHandler';
 import { getFirstAccessiblePath } from './lib/accessControl';
 
 function AdminLayout() {
@@ -62,6 +63,7 @@ function AdminHomeRedirect() {
 export default function App() {
   return (
     <BrowserRouter basename="/admin">
+      <AutoUpdateHandler />
       <AuthProvider>
         <RealtimeProvider>
           <ToastProvider>

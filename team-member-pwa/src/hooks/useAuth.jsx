@@ -5,10 +5,10 @@ import {
   signOut,
   updatePassword,
 } from 'firebase/auth';
-import { collection, doc, getDoc, getDocs, onSnapshot, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { redirectToAdminPanel } from '../lib/adminPanel';
-import { COLLECTIONS } from '../lib/firestore-helpers';
+import { COLLECTIONS, setDocument } from '../lib/firestore-helpers';
 import {
   getAllPageKeys,
   normalizeRole,
@@ -103,10 +103,11 @@ export function AuthProvider({ children }) {
         setMainAdminUid(fallbackAdmin);
 
         if (fallbackAdmin === userData.uid) {
-          await setDoc(
+          await setDocument(
             doc(db, COLLECTIONS.settings, 'app'),
             { mainAdminUid: fallbackAdmin },
             { merge: true },
+            { action: 'save app settings', collectionName: COLLECTIONS.settings },
           );
         }
       } catch (error) {

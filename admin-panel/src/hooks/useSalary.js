@@ -1,16 +1,19 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
-  deleteDoc,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
-  setDoc,
-  updateDoc,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import useAuditLog from './useAuditLog';
-import { getSalaryMonthDoc, getSalaryMonthsCollection } from '../lib/firestore-helpers';
+import {
+  deleteDocumentRef,
+  getSalaryMonthDoc,
+  getSalaryMonthsCollection,
+  setDocument,
+  updateDocumentRef,
+} from '../lib/firestore-helpers';
 
 // Calculation logic
 export function calcSalary(baseSalary, workingDays, presentDays) {
@@ -126,7 +129,7 @@ export function useSalaryActions() {
     const calc = calcSalary(data.baseSalary, data.workingDays, data.presentDays);
     const ref = getSalaryMonthDoc(db, uid, month);
 
-    await setDoc(
+    await setDocument(
       ref,
       {
         uid,
@@ -146,7 +149,8 @@ export function useSalaryActions() {
         updatedAt: serverTimestamp(),
         createdAt: serverTimestamp(),
       },
-      { merge: true }
+      { merge: true },
+      { action: 'save salary', collectionName: 'salary_months' },
     );
 
     await log('salary_saved', {
@@ -159,26 +163,30 @@ export function useSalaryActions() {
 
   const markPaid = useCallback(async (uid, month) => {
     const ref = getSalaryMonthDoc(db, uid, month);
-    await updateDoc(ref, {
+    await updateDocumentRef(ref, {
       status: 'paid',
       paidDate: serverTimestamp(),
       updatedAt: serverTimestamp(),
-    });
+    }, { action: 'mark salary paid', collectionName: 'salary_months' });
     await log('salary_marked_paid', { memberUid: uid, month });
   }, [log]);
 
   const deleteSalary = useCallback(async (uid, month) => {
-    await deleteDoc(getSalaryMonthDoc(db, uid, month));
+    await deleteDocumentRef(
+      getSalaryMonthDoc(db, uid, month),
+      { action: 'delete salary', collectionName: 'salary_months' },
+    );
     await log('salary_deleted', { memberUid: uid, month });
   }, [log]);
 
   const bulkSetWorkingDays = useCallback(async (uids, month, workingDays) => {
     await Promise.all(
       uids.map((uid) =>
-        setDoc(
+        setDocument(
           getSalaryMonthDoc(db, uid, month),
           { workingDays: Number(workingDays), updatedAt: serverTimestamp() },
-          { merge: true }
+          { merge: true },
+          { action: 'set salary working days', collectionName: 'salary_months' },
         )
       )
     );
@@ -190,11 +198,11 @@ export function useSalaryActions() {
       rows
         .filter((row) => row.status === 'pending')
         .map((row) =>
-          updateDoc(getSalaryMonthDoc(db, row.uid, row.month || row.id), {
+          updateDocumentRef(getSalaryMonthDoc(db, row.uid, row.month || row.id), {
             status: 'paid',
             paidDate: serverTimestamp(),
             updatedAt: serverTimestamp(),
-          })
+          }, { action: 'mark salary paid', collectionName: 'salary_months' })
         )
     );
     await log('salary_bulk_mark_paid', {
@@ -206,7 +214,7 @@ export function useSalaryActions() {
   const initMonthForAllMembers = useCallback(async (members, month) => {
     await Promise.all(
       members.map((member) =>
-        setDoc(
+        setDocument(
           getSalaryMonthDoc(db, member.id, month),
           {
             uid: member.id,
@@ -226,7 +234,8 @@ export function useSalaryActions() {
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
           },
-          { merge: true }
+          { merge: true },
+          { action: 'initialize salary month', collectionName: 'salary_months' },
         )
       )
     );

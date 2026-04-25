@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { doc, serverTimestamp } from 'firebase/firestore';
 import { getToken, onMessage } from 'firebase/messaging';
 import { db, messaging } from '../lib/firebase';
+import { COLLECTIONS, updateDocumentRef } from '../lib/firestore-helpers';
 import { playNotificationSound } from '../lib/soundPlayer';
 import { useToast } from './useToast';
 import { useAuth } from './useAuth';
@@ -11,7 +12,10 @@ function getNotificationPermission() {
   return Notification.permission;
 }
 
-const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY || null;
+const VAPID_KEY = String(import.meta.env.VITE_FIREBASE_VAPID_KEY ?? '')
+  .replace(/\\[rn]/g, '')
+  .replace(/[\r\n]+/g, '')
+  .trim() || null;
 
 const URL_MAP = {
   task: '/tasks',
@@ -66,10 +70,10 @@ export function usePushNotifications() {
 
         setFcmToken(token);
 
-        await updateDoc(doc(db, 'users', userData.uid), {
+        await updateDocumentRef(doc(db, COLLECTIONS.users, userData.uid), {
           fcmToken: token,
           fcmTokenUpdatedAt: serverTimestamp(),
-        });
+        }, { action: 'save fcm token', collectionName: COLLECTIONS.users });
       } catch (err) {
         console.error('[FCM] Setup failed:', err?.code, err?.message);
         setupDoneRef.current = false;

@@ -1,13 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  addDoc,
   collection,
-  doc,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
-  updateDoc,
   where,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -21,8 +18,10 @@ import {
 } from '../lib/firestoreDebug';
 import {
   COLLECTIONS,
+  addDocument,
   calculateOverdueDays,
   deriveOpenItemStatus,
+  updateDocument,
 } from '../lib/firestore-helpers';
 
 export function useEnquiries(filterByUser = null) {
@@ -93,19 +92,25 @@ export function useEnquiries(filterByUser = null) {
     return () => unsubscribe();
   }, [filterByUser, realtimeEnquiries, realtime?.loading?.enquiries]);
 
-  const addEnquiry = async (enquiryData) => addDoc(collection(db, COLLECTIONS.enquiries), {
+  const addEnquiry = async (enquiryData) => addDocument(db, COLLECTIONS.enquiries, {
     ...enquiryData,
     assignedDate: serverTimestamp(),
     createdAt: serverTimestamp(),
     status: 'open',
-  });
+  }, 'save enquiry');
 
-  const updateEnquiry = async (id, updates) => updateDoc(doc(db, COLLECTIONS.enquiries, id), updates);
+  const updateEnquiry = async (id, updates) => updateDocument(
+    db,
+    COLLECTIONS.enquiries,
+    id,
+    updates,
+    'update enquiry',
+  );
 
-  const markClosed = async (id) => updateDoc(doc(db, COLLECTIONS.enquiries, id), {
+  const markClosed = async (id) => updateDocument(db, COLLECTIONS.enquiries, id, {
     status: 'closed',
     updatedAt: serverTimestamp(),
-  });
+  }, 'close enquiry');
 
   return { enquiries, loading, addEnquiry, updateEnquiry, markClosed };
 }

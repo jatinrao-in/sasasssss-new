@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { RealtimeProvider } from './context/RealtimeContext';
 import { AuthProvider, useAuth } from './hooks/useAuth';
@@ -12,6 +12,7 @@ import { Button } from './components/ui/button';
 import { usePushNotifications } from './hooks/usePushNotifications';
 import SplashScreen from './components/SplashScreen';
 import OfflineBanner from './components/OfflineBanner';
+import AutoUpdateHandler from './components/AutoUpdateHandler';
 import { getFirstAccessiblePath } from './lib/accessControl';
 
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -166,71 +167,10 @@ function NotificationHandler() {
   );
 }
 
-function SilentUpdateHandler() {
-  const hasReloadedRef = useRef(false);
-
-  useEffect(() => {
-    if (!('serviceWorker' in navigator)) {
-      return undefined;
-    }
-
-    let activeRegistration = null;
-    let installingWorker = null;
-
-    const reloadSilently = () => {
-      if (hasReloadedRef.current) {
-        return;
-      }
-
-      hasReloadedRef.current = true;
-      window.location.reload();
-    };
-
-    const handleStateChange = () => {
-      if (installingWorker?.state === 'activated' && navigator.serviceWorker.controller) {
-        reloadSilently();
-      }
-    };
-
-    const handleUpdateFound = () => {
-      installingWorker = activeRegistration?.installing ?? null;
-
-      if (installingWorker) {
-        installingWorker.addEventListener('statechange', handleStateChange);
-      }
-    };
-
-    navigator.serviceWorker.ready
-      .then((registration) => {
-        activeRegistration = registration;
-        registration.addEventListener('updatefound', handleUpdateFound);
-      })
-      .catch((error) => {
-        console.error('SW ready error:', error);
-      });
-
-    navigator.serviceWorker.addEventListener('controllerchange', reloadSilently);
-
-    return () => {
-      navigator.serviceWorker.removeEventListener('controllerchange', reloadSilently);
-
-      if (installingWorker) {
-        installingWorker.removeEventListener('statechange', handleStateChange);
-      }
-
-      if (activeRegistration) {
-        activeRegistration.removeEventListener('updatefound', handleUpdateFound);
-      }
-    };
-  }, []);
-
-  return null;
-}
-
 export default function App() {
   return (
     <BrowserRouter>
-      <SilentUpdateHandler />
+      <AutoUpdateHandler />
       <OfflineBanner />
       <ExitHandler />
       <AuthProvider>

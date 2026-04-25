@@ -3,7 +3,7 @@ import {
   Wallet, Check, Edit2, X, Save, Users,
   AlertTriangle, ChevronDown, RefreshCw,
 } from 'lucide-react';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useTeam } from '../hooks/useTeam';
 import {
@@ -15,6 +15,7 @@ import {
 import { useToast } from '../hooks/useToast';
 import useDelete from '../hooks/useDelete';
 import { formatCurrency, getInitials } from '../lib/formatters';
+import { addDocumentToCollection, getNotificationItemsCollection } from '../lib/firestore-helpers';
 import { notify } from '../lib/notify';
 import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
 import DeleteButton from '../components/DeleteButton';
@@ -343,13 +344,13 @@ export default function SalaryPage() {
 
         // Send in-app notification
         try {
-          await addDoc(collection(db, 'notifications', row.uid, 'items'), {
+          await addDocumentToCollection(getNotificationItemsCollection(db, row.uid), {
             message: `Your salary of ${formatCurrency(row.netSalary)} for ${formatMonthLabel(month)} has been processed.`,
             type: 'salary',
             relatedId: month,
             read: false,
             createdAt: serverTimestamp(),
-          });
+          }, { action: 'save salary notification', collectionName: 'notification_items' });
           
           const member = teamMembers.find(m => m.id === row.uid);
           if (member?.whatsapp) {
@@ -436,13 +437,13 @@ export default function SalaryPage() {
       // Notify all
       await Promise.allSettled(
         pending.map((r) =>
-          addDoc(collection(db, 'notifications', r.uid, 'items'), {
+          addDocumentToCollection(getNotificationItemsCollection(db, r.uid), {
             message: `Your salary of ${formatCurrency(r.netSalary)} for ${formatMonthLabel(month)} has been processed.`,
             type: 'salary',
             relatedId: month,
             read: false,
             createdAt: serverTimestamp(),
-          })
+          }, { action: 'save salary notification', collectionName: 'notification_items' })
         )
       );
       

@@ -2,8 +2,9 @@
  * Client-side sync helpers - replaces Firebase onDocumentWritten triggers.
  * These run in the Admin Panel browser after every Firestore write.
  */
-import { doc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from './firebase';
+import { setDocument } from './firestore-helpers';
 
 // ── Overdue Calculation ──────────────────────────────────────────────────────
 
@@ -39,7 +40,10 @@ export async function syncProjectExpenseTotals(projectId) {
       query(collection(db, 'expenses'), where('projectId', '==', projectId))
     );
     const total = snap.docs.reduce((sum, d) => sum + Number(d.data().amount || 0), 0);
-    await setDoc(doc(db, 'projects', projectId), { totalExpense: total }, { merge: true });
+    await setDocument(doc(db, 'projects', projectId), { totalExpense: total }, { merge: true }, {
+      action: 'sync project total expense',
+      collectionName: 'projects',
+    });
   } catch (err) {
     console.error('[syncProjectExpenseTotals]', err.message);
   }
@@ -59,7 +63,10 @@ export async function syncProjectCompletion(projectId) {
       : Math.round(
           snap.docs.reduce((s, d) => s + Number(d.data().completionPercent || 0), 0) / snap.size
         );
-    await setDoc(doc(db, 'projects', projectId), { completionPercent: pct }, { merge: true });
+    await setDocument(doc(db, 'projects', projectId), { completionPercent: pct }, { merge: true }, {
+      action: 'sync project completion',
+      collectionName: 'projects',
+    });
   } catch (err) {
     console.error('[syncProjectCompletion]', err.message);
   }
@@ -79,7 +86,10 @@ export async function syncTaskDerivedFields(taskId, taskData) {
     if (taskData.overdueDays !== overdueDays) updates.overdueDays = overdueDays;
     if (taskData.status !== status) updates.status = status;
     if (Object.keys(updates).length > 0) {
-      await setDoc(doc(db, 'tasks', taskId), updates, { merge: true });
+      await setDocument(doc(db, 'tasks', taskId), updates, { merge: true }, {
+        action: 'sync task derived fields',
+        collectionName: 'tasks',
+      });
     }
   } catch (err) {
     console.error('[syncTaskDerivedFields]', err.message);

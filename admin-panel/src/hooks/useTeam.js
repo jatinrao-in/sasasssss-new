@@ -1,18 +1,15 @@
 import { useEffect, useState } from 'react';
 import {
  collection,
- deleteDoc,
- doc,
  getDocs,
  onSnapshot,
  query,
  serverTimestamp,
- updateDoc,
  where,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import useAuditLog from './useAuditLog';
-import { COLLECTIONS } from '../lib/firestore-helpers';
+import { COLLECTIONS, deleteDocument, updateDocument } from '../lib/firestore-helpers';
 import { normalizeRole } from '../lib/accessControl';
 
 export function useTeam(options = {}) {
@@ -49,24 +46,24 @@ export function useTeam(options = {}) {
  }, [includeAdmins]);
 
  const updateMember = async (uid, updates) => {
-  await updateDoc(doc(db, COLLECTIONS.users, uid), {
+  await updateDocument(db, COLLECTIONS.users, uid, {
    ...updates,
    updatedAt: serverTimestamp(),
-  });
+  }, 'update team member');
   await log('member_updated', { memberUid: uid, updates });
  };
 
  const deleteMember = async (uid) => {
-  await deleteDoc(doc(db, COLLECTIONS.users, uid));
+  await deleteDocument(db, COLLECTIONS.users, uid, 'delete team member');
   await log('member_deleted', { memberUid: uid });
  };
 
  const toggleStatus = async (uid, currentStatus) => {
   const nextStatus = currentStatus === 'active' ? 'inactive' : 'active';
-  await updateDoc(doc(db, COLLECTIONS.users, uid), {
+  await updateDocument(db, COLLECTIONS.users, uid, {
    status: nextStatus,
    updatedAt: serverTimestamp(),
-  });
+  }, 'update team member status');
   await log('member_status_changed', { memberUid: uid, status: nextStatus });
  };
 

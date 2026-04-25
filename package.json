@@ -3,7 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "emulators": "firebase emulators:start --only auth,firestore,functions"
+    "build": "npm run build:admin && npm run build:pwa",
+    "build:admin": "npm --prefix admin-panel run build",
+    "build:pwa": "npm --prefix team-member-pwa run build",
+    "emulators": "firebase emulators:start --only auth,firestore"
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",

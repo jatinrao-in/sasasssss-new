@@ -1,24 +1,25 @@
 import { useEffect, useState } from 'react';
 import {
- addDoc,
  collection,
- deleteDoc,
  doc,
  getDoc,
  onSnapshot,
  orderBy,
  query,
  serverTimestamp,
- updateDoc,
  where,
 } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 import useAuditLog from './useAuditLog';
 import {
  COLLECTIONS,
+ addDocument,
  calculateOverdueDays,
+ deleteDocumentRef,
  deriveTaskStatus,
  recalculateProjectCompletion,
+ updateDocument,
+ updateDocumentRef,
 } from '../lib/firestore-helpers';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -72,13 +73,13 @@ export function useTasks(filterByUser = null) {
  }, [filterByUser, authReady]);
 
  const addTask = async (taskData) => {
-  const taskRef = await addDoc(collection(db, COLLECTIONS.tasks), {
+  const taskRef = await addDocument(db, COLLECTIONS.tasks, {
    ...taskData,
    completionPercent: Number(taskData.completionPercent || 0),
    createdAt: serverTimestamp(),
    startDate: serverTimestamp(),
    status: 'open',
-  });
+  }, 'save task');
 
   await log('task_created', {
    taskId: taskRef.id,
@@ -91,7 +92,7 @@ export function useTasks(filterByUser = null) {
  };
 
  const updateTask = async (taskId, updates) => {
-  await updateDoc(doc(db, COLLECTIONS.tasks, taskId), updates);
+  await updateDocument(db, COLLECTIONS.tasks, taskId, updates, 'update task');
   await log('task_updated', { taskId, updates });
  };
 
@@ -100,12 +101,12 @@ export function useTasks(filterByUser = null) {
  const taskSnapshot = await getDoc(taskRef);
  const taskData = taskSnapshot.exists() ? taskSnapshot.data() : null;
 
- await updateDoc(taskRef, {
+ await updateDocumentRef(taskRef, {
  completedAt: percent >= 100 ? serverTimestamp() : null,
  completionPercent: Number(percent),
  status: percent >= 100 ? 'completed' : 'open',
  updatedAt: serverTimestamp(),
- });
+ }, { action: 'update task completion', collectionName: COLLECTIONS.tasks });
 
  await log('task_progress_updated', {
   taskId,
@@ -125,7 +126,7 @@ export function useTasks(filterByUser = null) {
  const taskSnapshot = await getDoc(taskRef);
  const taskData = taskSnapshot.exists() ? taskSnapshot.data() : null;
 
- await deleteDoc(taskRef);
+ await deleteDocumentRef(taskRef, { action: 'delete task', collectionName: COLLECTIONS.tasks });
 
  await log('task_deleted', {
   taskId,
