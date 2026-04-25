@@ -1,19 +1,49 @@
 import { auth } from './firebase';
 
-const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL ||
-  import.meta.env.VITE_BACKEND_URL ||
-  ''
-).trim();
+function normalizeApiBaseUrl(value) {
+  const trimmed = String(value || '').trim();
+  const sanitized = trimmed.replace(/\\r\\n|\\n|\\r/g, '');
 
-const buildUrl = (endpoint) => {
-  if (!endpoint.startsWith('/')) {
+  if (!sanitized) {
+    return '';
+  }
+
+  try {
+    const url = new URL(sanitized);
+    const normalizedPath = url.pathname
+      .replace(/\/+$/, '')
+      .replace(/\/r$/, '');
+
+    return `${url.origin}${normalizedPath}`.replace(/\/$/, '');
+  } catch {
+    return sanitized
+      .replace(/\/+$/, '')
+      .replace(/\/r$/, '');
+  }
+}
+
+function normalizeEndpoint(endpoint) {
+  const trimmed = String(endpoint || '').trim();
+
+  if (!trimmed.startsWith('/')) {
     throw new Error(`API endpoint must start with "/": ${endpoint}`);
   }
 
+  return trimmed.replace(/^\/r(?=\/|$)/, '');
+}
+
+const API_BASE_URL = normalizeApiBaseUrl(
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_BACKEND_URL ||
+  '',
+);
+
+const buildUrl = (endpoint) => {
+  const normalizedEndpoint = normalizeEndpoint(endpoint);
+
   return API_BASE_URL
-    ? `${API_BASE_URL.replace(/\/$/, '')}${endpoint}`
-    : endpoint;
+    ? `${API_BASE_URL}${normalizedEndpoint}`
+    : normalizedEndpoint;
 };
 
 const getAuthToken = async () => {
