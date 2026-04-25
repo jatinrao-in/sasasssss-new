@@ -10,11 +10,12 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { redirectToPwa } from '../lib/teamMemberApp';
+import { getFirstAccessiblePath } from '../lib/accessControl';
 import { useToast } from '../hooks/useToast';
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { login, currentUser, loading: authLoading } = useAuth();
+  const { login, logout, currentUser, loading: authLoading } = useAuth();
   const toast = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -28,7 +29,7 @@ export default function LoginPage() {
     }
 
     if (currentUser.role === 'admin') {
-      navigate('/dashboard', { replace: true });
+      navigate(getFirstAccessiblePath(currentUser, 'admin') || '/home', { replace: true });
       return;
     }
 
@@ -74,8 +75,16 @@ export default function LoginPage() {
         return;
       }
 
+      if (!profile.isMainAdmin && profile.status === 'inactive') {
+        await logout();
+        const message = 'Your admin account is inactive. Contact your main administrator.';
+        setError(message);
+        toast.error(message);
+        return;
+      }
+
       toast.success('Welcome back, Admin!');
-      navigate('/dashboard', { replace: true });
+      navigate(getFirstAccessiblePath(profile, 'admin') || '/home', { replace: true });
     } catch (err) {
       const message = getFirebaseErrorMessage(err.code);
       setError(message);

@@ -6,6 +6,7 @@ import { Label } from '../components/ui/label';
 import { Eye, EyeOff, Building2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { redirectToAdminPanel } from '../lib/adminPanel';
+import { getFirstAccessiblePath } from '../lib/accessControl';
 import { useToast } from '../hooks/useToast';
 import { logInfo } from '../lib/firestoreDebug';
 
@@ -39,7 +40,7 @@ export default function LoginPage() {
  }
 
  if (userData?.role === 'member') {
- navigate('/dashboard', { replace: true });
+  navigate(getFirstAccessiblePath(userData, 'member') || '/', { replace: true });
  }
  }, [authLoading, user, userData, navigate]);
 
@@ -72,9 +73,16 @@ export default function LoginPage() {
  }
 
  if (data?.role === 'member') {
- toast.success(`Welcome back, ${data.name || 'Team Member'}!`);
- navigate('/dashboard', { replace: true });
- return;
+  if (!data.isMainAdmin && data.status === 'inactive') {
+    await logout();
+    setError('Your account is inactive. Contact administrator.');
+    toast.error('Your account is inactive. Contact administrator.');
+    return;
+  }
+
+  toast.success(`Welcome back, ${data.name || 'Team Member'}!`);
+  navigate(getFirstAccessiblePath(data, 'member') || '/', { replace: true });
+  return;
  }
 
  await logout();

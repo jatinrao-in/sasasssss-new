@@ -1,26 +1,14 @@
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import SplashScreen from './SplashScreen';
+import RestrictedPage from './RestrictedPage';
 import { useAuth } from '../hooks/useAuth';
 import { redirectToAdminPanel } from '../lib/adminPanel';
 import { logInfo } from '../lib/firestoreDebug';
 
-const routePermissionMap = {
-  '/dashboard': 'dashboard',
-  '/tasks': 'projects',
-  '/enquiries': 'enquiry',
-  '/follow-ups': 'followups',
-  '/payments': 'payments',
-  '/rgp': 'rgp',
-  '/notifications': 'dashboard',
-  '/profile': 'dashboard',
-};
-
 export default function ProtectedRoute({ children, requiredRole }) {
   const { currentUser, loading } = useAuth();
-  const location = useLocation();
 
   logInfo('ProtectedRoute', 'Evaluating route access:', {
-    path: location.pathname,
     loading,
     uid: currentUser?.uid || null,
     role: currentUser?.role || null,
@@ -39,29 +27,12 @@ export default function ProtectedRoute({ children, requiredRole }) {
     return null;
   }
 
-  if (currentUser.status === 'inactive') {
+  if (!currentUser.isMainAdmin && currentUser.status === 'inactive') {
     return (
-      <Navigate
-        to="/access-denied"
-        replace
-        state={{ message: 'Your account has been deactivated. Contact admin.' }}
-      />
-    );
-  }
-
-  const permissionKey = routePermissionMap[location.pathname];
-
-  if (
-    permissionKey &&
-    Array.isArray(currentUser.permissions) &&
-    currentUser.permissions.length > 0 &&
-    !currentUser.permissions.includes(permissionKey)
-  ) {
-    return (
-      <Navigate
-        to="/access-denied"
-        replace
-        state={{ message: "You don't have access to this page." }}
+      <RestrictedPage
+        title="Account Inactive"
+        message="Your account is currently inactive."
+        subtext="Contact your administrator to restore access."
       />
     );
   }

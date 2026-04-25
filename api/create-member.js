@@ -1,6 +1,12 @@
 import { Timestamp } from 'firebase-admin/firestore';
 import { getAdminServices } from './_lib/firebaseAdmin.js';
 import { requireAdmin, verifyFirebaseRequest } from './_lib/auth.js';
+import {
+  ensureMainAdminUid,
+  normalizeRole,
+  normalizeStatus,
+  sanitizePermissions,
+} from './_lib/accessControl.js';
 
 const setCorsHeaders = (req, res) => {
   const origin = req.headers.origin || '*';
@@ -20,40 +26,62 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { name, email, password, phone, whatsapp, designation, permissions } = req.body || {};
+  const {
+    name,
+    email,
+    password,
+    phone,
+    whatsapp,
+    designation,
+    role,
+    permissions,
+    status,
+  } = req.body || {};
 
-  if (!name || !email || !password) {
-    return res.status(400).json({ error: 'name, email, and password are required' });
+  if (!name || !email || !password || !phone || !whatsapp || !designation) {
+    return res.status(400).json({ error: 'name, email, password, phone, whatsapp, and designation are required' });
   }
+
+  if (String(password).length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  }
+
+  const normalizedRole = normalizeRole(role);
+  const normalizedStatus = normalizeStatus(status);
+  const normalizedPermissions = sanitizePermissions(normalizedRole, permissions);
 
   try {
     const authContext = await verifyFirebaseRequest(req);
     requireAdmin(authContext);
 
     const { auth, db } = getAdminServices();
+    await ensureMainAdminUid(db, authContext.decodedToken.uid);
+
     const userRecord = await auth.createUser({
-      email,
+      email: email.trim(),
       password,
-      displayName: name,
+      displayName: name.trim(),
     });
 
     await db.collection('users').doc(userRecord.uid).set({
-      name,
-      email,
-      phone: phone || '',
-      whatsapp: whatsapp || '',
-      designation: designation || '',
-      role: 'member',
-      status: 'active',
-      permissions: permissions || ['dashboard', 'projects', 'enquiry', 'followups', 'payments'],
+      name: name.trim(),
+      email: email.trim(),
+      phone: String(phone).trim(),
+      whatsapp: String(whatsapp).trim(),
+      designation: designation.trim(),
+      role: normalizedRole,
+      permissions: normalizedPermissions,
+      status: normalizedStatus,
+      fcmToken: null,
       createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
       createdBy: authContext.decodedToken.uid,
     });
 
     return res.status(200).json({
       success: true,
       uid: userRecord.uid,
-      message: `Member ${name} created successfully`,
+      message: `${normalizedRole === 'admin' ? 'Admin' : 'Member'} ${name.trim()} created successfully`,
     });
   } catch (error) {
     console.error('[create-member]', error.message);

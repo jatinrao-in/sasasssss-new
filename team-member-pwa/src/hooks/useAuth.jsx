@@ -5,10 +5,15 @@ import {
   signOut,
   updatePassword,
 } from 'firebase/auth';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, onSnapshot, setDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { redirectToAdminPanel } from '../lib/adminPanel';
 import { COLLECTIONS } from '../lib/firestore-helpers';
+import {
+  getAllPageKeys,
+  normalizeRole,
+  resolveUserPermissions,
+} from '../lib/accessControl';
 import { logDocSnapshot, logError, logInfo } from '../lib/firestoreDebug';
 
 const AuthContext = createContext(null);
@@ -34,18 +39,87 @@ const buildCurrentUser = (firebaseUser, profile) => {
     return null;
   }
 
+  const {
+    isMainAdmin,
+    permissions,
+    role,
+    status,
+  } = resolveUserPermissions(profile, profile?.mainAdminUid);
+
   return {
     uid: firebaseUser.uid,
     email: firebaseUser.email,
     displayName: firebaseUser.displayName,
     ...profile,
+    role,
+    status,
+    permissions,
+    isMainAdmin,
   };
 };
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
+  const [mainAdminUid, setMainAdminUid] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => onSnapshot(
+    doc(db, COLLECTIONS.settings, 'app'),
+    (snapshot) => {
+      setMainAdminUid(snapshot.data()?.mainAdminUid || null);
+    },
+    (error) => {
+      logError('useAuth.settings', error);
+      setMainAdminUid(null);
+    },
+  ), []);
+
+  useEffect(() => {
+    if (mainAdminUid || !userData?.uid || normalizeRole(userData.role) !== 'admin') {
+      return;
+    }
+
+    let cancelled = false;
+
+    const resolveFallbackMainAdmin = async () => {
+      try {
+        const usersSnapshot = await getDocs(collection(db, COLLECTIONS.users));
+        const admins = usersSnapshot.docs
+          .map((userDoc) => ({ id: userDoc.id, ...userDoc.data() }))
+          .filter((profile) => normalizeRole(profile.role) === 'admin')
+          .sort((firstAdmin, secondAdmin) => {
+            const firstCreatedAt = firstAdmin.createdAt?.toDate?.()?.getTime?.() ?? 0;
+            const secondCreatedAt = secondAdmin.createdAt?.toDate?.()?.getTime?.() ?? 0;
+            return firstCreatedAt - secondCreatedAt;
+          });
+
+        const fallbackAdmin = admins[0]?.id || null;
+
+        if (!fallbackAdmin || cancelled) {
+          return;
+        }
+
+        setMainAdminUid(fallbackAdmin);
+
+        if (fallbackAdmin === userData.uid) {
+          await setDoc(
+            doc(db, COLLECTIONS.settings, 'app'),
+            { mainAdminUid: fallbackAdmin },
+            { merge: true },
+          );
+        }
+      } catch (error) {
+        logError('useAuth.mainAdminFallback', error);
+      }
+    };
+
+    resolveFallbackMainAdmin();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mainAdminUid, userData?.role, userData?.uid]);
 
   useEffect(() => {
     let unsubscribeProfile = () => {};
@@ -69,13 +143,19 @@ export function AuthProvider({ children }) {
         (snapshot) => {
           logDocSnapshot('useAuth.profile', snapshot);
           const profile = snapshot.exists()
-            ? { uid: firebaseUser.uid, email: firebaseUser.email, ...snapshot.data() }
+            ? {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              mainAdminUid,
+              ...snapshot.data(),
+            }
             : {
               uid: firebaseUser.uid,
               email: firebaseUser.email,
+              mainAdminUid,
               role: 'member',
               name: firebaseUser.email || 'Unknown user',
-              permissions: [],
+              permissions: getAllPageKeys('member'),
             };
 
           if (profile.role === 'admin') {
@@ -94,15 +174,16 @@ export function AuthProvider({ children }) {
           try {
             const fallbackProfile = await fetchUserProfile(firebaseUser.uid, firebaseUser.email);
             logInfo('useAuth', 'Loaded fallback profile for:', firebaseUser.uid);
-            setUserData(fallbackProfile);
+            setUserData({ ...fallbackProfile, mainAdminUid });
           } catch (fallbackError) {
             logError('useAuth.fallbackProfile', fallbackError);
             setUserData({
               uid: firebaseUser.uid,
               email: firebaseUser.email,
+              mainAdminUid,
               role: 'member',
               name: firebaseUser.email || 'Unknown user',
-              permissions: [],
+              permissions: getAllPageKeys('member'),
             });
           } finally {
             setLoading(false);
@@ -115,13 +196,17 @@ export function AuthProvider({ children }) {
       unsubscribeProfile();
       unsubscribeAuth();
     };
-  }, []);
+  }, [mainAdminUid]);
 
   const login = async (email, password) => {
     const credential = await signInWithEmailAndPassword(auth, email, password);
-    const profile = await fetchUserProfile(credential.user.uid, credential.user.email);
+    const profile = {
+      ...(await fetchUserProfile(credential.user.uid, credential.user.email)),
+      mainAdminUid,
+    };
+
     setUserData(profile);
-    return profile;
+    return buildCurrentUser(credential.user, profile);
   };
 
   const logout = async () => {
@@ -137,8 +222,8 @@ export function AuthProvider({ children }) {
   };
 
   const currentUser = useMemo(
-    () => buildCurrentUser(user, userData),
-    [user, userData],
+    () => buildCurrentUser(user, { ...(userData || {}), mainAdminUid }),
+    [mainAdminUid, user, userData],
   );
 
   const value = {
@@ -149,6 +234,7 @@ export function AuthProvider({ children }) {
     login,
     logout,
     changePassword,
+    mainAdminUid,
     isAdmin: currentUser?.role === 'admin',
     isMember: currentUser?.role === 'member',
   };

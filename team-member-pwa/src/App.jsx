@@ -1,15 +1,18 @@
 import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { RealtimeProvider } from './context/RealtimeContext';
-import { AuthProvider } from './hooks/useAuth';
+import { AuthProvider, useAuth } from './hooks/useAuth';
 import { ToastProvider } from './hooks/useToast';
 import ProtectedRoute from './components/ProtectedRoute';
+import MemberPageRoute from './components/MemberPageRoute';
+import RestrictedPage from './components/RestrictedPage';
 import MobileLayout from './components/layout/MobileLayout';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from './components/ui/sheet';
 import { Button } from './components/ui/button';
 import { usePushNotifications } from './hooks/usePushNotifications';
 import SplashScreen from './components/SplashScreen';
 import OfflineBanner from './components/OfflineBanner';
+import { getFirstAccessiblePath } from './lib/accessControl';
 
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const AccessDeniedPage = lazy(() => import('./pages/AccessDeniedPage'));
@@ -57,6 +60,31 @@ function MemberLayout() {
   );
 }
 
+function MemberHomeRedirect() {
+  const { currentUser, loading } = useAuth();
+
+  if (loading) {
+    return <SplashScreen />;
+  }
+
+  if (!currentUser) {
+    return <Navigate to="/login" replace />;
+  }
+
+  const firstAccessiblePath = getFirstAccessiblePath(currentUser, 'member');
+
+  if (firstAccessiblePath) {
+    return <Navigate to={firstAccessiblePath} replace />;
+  }
+
+  return (
+    <RestrictedPage
+      message="Your account is active, but no PWA pages are assigned right now."
+      subtext="Ask your administrator to grant access to at least one member page."
+    />
+  );
+}
+
 function ExitHandler() {
   const [showExit, setShowExit] = useState(false);
   const location = useLocation();
@@ -66,6 +94,7 @@ function ExitHandler() {
 
     const handlePopState = () => {
       const mainTabs = ['/dashboard', '/tasks', '/enquiries', '/rgp', '/profile', '/login'];
+
       if (mainTabs.includes(window.location.pathname) || mainTabs.includes(location.pathname)) {
         window.history.pushState(null, null, window.location.pathname);
         setShowExit(true);
@@ -215,15 +244,64 @@ export default function App() {
                 <Route path="/access-denied" element={<AccessDeniedPage />} />
 
                 <Route element={<MemberLayout />}>
-                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                  <Route path="/dashboard" element={<DashboardPage />} />
-                  <Route path="/tasks" element={<TasksPage />} />
-                  <Route path="/enquiries" element={<EnquiriesPage />} />
-                  <Route path="/follow-ups" element={<FollowUpsPage />} />
-                  <Route path="/payments" element={<PaymentsPage />} />
-                  <Route path="/rgp" element={<RgpPage />} />
+                  <Route path="/" element={<MemberHomeRedirect />} />
+                  <Route
+                    path="/dashboard"
+                    element={(
+                      <MemberPageRoute pageKey="dashboard">
+                        <DashboardPage />
+                      </MemberPageRoute>
+                    )}
+                  />
+                  <Route
+                    path="/tasks"
+                    element={(
+                      <MemberPageRoute pageKey="tasks">
+                        <TasksPage />
+                      </MemberPageRoute>
+                    )}
+                  />
+                  <Route
+                    path="/enquiries"
+                    element={(
+                      <MemberPageRoute pageKey="enquiry">
+                        <EnquiriesPage />
+                      </MemberPageRoute>
+                    )}
+                  />
+                  <Route
+                    path="/follow-ups"
+                    element={(
+                      <MemberPageRoute pageKey="followups">
+                        <FollowUpsPage />
+                      </MemberPageRoute>
+                    )}
+                  />
+                  <Route
+                    path="/payments"
+                    element={(
+                      <MemberPageRoute pageKey="payments">
+                        <PaymentsPage />
+                      </MemberPageRoute>
+                    )}
+                  />
+                  <Route
+                    path="/rgp"
+                    element={(
+                      <MemberPageRoute pageKey="rgp">
+                        <RgpPage />
+                      </MemberPageRoute>
+                    )}
+                  />
                   <Route path="/notifications" element={<NotificationsPage />} />
-                  <Route path="/profile" element={<ProfilePage />} />
+                  <Route
+                    path="/profile"
+                    element={(
+                      <MemberPageRoute pageKey="profile">
+                        <ProfilePage />
+                      </MemberPageRoute>
+                    )}
+                  />
                 </Route>
 
                 <Route path="*" element={<Navigate to="/login" replace />} />

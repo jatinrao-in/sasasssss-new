@@ -17,6 +17,7 @@ export const COLLECTIONS = {
  projects: 'projects',
  rgp: 'rgp',
  salary: 'salary',
+ settings: 'settings',
  tasks: 'tasks',
  tools: 'tools',
  users: 'users',

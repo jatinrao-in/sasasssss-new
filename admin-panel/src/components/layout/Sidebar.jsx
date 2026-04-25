@@ -1,113 +1,115 @@
-import { useState } from 'react';
+import { useMemo } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
- LayoutDashboard,
- FolderKanban,
- ClipboardList,
- MessageSquare,
- CreditCard,
- Package,
- Wallet,
- Users,
- Settings,
- LogOut,
- ChevronLeft,
- ChevronRight,
- Building2,
- ArrowUpRight,
- Wrench,
- MessageCircle,
- Bell,
+  ArrowUpRight,
+  Building2,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  CreditCard,
+  FolderKanban,
+  LayoutDashboard,
+  LogOut,
+  MessageCircle,
+  MessageSquare,
+  Package,
+  Settings,
+  Users,
+  Wallet,
+  Wrench,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { ADMIN_PAGE_OPTIONS, getAccessiblePages } from '../../lib/accessControl';
 
-const navItems = [
- { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
- { path: '/projects', label: 'Project Management', icon: FolderKanban },
- { path: '/enquiry', label: 'Open Enquiry', icon: ClipboardList },
- { path: '/followup', label: 'Follow-Up', icon: MessageSquare },
- { path: '/payments', label: 'Pending Payments', icon: CreditCard },
- { path: '/outgoing-payments', label: 'Outgoing Payments', icon: ArrowUpRight },
- { path: '/rgp-challan', label: 'RGP / Challan', icon: Package },
- { path: '/salary', label: 'Salary Management', icon: Wallet },
- { path: '/tools', label: 'Tool Assign', icon: Wrench },
- { path: '/team', label: 'Team Members', icon: Users },
- { path: '/whatsapp', label: 'WhatsApp Automation', icon: MessageCircle },
- { path: '/notification-logs', label: 'Notification Logs', icon: Bell },
- { path: '/settings', label: 'Settings', icon: Settings },
-];
+const iconByKey = {
+  dashboard: LayoutDashboard,
+  projects: FolderKanban,
+  enquiry: ClipboardList,
+  followups: MessageSquare,
+  payments: CreditCard,
+  outgoing_payments: ArrowUpRight,
+  rgp: Package,
+  salary: Wallet,
+  tools: Wrench,
+  team: Users,
+  settings: Settings,
+  whatsapp: MessageCircle,
+};
 
 export default function Sidebar({ collapsed, setCollapsed }) {
- const navigate = useNavigate();
- const { logout } = useAuth();
+  const navigate = useNavigate();
+  const { currentUser, logout } = useAuth();
 
- const handleLogout = async () => {
- await logout();
- navigate('/');
- };
+  const visiblePages = useMemo(() => (
+    currentUser?.isMainAdmin
+      ? ADMIN_PAGE_OPTIONS
+      : getAccessiblePages(currentUser, 'admin')
+  ), [currentUser]);
 
- return (
- <aside
- className={`fixed left-0 top-0 h-screen bg-[var(--sidebar-bg)] border-r border-[var(--border-primary)] shadow-sm z-40 transition-all duration-300 flex flex-col ${
- collapsed ? 'w-16' : 'w-60'
- }`}
- >
- {/* Logo */}
- <div className={`flex items-center h-16 border-b border-[var(--border-primary)] px-4 ${collapsed ? 'justify-center' : 'gap-3'}`}>
- <div className="w-8 h-8 bg-teal-600 rounded-lg flex items-center justify-center flex-shrink-0">
- <Building2 className="w-4 h-4 text-white" />
- </div>
- {!collapsed && (
- <div>
- <p className="text-sm font-bold text-[var(--text-primary)] leading-tight">AdminPanel</p>
- <p className="text-xs text-gray-400">Enterprise Suite</p>
- </div>
- )}
- </div>
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
 
- {/* Nav Items */}
- <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-0.5">
- {navItems.map((item) => {
- const Icon = item.icon;
- return (
- <NavLink
- key={item.path}
- to={item.path}
- title={collapsed ? item.label : ''}
- className={({ isActive }) =>
- `sidebar-link ${isActive ? 'active' : ''} ${collapsed ? 'justify-center px-2' : ''}`
- }
- >
- <Icon className="w-4.5 h-4.5 flex-shrink-0" style={{ width: '18px', height: '18px' }} />
- {!collapsed && <span className="truncate">{item.label}</span>}
- </NavLink>
- );
- })}
- </nav>
+  return (
+    <aside
+      className={`fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-[var(--border-primary)] bg-[var(--sidebar-bg)] shadow-sm transition-all duration-300 ${
+        collapsed ? 'w-16' : 'w-60'
+      }`}
+    >
+      <div className={`flex h-16 items-center border-b border-[var(--border-primary)] px-4 ${collapsed ? 'justify-center' : 'gap-3'}`}>
+        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-teal-600">
+          <Building2 className="h-4 w-4 text-white" />
+        </div>
+        {!collapsed && (
+          <div>
+            <p className="text-sm font-bold leading-tight text-[var(--text-primary)]">Admin Panel</p>
+            <p className="text-xs text-gray-400">
+              {currentUser?.isMainAdmin ? 'Main Admin' : 'Access Controlled'}
+            </p>
+          </div>
+        )}
+      </div>
 
- {/* Logout */}
- <div className="py-4 px-2 border-t border-[var(--border-primary)]">
- <button
- onClick={handleLogout}
- title={collapsed ? 'Logout' : ''}
- className={`sidebar-link w-full text-[var(--text-danger)] hover:bg-[var(--bg-hover)] ${collapsed ? 'justify-center px-2' : ''}`}
- >
- <LogOut style={{ width: '18px', height: '18px' }} className="flex-shrink-0" />
- {!collapsed && <span>Logout</span>}
- </button>
- </div>
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-4">
+        {visiblePages.map((page) => {
+          const Icon = iconByKey[page.key] || LayoutDashboard;
 
- {/* Collapse Toggle */}
- <button
- onClick={() => setCollapsed(!collapsed)}
- className="absolute -right-3 top-20 bg-[var(--sidebar-bg)] border border-[var(--border-primary)] rounded-full w-6 h-6 flex items-center justify-center shadow-sm hover:shadow-md transition-shadow z-50"
- >
- {collapsed ? (
- <ChevronRight className="w-3 h-3 text-gray-500" />
- ) : (
- <ChevronLeft className="w-3 h-3 text-gray-500" />
- )}
- </button>
- </aside>
- );
+          return (
+            <NavLink
+              key={page.key}
+              to={page.path}
+              title={collapsed ? page.label : ''}
+              className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''} ${collapsed ? 'justify-center px-2' : ''}`}
+            >
+              <Icon className="h-[18px] w-[18px] flex-shrink-0" />
+              {!collapsed && <span className="truncate">{page.label}</span>}
+            </NavLink>
+          );
+        })}
+      </nav>
+
+      <div className="border-t border-[var(--border-primary)] px-2 py-4">
+        <button
+          onClick={handleLogout}
+          title={collapsed ? 'Logout' : ''}
+          className={`sidebar-link w-full text-[var(--text-danger)] hover:bg-[var(--bg-hover)] ${collapsed ? 'justify-center px-2' : ''}`}
+        >
+          <LogOut className="h-[18px] w-[18px] flex-shrink-0" />
+          {!collapsed && <span>Logout</span>}
+        </button>
+      </div>
+
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        className="absolute -right-3 top-20 z-50 flex h-6 w-6 items-center justify-center rounded-full border border-[var(--border-primary)] bg-[var(--sidebar-bg)] shadow-sm transition-shadow hover:shadow-md"
+      >
+        {collapsed ? (
+          <ChevronRight className="h-3 w-3 text-gray-500" />
+        ) : (
+          <ChevronLeft className="h-3 w-3 text-gray-500" />
+        )}
+      </button>
+    </aside>
+  );
 }

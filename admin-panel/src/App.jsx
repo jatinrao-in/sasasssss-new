@@ -1,8 +1,10 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './hooks/useAuth';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { AuthProvider, useAuth } from './hooks/useAuth';
 import { RealtimeProvider } from './context/RealtimeContext';
 import { ToastProvider } from './hooks/useToast';
 import ProtectedRoute from './components/ProtectedRoute';
+import AdminRoute from './components/AdminRoute';
+import RestrictedPage from './components/RestrictedPage';
 import Layout from './components/layout/Layout';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -21,14 +23,39 @@ import SettingsPage from './pages/SettingsPage';
 import NotificationLogsPage from './pages/NotificationLogsPage';
 import SplashScreen from './components/SplashScreen';
 import AIAssistantPanel from './components/ui/AIAssistantPanel';
+import { getFirstAccessiblePath } from './lib/accessControl';
 
-// Wrapper that combines ProtectedRoute + Layout
 function AdminLayout() {
   return (
     <ProtectedRoute requiredRole="admin">
       <Layout />
       <AIAssistantPanel />
     </ProtectedRoute>
+  );
+}
+
+function AdminHomeRedirect() {
+  const { currentUser, loading } = useAuth();
+
+  if (loading) {
+    return <SplashScreen />;
+  }
+
+  if (!currentUser) {
+    return <Navigate to="/" replace />;
+  }
+
+  const firstAccessiblePath = getFirstAccessiblePath(currentUser, 'admin');
+
+  if (firstAccessiblePath) {
+    return <Navigate to={firstAccessiblePath} replace />;
+  }
+
+  return (
+    <RestrictedPage
+      message="Your account is active, but you do not currently have any admin pages assigned."
+      subtext="Ask your main administrator to grant access to at least one admin page."
+    />
   );
 }
 
@@ -39,32 +66,130 @@ export default function App() {
         <RealtimeProvider>
           <ToastProvider>
             <SplashScreen />
-              <Routes>
-                {/* Public Route */}
-                <Route path="/" element={<LoginPage />} />
+            <Routes>
+              <Route path="/" element={<LoginPage />} />
 
-                {/* Protected Routes (wrapped in Layout) */}
-                <Route element={<AdminLayout />}>
-                  <Route path="/admin/dashboard" element={<DashboardPage />} />
-                  <Route path="/dashboard" element={<DashboardPage />} />
-                  <Route path="/projects" element={<ProjectsPage />} />
-                  <Route path="/projects/:id" element={<ProjectDetailPage />} />
-                  <Route path="/enquiry" element={<EnquiryPage />} />
-                  <Route path="/followup" element={<FollowupPage />} />
-                  <Route path="/payments" element={<PaymentsPage />} />
-                  <Route path="/outgoing-payments" element={<OutgoingPaymentsPage />} />
-                  <Route path="/rgp-challan" element={<RgpChallanPage />} />
-                  <Route path="/salary" element={<SalaryPage />} />
-                  <Route path="/tools" element={<ToolAssignPage />} />
-                  <Route path="/team" element={<TeamPage />} />
-                  <Route path="/whatsapp" element={<WhatsAppAutomationPage />} />
-                  <Route path="/notification-logs" element={<NotificationLogsPage />} />
-                  <Route path="/settings" element={<SettingsPage />} />
-                </Route>
+              <Route element={<AdminLayout />}>
+                <Route path="/home" element={<AdminHomeRedirect />} />
+                <Route
+                  path="/dashboard"
+                  element={(
+                    <AdminRoute pageKey="dashboard">
+                      <DashboardPage />
+                    </AdminRoute>
+                  )}
+                />
+                <Route
+                  path="/projects"
+                  element={(
+                    <AdminRoute pageKey="projects">
+                      <ProjectsPage />
+                    </AdminRoute>
+                  )}
+                />
+                <Route
+                  path="/projects/:id"
+                  element={(
+                    <AdminRoute pageKey="projects">
+                      <ProjectDetailPage />
+                    </AdminRoute>
+                  )}
+                />
+                <Route
+                  path="/enquiry"
+                  element={(
+                    <AdminRoute pageKey="enquiry">
+                      <EnquiryPage />
+                    </AdminRoute>
+                  )}
+                />
+                <Route
+                  path="/followups"
+                  element={(
+                    <AdminRoute pageKey="followups">
+                      <FollowupPage />
+                    </AdminRoute>
+                  )}
+                />
+                <Route
+                  path="/payments"
+                  element={(
+                    <AdminRoute pageKey="payments">
+                      <PaymentsPage />
+                    </AdminRoute>
+                  )}
+                />
+                <Route
+                  path="/outgoing-payments"
+                  element={(
+                    <AdminRoute pageKey="outgoing_payments">
+                      <OutgoingPaymentsPage />
+                    </AdminRoute>
+                  )}
+                />
+                <Route
+                  path="/rgp"
+                  element={(
+                    <AdminRoute pageKey="rgp">
+                      <RgpChallanPage />
+                    </AdminRoute>
+                  )}
+                />
+                <Route
+                  path="/salary"
+                  element={(
+                    <AdminRoute pageKey="salary">
+                      <SalaryPage />
+                    </AdminRoute>
+                  )}
+                />
+                <Route
+                  path="/tools"
+                  element={(
+                    <AdminRoute pageKey="tools">
+                      <ToolAssignPage />
+                    </AdminRoute>
+                  )}
+                />
+                <Route
+                  path="/team"
+                  element={(
+                    <AdminRoute pageKey="team">
+                      <TeamPage />
+                    </AdminRoute>
+                  )}
+                />
+                <Route
+                  path="/whatsapp"
+                  element={(
+                    <AdminRoute pageKey="whatsapp">
+                      <WhatsAppAutomationPage />
+                    </AdminRoute>
+                  )}
+                />
+                <Route
+                  path="/notification-logs"
+                  element={(
+                    <AdminRoute pageKey="whatsapp">
+                      <NotificationLogsPage />
+                    </AdminRoute>
+                  )}
+                />
+                <Route
+                  path="/settings"
+                  element={(
+                    <AdminRoute pageKey="settings">
+                      <SettingsPage />
+                    </AdminRoute>
+                  )}
+                />
 
-                {/* Fallback */}
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
+                <Route path="/followup" element={<Navigate to="/followups" replace />} />
+                <Route path="/rgp-challan" element={<Navigate to="/rgp" replace />} />
+              </Route>
+
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
           </ToastProvider>
         </RealtimeProvider>
       </AuthProvider>

@@ -18,7 +18,7 @@ const notificationBadges = {
 };
 
 export default function Header({ collapsed }) {
- const { userData, logout } = useAuth();
+ const { currentUser, userData, logout } = useAuth();
  const toast = useToast();
  const { deleteState, confirmDelete, handleConfirm, handleClose } = useDelete();
  const {
@@ -131,7 +131,9 @@ export default function Header({ collapsed }) {
  </div>
  <div className="hidden sm:block">
  <p className="text-sm font-semibold text-[var(--text-primary)] leading-tight">{userData?.name || 'Admin'}</p>
- <p className="text-xs text-gray-400">{userData?.role === 'admin' ? 'Super Admin' : 'Member'}</p>
+ <p className="text-xs text-gray-400">
+ {currentUser?.isMainAdmin ? 'Main Admin' : currentUser?.role === 'admin' ? 'Admin' : 'Team Member'}
+ </p>
  </div>
  <ChevronDown className="w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
  </div>
