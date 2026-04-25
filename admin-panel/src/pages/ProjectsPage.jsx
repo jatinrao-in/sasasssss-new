@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { Timestamp } from 'firebase/firestore';
 import { useProjects } from '../hooks/useProjects';
+import useAuditLog from '../hooks/useAuditLog';
 import { useToast } from '../hooks/useToast';
 import useDelete from '../hooks/useDelete';
 import { formatLakhs } from '../lib/formatters';
@@ -120,6 +121,7 @@ function getHealthIndicator(project) {
 export default function ProjectsPage() {
  const navigate = useNavigate();
  const toast = useToast();
+ const { log } = useAuditLog();
  const { deleteState, confirmDelete, handleConfirm, handleClose } = useDelete();
  const { projects, loading, addProject, updateProject } = useProjects();
  const [showModal, setShowModal] = useState(false);
@@ -201,6 +203,7 @@ export default function ProjectsPage() {
  description: `Delete "${projectName}"? All tasks and expenses will also be permanently deleted.`,
  onConfirm: async () => {
  await deleteProjectCascade(projectId);
+ await log('project_deleted', { projectId, projectName });
  setSelectedProjectIds((prev) => prev.filter((id) => id !== projectId));
  toast.success(`Project "${projectName}" deleted`);
  },
@@ -216,6 +219,7 @@ export default function ProjectsPage() {
  description: `Permanently delete ${idsToDelete.length} selected projects? All tasks and expenses for those projects will also be deleted. This cannot be undone.`,
  onConfirm: async () => {
  await Promise.all(idsToDelete.map((projectId) => deleteProjectCascade(projectId)));
+ await log('projects_bulk_deleted', { projectIds: idsToDelete });
  setSelectedProjectIds([]);
  toast.success(`${idsToDelete.length} projects deleted`);
  },

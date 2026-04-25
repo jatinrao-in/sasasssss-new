@@ -12,6 +12,7 @@ import {
  where,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import useAuditLog from './useAuditLog';
 import {
  COLLECTIONS,
  recalculateProjectCompletion,
@@ -21,6 +22,7 @@ import {
 export function useProjects() {
  const [projects, setProjects] = useState([]);
  const [loading, setLoading] = useState(true);
+ const { log } = useAuditLog();
 
  useEffect(() => {
  const projectQuery = query(collection(db, COLLECTIONS.projects), orderBy('createdAt', 'desc'));
@@ -40,20 +42,33 @@ export function useProjects() {
  return () => unsubscribe();
  }, []);
 
- const addProject = async (projectData) => addDoc(collection(db, COLLECTIONS.projects), {
- ...projectData,
- completionPercent: 0,
- createdAt: serverTimestamp(),
- status: 'active',
- totalExpense: 0,
- });
+ const addProject = async (projectData) => {
+  const projectRef = await addDoc(collection(db, COLLECTIONS.projects), {
+   ...projectData,
+   completionPercent: 0,
+   createdAt: serverTimestamp(),
+   status: 'active',
+   totalExpense: 0,
+  });
 
- const updateProject = async (projectId, updates) => updateDoc(
- doc(db, COLLECTIONS.projects, projectId),
- updates,
- );
+  await log('project_created', {
+   projectId: projectRef.id,
+   projectName: projectData.name || '',
+   client: projectData.client || '',
+  });
 
- const deleteProject = async (projectId) => deleteDoc(doc(db, COLLECTIONS.projects, projectId));
+  return projectRef;
+ };
+
+ const updateProject = async (projectId, updates) => {
+  await updateDoc(doc(db, COLLECTIONS.projects, projectId), updates);
+  await log('project_updated', { projectId, updates });
+ };
+
+ const deleteProject = async (projectId) => {
+  await deleteDoc(doc(db, COLLECTIONS.projects, projectId));
+  await log('project_deleted', { projectId });
+ };
 
  const recalcTotalExpense = async (projectId) => recalculateProjectTotalExpense(db, projectId);
 
@@ -73,6 +88,7 @@ export function useProjects() {
 export function useExpenses(projectId = null) {
  const [expenses, setExpenses] = useState([]);
  const [loading, setLoading] = useState(true);
+ const { log } = useAuditLog();
 
  useEffect(() => {
  if (!projectId) {
@@ -117,6 +133,13 @@ export function useExpenses(projectId = null) {
  });
 
  await recalculateProjectTotalExpense(db, expenseData.projectId);
+ await log('expense_created', {
+  expenseId: expenseRef.id,
+  projectId: expenseData.projectId,
+  taskId: expenseData.taskId || '',
+  amount: Number(expenseData.amount || 0),
+  activity: expenseData.activity || '',
+ });
  return expenseRef;
  };
 

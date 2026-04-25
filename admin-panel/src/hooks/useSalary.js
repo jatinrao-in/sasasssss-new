@@ -9,6 +9,7 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import useAuditLog from './useAuditLog';
 import { getSalaryMonthDoc, getSalaryMonthsCollection } from '../lib/firestore-helpers';
 
 // Calculation logic
@@ -119,6 +120,8 @@ export function useSalaryForMember(uid) {
 
 // Salary write operations.
 export function useSalaryActions() {
+  const { log } = useAuditLog();
+
   const saveSalary = useCallback(async (uid, month, data) => {
     const calc = calcSalary(data.baseSalary, data.workingDays, data.presentDays);
     const ref = getSalaryMonthDoc(db, uid, month);
@@ -145,7 +148,14 @@ export function useSalaryActions() {
       },
       { merge: true }
     );
-  }, []);
+
+    await log('salary_saved', {
+      memberUid: uid,
+      month,
+      memberName: data.memberName || '',
+      netSalary: calc.netSalary,
+    });
+  }, [log]);
 
   const markPaid = useCallback(async (uid, month) => {
     const ref = getSalaryMonthDoc(db, uid, month);
@@ -154,11 +164,13 @@ export function useSalaryActions() {
       paidDate: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
-  }, []);
+    await log('salary_marked_paid', { memberUid: uid, month });
+  }, [log]);
 
   const deleteSalary = useCallback(async (uid, month) => {
     await deleteDoc(getSalaryMonthDoc(db, uid, month));
-  }, []);
+    await log('salary_deleted', { memberUid: uid, month });
+  }, [log]);
 
   const bulkSetWorkingDays = useCallback(async (uids, month, workingDays) => {
     await Promise.all(
@@ -170,7 +182,8 @@ export function useSalaryActions() {
         )
       )
     );
-  }, []);
+    await log('salary_working_days_bulk_set', { memberUids: uids, month, workingDays: Number(workingDays) });
+  }, [log]);
 
   const bulkMarkPaid = useCallback(async (rows) => {
     await Promise.all(
@@ -184,7 +197,11 @@ export function useSalaryActions() {
           })
         )
     );
-  }, []);
+    await log('salary_bulk_mark_paid', {
+      count: rows.filter((row) => row.status === 'pending').length,
+      months: Array.from(new Set(rows.map((row) => row.month || row.id))),
+    });
+  }, [log]);
 
   const initMonthForAllMembers = useCallback(async (members, month) => {
     await Promise.all(
@@ -213,7 +230,11 @@ export function useSalaryActions() {
         )
       )
     );
-  }, []);
+    await log('salary_month_initialized', {
+      month,
+      memberCount: members.length,
+    });
+  }, [log]);
 
   return {
     saveSalary,

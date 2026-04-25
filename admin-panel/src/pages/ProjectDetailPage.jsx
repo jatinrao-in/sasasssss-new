@@ -8,6 +8,7 @@ import { useProjects, useExpenses } from '../hooks/useProjects';
 import { useTasks } from '../hooks/useTasks';
 import { useTeam } from '../hooks/useTeam';
 import { useToast } from '../hooks/useToast';
+import useAuditLog from '../hooks/useAuditLog';
 import useDelete from '../hooks/useDelete';
 import { formatDate, formatCurrency, formatLakhs } from '../lib/formatters';
 import { deleteExpenseAndRecalculate, deleteTaskCascade } from '../lib/deleteActions';
@@ -188,6 +189,7 @@ export default function ProjectDetailPage() {
  const { id } = useParams();
  const navigate = useNavigate();
  const toast = useToast();
+ const { log } = useAuditLog();
  const { deleteState, confirmDelete, handleConfirm, handleClose } = useDelete();
  const { userData } = useAuth();
  const { addNotification } = useNotifications(userData?.uid);
@@ -246,7 +248,7 @@ export default function ProjectDetailPage() {
 
     // Silent WhatsApp notification via Gemini + MSG91
     const member = members.find(m => m.id === taskData.assignedTo);
-    notify('task_assigned', {
+   notify('task_assigned', {
      memberUid: taskData.assignedTo,
      whatsappNumber: member?.whatsapp || '',
      memberName: member?.name || taskData.assignedToName || '',
@@ -256,9 +258,17 @@ export default function ProjectDetailPage() {
      deadline: taskData.targetDate
       ? fmtDate(new Date(taskData.targetDate.seconds * 1000))
       : 'Not set',
-     description: taskData.description || '',
+    description: taskData.description || '',
     });
    }
+
+   await log('task_assigned', {
+    taskId: taskRef.id,
+    taskName: taskData.title || '',
+    assignedTo: taskData.assignedTo || '',
+    projectId: id,
+    projectName: project.name || '',
+   });
 
    toast.success('Task added!');
   } catch (error) {
@@ -284,6 +294,7 @@ export default function ProjectDetailPage() {
  description: `Delete task "${taskName}"? Related task expenses will also be removed. This cannot be undone.`,
  onConfirm: async () => {
  await deleteTaskCascade(taskId, id);
+ await log('task_deleted', { taskId, taskName, projectId: id, projectName: project.name || '' });
  setSelectedTaskIds((prev) => prev.filter((selectedId) => selectedId !== taskId));
  toast.success('Task deleted');
  },
@@ -296,6 +307,7 @@ export default function ProjectDetailPage() {
  description: 'Remove this expense entry?',
  onConfirm: async () => {
  await deleteExpenseAndRecalculate(expenseId, id);
+ await log('expense_deleted', { expenseId, projectId: id, projectName: project.name || '' });
  toast.success('Expense deleted');
  },
  });
@@ -310,6 +322,7 @@ export default function ProjectDetailPage() {
  description: `Permanently delete ${taskIdsToDelete.length} selected tasks? Related task expenses will also be deleted. This cannot be undone.`,
  onConfirm: async () => {
  await Promise.all(taskIdsToDelete.map((taskId) => deleteTaskCascade(taskId, id)));
+ await log('tasks_bulk_deleted', { taskIds: taskIdsToDelete, projectId: id, projectName: project.name || '' });
  setSelectedTaskIds([]);
  toast.success(`${taskIdsToDelete.length} tasks deleted`);
  },

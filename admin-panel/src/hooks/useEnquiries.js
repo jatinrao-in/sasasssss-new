@@ -12,6 +12,7 @@ import {
  where,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import useAuditLog from './useAuditLog';
 import {
  COLLECTIONS,
  calculateOverdueDays,
@@ -21,6 +22,7 @@ import {
 export function useEnquiries(filterByUser = null) {
  const [enquiries, setEnquiries] = useState([]);
  const [loading, setLoading] = useState(true);
+ const { log } = useAuditLog();
 
  useEffect(() => {
  const enquiryQuery = filterByUser
@@ -53,21 +55,40 @@ export function useEnquiries(filterByUser = null) {
  return () => unsubscribe();
  }, [filterByUser]);
 
- const addEnquiry = async (enquiryData) => addDoc(collection(db, COLLECTIONS.enquiries), {
- ...enquiryData,
- assignedDate: serverTimestamp(),
- createdAt: serverTimestamp(),
- status: 'open',
- });
+ const addEnquiry = async (enquiryData) => {
+  const enquiryRef = await addDoc(collection(db, COLLECTIONS.enquiries), {
+   ...enquiryData,
+   assignedDate: serverTimestamp(),
+   createdAt: serverTimestamp(),
+   status: 'open',
+  });
 
- const updateEnquiry = async (id, updates) => updateDoc(doc(db, COLLECTIONS.enquiries, id), updates);
+  await log('enquiry_created', {
+   enquiryId: enquiryRef.id,
+   customerName: enquiryData.customerName || '',
+   assignedTo: enquiryData.assignedTo || '',
+  });
 
- const deleteEnquiry = async (id) => deleteDoc(doc(db, COLLECTIONS.enquiries, id));
+  return enquiryRef;
+ };
 
- const markClosed = async (id) => updateDoc(doc(db, COLLECTIONS.enquiries, id), {
- status: 'closed',
- updatedAt: serverTimestamp(),
- });
+ const updateEnquiry = async (id, updates) => {
+  await updateDoc(doc(db, COLLECTIONS.enquiries, id), updates);
+  await log('enquiry_updated', { enquiryId: id, updates });
+ };
+
+ const deleteEnquiry = async (id) => {
+  await deleteDoc(doc(db, COLLECTIONS.enquiries, id));
+  await log('enquiry_deleted', { enquiryId: id });
+ };
+
+ const markClosed = async (id) => {
+  await updateDoc(doc(db, COLLECTIONS.enquiries, id), {
+   status: 'closed',
+   updatedAt: serverTimestamp(),
+  });
+  await log('enquiry_closed', { enquiryId: id });
+ };
 
  return { enquiries, loading, addEnquiry, updateEnquiry, deleteEnquiry, markClosed };
 }

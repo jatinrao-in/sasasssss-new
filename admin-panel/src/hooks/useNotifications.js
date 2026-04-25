@@ -9,6 +9,7 @@ import {
  updateDoc,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import useAuditLog from './useAuditLog';
 import {
  buildNotificationPayload,
  getNotificationItemDoc,
@@ -19,6 +20,7 @@ export function useNotifications(userId) {
  const [notifications, setNotifications] = useState([]);
  const [loading, setLoading] = useState(true);
  const [unreadCount, setUnreadCount] = useState(0);
+ const { log } = useAuditLog();
 
  useEffect(() => {
  if (!userId) {
@@ -74,17 +76,27 @@ export function useNotifications(userId) {
  );
  };
 
- const addNotification = async (targetUserId, notification) => addDoc(
- getNotificationItemsCollection(db, targetUserId),
- buildNotificationPayload(notification),
- );
+ const addNotification = async (targetUserId, notification) => {
+  const notificationRef = await addDoc(
+   getNotificationItemsCollection(db, targetUserId),
+   buildNotificationPayload(notification),
+  );
+  await log('notification_created', {
+   notificationId: notificationRef.id,
+   targetUserId,
+   type: notification.type || '',
+   relatedId: notification.relatedId || '',
+  });
+  return notificationRef;
+ };
 
  const deleteNotification = async (notificationId) => {
  if (!userId) {
  return;
  }
 
- return deleteDoc(getNotificationItemDoc(db, userId, notificationId));
+ await deleteDoc(getNotificationItemDoc(db, userId, notificationId));
+ await log('notification_deleted', { notificationId, targetUserId: userId });
  };
 
  const clearAllNotifications = async () => {
@@ -94,6 +106,7 @@ export function useNotifications(userId) {
 
  const snapshot = await getDocs(getNotificationItemsCollection(db, userId));
  await Promise.all(snapshot.docs.map((notificationDoc) => deleteDoc(notificationDoc.ref)));
+ await log('notifications_cleared', { targetUserId: userId, count: snapshot.docs.length });
  };
 
  return {

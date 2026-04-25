@@ -11,11 +11,13 @@ import {
  deleteDoc,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import useAuditLog from './useAuditLog';
 import { COLLECTIONS } from '../lib/firestore-helpers';
 
 export function useTools() {
  const [tools, setTools] = useState([]);
  const [loading, setLoading] = useState(true);
+ const { log } = useAuditLog();
 
  useEffect(() => {
  const q = query(collection(db, COLLECTIONS.tools), orderBy('createdAt', 'desc'));
@@ -35,24 +37,43 @@ export function useTools() {
  return () => unsubscribe();
  }, []);
 
- const assignTool = async (data) => addDoc(collection(db, COLLECTIONS.tools), {
- ...data,
- returnStatus: 'pending',
- returnDate: null,
- createdAt: serverTimestamp(),
- });
+ const assignTool = async (data) => {
+  const toolRef = await addDoc(collection(db, COLLECTIONS.tools), {
+   ...data,
+   returnStatus: 'pending',
+   returnDate: null,
+   createdAt: serverTimestamp(),
+  });
 
- const updateTool = async (id, updates) => updateDoc(doc(db, COLLECTIONS.tools, id), {
- ...updates,
- updatedAt: serverTimestamp(),
- });
+  await log('tool_assigned', {
+   toolId: toolRef.id,
+   toolName: data.toolName || data.name || '',
+   assignedTo: data.assignedTo || '',
+  });
 
- const markReturned = async (id) => updateDoc(doc(db, COLLECTIONS.tools, id), {
- returnStatus: 'returned',
- returnDate: serverTimestamp(),
- });
+  return toolRef;
+ };
 
- const deleteTool = async (id) => deleteDoc(doc(db, COLLECTIONS.tools, id));
+ const updateTool = async (id, updates) => {
+  await updateDoc(doc(db, COLLECTIONS.tools, id), {
+   ...updates,
+   updatedAt: serverTimestamp(),
+  });
+  await log('tool_updated', { toolId: id, updates });
+ };
+
+ const markReturned = async (id) => {
+  await updateDoc(doc(db, COLLECTIONS.tools, id), {
+   returnStatus: 'returned',
+   returnDate: serverTimestamp(),
+  });
+  await log('tool_returned', { toolId: id });
+ };
+
+ const deleteTool = async (id) => {
+  await deleteDoc(doc(db, COLLECTIONS.tools, id));
+  await log('tool_deleted', { toolId: id });
+ };
 
  return { tools, loading, assignTool, updateTool, markReturned, deleteTool };
 }

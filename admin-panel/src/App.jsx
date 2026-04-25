@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './hooks/useAuth';
+import { RealtimeProvider } from './context/RealtimeContext';
 import { ToastProvider } from './hooks/useToast';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/layout/Layout';
@@ -35,35 +36,37 @@ export default function App() {
   return (
     <BrowserRouter basename="/admin">
       <AuthProvider>
-        <ToastProvider>
-          <SplashScreen />
-            <Routes>
-              {/* Public Route */}
-              <Route path="/" element={<LoginPage />} />
+        <RealtimeProvider>
+          <ToastProvider>
+            <SplashScreen />
+              <Routes>
+                {/* Public Route */}
+                <Route path="/" element={<LoginPage />} />
 
-              {/* Protected Routes (wrapped in Layout) */}
-              <Route element={<AdminLayout />}>
-                <Route path="/admin/dashboard" element={<DashboardPage />} />
-                <Route path="/dashboard" element={<DashboardPage />} />
-                <Route path="/projects" element={<ProjectsPage />} />
-                <Route path="/projects/:id" element={<ProjectDetailPage />} />
-                <Route path="/enquiry" element={<EnquiryPage />} />
-                <Route path="/followup" element={<FollowupPage />} />
-                <Route path="/payments" element={<PaymentsPage />} />
-                <Route path="/outgoing-payments" element={<OutgoingPaymentsPage />} />
-                <Route path="/rgp-challan" element={<RgpChallanPage />} />
-                <Route path="/salary" element={<SalaryPage />} />
-                <Route path="/tools" element={<ToolAssignPage />} />
-                <Route path="/team" element={<TeamPage />} />
-                <Route path="/whatsapp" element={<WhatsAppAutomationPage />} />
-                <Route path="/notification-logs" element={<NotificationLogsPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-              </Route>
+                {/* Protected Routes (wrapped in Layout) */}
+                <Route element={<AdminLayout />}>
+                  <Route path="/admin/dashboard" element={<DashboardPage />} />
+                  <Route path="/dashboard" element={<DashboardPage />} />
+                  <Route path="/projects" element={<ProjectsPage />} />
+                  <Route path="/projects/:id" element={<ProjectDetailPage />} />
+                  <Route path="/enquiry" element={<EnquiryPage />} />
+                  <Route path="/followup" element={<FollowupPage />} />
+                  <Route path="/payments" element={<PaymentsPage />} />
+                  <Route path="/outgoing-payments" element={<OutgoingPaymentsPage />} />
+                  <Route path="/rgp-challan" element={<RgpChallanPage />} />
+                  <Route path="/salary" element={<SalaryPage />} />
+                  <Route path="/tools" element={<ToolAssignPage />} />
+                  <Route path="/team" element={<TeamPage />} />
+                  <Route path="/whatsapp" element={<WhatsAppAutomationPage />} />
+                  <Route path="/notification-logs" element={<NotificationLogsPage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                </Route>
 
-              {/* Fallback */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-        </ToastProvider>
+                {/* Fallback */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+          </ToastProvider>
+        </RealtimeProvider>
       </AuthProvider>
     </BrowserRouter>
   );

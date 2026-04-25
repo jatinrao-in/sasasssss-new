@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 import { useAuth } from '../hooks/useAuth';
+import useAuditLog from '../hooks/useAuditLog';
 import { useToast } from '../hooks/useToast';
 import { auth, db } from '../lib/firebase';
 import { getInitials } from '../lib/formatters';
@@ -46,6 +47,7 @@ function Toggle({ checked, onChange }) {
 
 export default function SettingsPage() {
   const { userData } = useAuth();
+  const { log } = useAuditLog();
   const toast = useToast();
 
   const [activeSection, setActiveSection] = useState('profile');
@@ -97,6 +99,12 @@ export default function SettingsPage() {
         phone: profile.phone,
         notificationPreferences: notifs,
       });
+      await log('admin_profile_updated', {
+        userUid: userData.uid,
+        name: profile.name,
+        phone: profile.phone,
+        notificationPreferences: notifs,
+      });
       toast.success('Profile saved!');
     } catch (err) {
       toast.error(`Failed: ${err.message}`);
@@ -116,6 +124,7 @@ export default function SettingsPage() {
         },
         { merge: true },
       );
+      await log('company_settings_updated', company);
       toast.success('Company info saved!');
     } catch (err) {
       toast.error(`Failed: ${err.message}`);
@@ -202,6 +211,10 @@ export default function SettingsPage() {
       URL.revokeObjectURL(url);
 
       localStorage.setItem('lastBackupTimestamp', now.toISOString());
+      await log('data_backup_downloaded', {
+        collections: collectionsToExport,
+        exportedAt: now.toISOString(),
+      });
       toast.success('Backup downloaded successfully');
     } catch (err) {
       toast.error(`Backup failed: ${err.message}`);

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Save, MessageSquare, Clock, ToggleLeft, ToggleRight, Search, CheckCircle2, XCircle, BarChart3, Send } from 'lucide-react';
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
 import { useWhatsAppConfig } from '../hooks/useWhatsAppConfig';
+import useAuditLog from '../hooks/useAuditLog';
 import { useToast } from '../hooks/useToast';
 import useDelete from '../hooks/useDelete';
 import { formatDate } from '../lib/formatters';
@@ -21,6 +22,7 @@ function Toggle({ checked, onChange }) {
 
 export default function WhatsAppAutomationPage() {
   const toast = useToast();
+  const { log } = useAuditLog();
   const { deleteState, confirmDelete, handleConfirm, handleClose } = useDelete();
   const { logs, saveConfig, getConfig } = useWhatsAppConfig();
 
@@ -106,6 +108,7 @@ export default function WhatsAppAutomationPage() {
  description: 'Delete all message logs?',
  onConfirm: async () => {
  await clearCollection('whatsapp_logs');
+ await log('whatsapp_logs_cleared');
  toast.success('Logs cleared');
  },
  });

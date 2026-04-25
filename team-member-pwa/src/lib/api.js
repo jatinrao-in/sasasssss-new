@@ -1,73 +1,25 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+import { securePost } from './secureApi';
 
-// Send WhatsApp
-export const sendWhatsApp = async (to, templateId, variables) => {
-  const res = await fetch(`${API_BASE}/api/whatsapp/send`, {
-    method: 'POST',
-    headers: { 
-      'Content-Type': 'application/json' 
-    },
-    body: JSON.stringify({ to, templateId, variables })
-  });
-  return res.json();
-};
+export const sendWhatsApp = async (to, templateId, variables) => (
+  securePost('/api/whatsapp/send', { to, templateId, variables })
+);
 
-// Notify task assigned
-export const notifyTaskAssigned = async (taskData) => {
-  const res = await fetch(`${API_BASE}/api/whatsapp/task-notify`, {
-    method: 'POST',
-    headers: { 
-      'Content-Type': 'application/json' 
-    },
-    body: JSON.stringify(taskData)
-  });
-  return res.json();
-};
+export const notifyTaskAssigned = async (taskData) => (
+  securePost('/api/whatsapp/task-notify', taskData)
+);
 
-// Notify salary paid
-export const notifySalaryPaid = async (salaryData) => {
-  const res = await fetch(`${API_BASE}/api/whatsapp/salary-notify`, {
-    method: 'POST',
-    headers: { 
-      'Content-Type': 'application/json' 
-    },
-    body: JSON.stringify(salaryData)
-  });
-  return res.json();
-};
+export const notifySalaryPaid = async (salaryData) => (
+  securePost('/api/whatsapp/salary-notify', salaryData)
+);
 
-// AI: Suggest task assignment
-export const suggestTaskAssignment = async (taskDescription, teamMembers) => {
-  const res = await fetch(`${API_BASE}/api/ai/suggest-task`, {
-    method: 'POST',
-    headers: { 
-      'Content-Type': 'application/json' 
-    },
-    body: JSON.stringify({ taskDescription, teamMembers })
-  });
-  return res.json();
-};
+export const suggestTaskAssignment = async (taskDescription, teamMembers) => (
+  securePost('/api/ai/suggest-task', { taskDescription, teamMembers })
+);
 
-// AI: Suggest deadline
-export const suggestDeadline = async (taskDescription, projectName) => {
-  const res = await fetch(`${API_BASE}/api/ai/suggest-deadline`, {
-    method: 'POST',
-    headers: { 
-      'Content-Type': 'application/json' 
-    },
-    body: JSON.stringify({ taskDescription, projectName })
-  });
-  return res.json();
-};
+export const suggestDeadline = async (taskDescription, projectName) => (
+  securePost('/api/ai/suggest-deadline', { taskDescription, projectName })
+);
 
-// AI: Draft WhatsApp message
-export const draftWhatsAppMessage = async (context) => {
-  const res = await fetch(`${API_BASE}/api/ai/draft-message`, {
-    method: 'POST',
-    headers: { 
-      'Content-Type': 'application/json' 
-    },
-    body: JSON.stringify(context)
-  });
-  return res.json();
-};
+export const draftWhatsAppMessage = async (context) => (
+  securePost('/api/ai/draft-message', context)
+);

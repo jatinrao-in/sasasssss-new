@@ -6,6 +6,7 @@ import {
   Filter, AlertTriangle, Phone, Calendar
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import useAuditLog from '../hooks/useAuditLog';
 import { useToast } from '../hooks/useToast';
 import useDelete from '../hooks/useDelete';
 import { clearCollection } from '../lib/deleteActions';
@@ -49,6 +50,7 @@ function formatTime(ts) {
 
 export default function NotificationLogsPage() {
   const toast = useToast();
+  const { log } = useAuditLog();
   const { deleteState, confirmDelete, handleConfirm, handleClose } = useDelete();
   const [logs, setLogs] = useState([]);
   const [queue, setQueue] = useState([]);
@@ -101,6 +103,7 @@ export default function NotificationLogsPage() {
       description: 'Delete all message logs?',
       onConfirm: async () => {
         await clearCollection('whatsapp_logs');
+        await log('whatsapp_logs_cleared_from_notification_logs');
         toast.success('Logs cleared');
       },
     });

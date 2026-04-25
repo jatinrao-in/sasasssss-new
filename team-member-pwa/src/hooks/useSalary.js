@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { useRealtime } from '../context/RealtimeContext';
 
 export function calcSalary(baseSalary, workingDays, presentDays) {
   const base = Number(baseSalary) || 0;
@@ -17,50 +18,78 @@ export function formatMonthLabel(monthStr) {
   if (!monthStr) return '';
   const [y, m] = monthStr.split('-');
   return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('en-IN', {
-    month: 'long', year: 'numeric',
+    month: 'long',
+    year: 'numeric',
   });
 }
 
-// Real-time listener for a single member's salary history
+const currentMonthKey = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+};
+
 export function useMemberSalary(uid) {
   const [salaryHistory, setSalaryHistory] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!uid) { setLoading(false); return; }
+    if (!uid) {
+      setSalaryHistory([]);
+      setLoading(false);
+      return undefined;
+    }
 
-    const q = query(
+    const ref = query(
       collection(db, 'salary', uid, 'months'),
-      orderBy('month', 'desc')
+      orderBy('month', 'desc'),
     );
 
-    const unsub = onSnapshot(q, (snap) => {
-      setSalaryHistory(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setLoading(false);
-    }, () => setLoading(false));
+    const unsubscribe = onSnapshot(
+      ref,
+      (snapshot) => {
+        setSalaryHistory(snapshot.docs.map((itemDoc) => ({ id: itemDoc.id, ...itemDoc.data() })));
+        setLoading(false);
+      },
+      () => setLoading(false),
+    );
 
-    return () => unsub();
+    return () => unsubscribe();
   }, [uid]);
 
   return { salaryHistory, loading };
 }
 
-// Real-time listener for a specific month
 export function useMemberSalaryMonth(uid, month) {
+  const realtime = useRealtime();
   const [record, setRecord] = useState(null);
   const [loading, setLoading] = useState(true);
+  const currentMonth = currentMonthKey();
 
   useEffect(() => {
-    if (!uid || !month) { setLoading(false); return; }
+    if (!uid || !month) {
+      setRecord(null);
+      setLoading(false);
+      return undefined;
+    }
+
+    if (realtime && month === currentMonth) {
+      setRecord(realtime.currentSalary || null);
+      setLoading(Boolean(realtime.loading?.currentSalary));
+      return undefined;
+    }
 
     const ref = doc(db, 'salary', uid, 'months', month);
-    const unsub = onSnapshot(ref, (snap) => {
-      setRecord(snap.exists() ? { id: snap.id, ...snap.data() } : null);
-      setLoading(false);
-    }, () => setLoading(false));
+    const unsubscribe = onSnapshot(
+      ref,
+      (snapshot) => {
+        setRecord(snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null);
+        setLoading(false);
+      },
+      () => setLoading(false),
+    );
 
-    return () => unsub();
-  }, [uid, month]);
+    return () => unsubscribe();
+  }, [currentMonth, month, realtime, uid]);
 
   return { record, loading };
 }

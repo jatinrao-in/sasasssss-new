@@ -1,41 +1,62 @@
 import { Navigate, useLocation } from 'react-router-dom';
+import SplashScreen from './SplashScreen';
 import { useAuth } from '../hooks/useAuth';
+import { redirectToAdminPanel } from '../lib/adminPanel';
 
-// Map route paths to permission keys
 const routePermissionMap = {
- '/dashboard': 'dashboard',
- '/tasks': 'projects',
- '/enquiries': 'enquiry',
- '/follow-ups': 'followups',
- '/payments': 'payments',
- '/notifications': 'dashboard',
- '/profile': 'dashboard',
+  '/dashboard': 'dashboard',
+  '/tasks': 'projects',
+  '/enquiries': 'enquiry',
+  '/follow-ups': 'followups',
+  '/payments': 'payments',
+  '/rgp': 'rgp',
+  '/notifications': 'dashboard',
+  '/profile': 'dashboard',
 };
 
 export default function ProtectedRoute({ children, requiredRole }) {
- const { user, userData, loading } = useAuth();
- const location = useLocation();
+  const { currentUser, loading } = useAuth();
+  const location = useLocation();
 
- if (loading) {
- return null;
- }
+  if (loading) {
+    return <SplashScreen />;
+  }
 
- if (!user) {
- return <Navigate to="/login" replace />;
- }
+  if (!currentUser) {
+    return <Navigate to="/login" replace />;
+  }
 
- // ✅ Fix P4: Admin trying to use PWA → redirect to /access-denied (not /login)
- if (requiredRole && userData?.role !== requiredRole) {
- return <Navigate to="/access-denied" replace />;
- }
+  if (requiredRole && currentUser.role !== requiredRole) {
+    redirectToAdminPanel();
+    return null;
+  }
 
- // Permission-based access check for team members
- if (userData?.role === 'member' && userData?.permissions) {
- const permKey = routePermissionMap[location.pathname];
- if (permKey && !userData.permissions.includes(permKey)) {
- return <Navigate to="/access-denied" replace />;
- }
- }
+  if (currentUser.status === 'inactive') {
+    return (
+      <Navigate
+        to="/access-denied"
+        replace
+        state={{ message: 'Your account has been deactivated. Contact admin.' }}
+      />
+    );
+  }
 
- return children;
+  const permissionKey = routePermissionMap[location.pathname];
+
+  if (
+    permissionKey &&
+    Array.isArray(currentUser.permissions) &&
+    currentUser.permissions.length > 0 &&
+    !currentUser.permissions.includes(permissionKey)
+  ) {
+    return (
+      <Navigate
+        to="/access-denied"
+        replace
+        state={{ message: "You don't have access to this page." }}
+      />
+    );
+  }
+
+  return children;
 }

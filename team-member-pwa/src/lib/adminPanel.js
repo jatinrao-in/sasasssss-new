@@ -1,9 +1,13 @@
 const LOCAL_ADMIN_PANEL_URL = 'http://localhost:5173/admin/';
 const FIREBASE_PWA_HOST = 'saya-industrial-pwa.web.app';
-const FIREBASE_ADMIN_PANEL_URL = 'https://saya-industrial.web.app';
+const FIREBASE_ADMIN_PANEL_URL = 'https://saya-industrial.web.app/admin/';
 
 export function getAdminPanelUrl() {
-  const configuredUrl = import.meta.env.VITE_ADMIN_PANEL_URL?.trim();
+  const configuredUrl = (
+    import.meta.env.VITE_ADMIN_URL ||
+    import.meta.env.VITE_ADMIN_PANEL_URL ||
+    ''
+  ).trim();
 
   if (configuredUrl) {
     return configuredUrl;

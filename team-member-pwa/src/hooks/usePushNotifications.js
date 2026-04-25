@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
-import { messaging, db } from '../lib/firebase';
+import { useEffect, useRef, useState } from 'react';
+import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { getToken, onMessage } from 'firebase/messaging';
-import { doc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore';
-import { useAuth } from './useAuth';
-import { useToast } from './useToast';
+import { db, messaging } from '../lib/firebase';
 import { playNotificationSound } from '../lib/soundPlayer';
+import { useToast } from './useToast';
+import { useAuth } from './useAuth';
 
 function getNotificationPermission() {
   if (typeof Notification === 'undefined') return 'denied';
@@ -13,7 +13,6 @@ function getNotificationPermission() {
 
 const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY || null;
 
-// URL map matching firebase-messaging-sw.js
 const URL_MAP = {
   task: '/tasks',
   task_complete: '/tasks',
@@ -31,19 +30,22 @@ export function usePushNotifications() {
   const [showPrompt, setShowPrompt] = useState(false);
   const setupDoneRef = useRef(false);
 
-  // Show permission prompt 3s after load if not yet decided
   useEffect(() => {
     if (getNotificationPermission() === 'default') {
-      const t = setTimeout(() => setShowPrompt(true), 3000);
-      return () => clearTimeout(t);
+      const timer = setTimeout(() => setShowPrompt(true), 3000);
+      return () => clearTimeout(timer);
     }
+
+    return undefined;
   }, []);
 
-  // Setup FCM: fires once user is logged in + permission granted
   useEffect(() => {
-    if (!userData?.uid || permission !== 'granted' || !messaging || setupDoneRef.current) return;
+    if (!userData?.uid || permission !== 'granted' || !messaging || setupDoneRef.current) {
+      return;
+    }
+
     if (!VAPID_KEY) {
-      console.warn('[FCM] VITE_FIREBASE_VAPID_KEY not set — skipping token registration');
+      console.warn('[FCM] VITE_FIREBASE_VAPID_KEY not set, skipping token registration');
       return;
     }
 
@@ -51,55 +53,44 @@ export function usePushNotifications() {
 
     const setupFCM = async () => {
       try {
-        // The generated Workbox SW imports firebase-messaging-sw.js so the app
-        // can use one root service worker for caching, updates, and FCM.
         const swReg = await navigator.serviceWorker.ready;
-
         const token = await getToken(messaging, {
           vapidKey: VAPID_KEY,
           serviceWorkerRegistration: swReg,
         });
 
         if (!token) {
-          console.warn('[FCM] No token returned — SW may need refresh');
+          console.warn('[FCM] No token returned');
           return;
         }
 
-        console.log('[FCM] Token obtained:', token.substring(0, 20) + '...');
         setFcmToken(token);
 
-        // Save to Firestore with timestamp for debugging
         await updateDoc(doc(db, 'users', userData.uid), {
-          fcmTokens: arrayUnion(token),
-          fcmUpdatedAt: serverTimestamp(),
-          fcmDevice: navigator.userAgent.substring(0, 100),
+          fcmToken: token,
+          fcmTokenUpdatedAt: serverTimestamp(),
         });
-
-        console.log('[FCM] Token saved to Firestore for uid:', userData.uid);
       } catch (err) {
         console.error('[FCM] Setup failed:', err?.code, err?.message);
-        // Reset so it can retry on next render
         setupDoneRef.current = false;
       }
     };
 
-    setupFCM();
-  }, [userData?.uid, permission]);
+    void setupFCM();
+  }, [permission, userData?.uid]);
 
-  // Foreground message listener
   useEffect(() => {
-    if (!messaging || permission !== 'granted') return;
+    if (!messaging || permission !== 'granted') {
+      return undefined;
+    }
 
     const unsubscribe = onMessage(messaging, async (payload) => {
-      console.log('[FCM] Foreground message:', payload);
       playNotificationSound();
 
       const title = payload.notification?.title || 'New Notification';
       const body = payload.notification?.body || '';
       const type = payload.data?.type;
 
-      // ✅ Show native OS notification even when app is open (via SW)
-      // This makes it appear in the notification shade on Android
       try {
         const swReg = await navigator.serviceWorker.ready;
         await swReg.showNotification(title, {
@@ -111,7 +102,6 @@ export function usePushNotifications() {
           vibrate: [200, 100, 200],
         });
       } catch {
-        // Fallback: just show toast if SW notification fails
         toast.info(body ? `${title}: ${body}` : title);
       }
     });
@@ -124,11 +114,12 @@ export function usePushNotifications() {
       const result = await Notification.requestPermission();
       setPermission(result);
       setShowPrompt(false);
+
       if (result === 'granted') {
-        // Reset setupDone so FCM initializes now
         setupDoneRef.current = false;
         toast.success('Notifications enabled!');
       }
+
       return result;
     } catch (err) {
       console.error('[FCM] Permission request failed:', err);

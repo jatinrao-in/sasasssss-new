@@ -12,11 +12,13 @@ import {
  where,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import useAuditLog from './useAuditLog';
 import { COLLECTIONS, calculateOverdueDays } from '../lib/firestore-helpers';
 
 export function usePayments(filterByUser = null) {
  const [payments, setPayments] = useState([]);
  const [loading, setLoading] = useState(true);
+ const { log } = useAuditLog();
 
  useEffect(() => {
  const paymentQuery = filterByUser
@@ -50,21 +52,41 @@ export function usePayments(filterByUser = null) {
  return () => unsubscribe();
  }, [filterByUser]);
 
- const addPayment = async (paymentData) => addDoc(collection(db, COLLECTIONS.payments), {
- ...paymentData,
- createdAt: serverTimestamp(),
- paymentStatus: 'pending',
- });
+ const addPayment = async (paymentData) => {
+  const paymentRef = await addDoc(collection(db, COLLECTIONS.payments), {
+   ...paymentData,
+   createdAt: serverTimestamp(),
+   paymentStatus: 'pending',
+  });
 
- const updatePayment = async (id, updates) => updateDoc(doc(db, COLLECTIONS.payments, id), updates);
+  await log('payment_created', {
+   paymentId: paymentRef.id,
+   assignedTo: paymentData.assignedTo || '',
+   customerName: paymentData.customerName || '',
+   amount: Number(paymentData.amount || 0),
+  });
 
- const deletePayment = async (id) => deleteDoc(doc(db, COLLECTIONS.payments, id));
+  return paymentRef;
+ };
 
- const updateStatus = async (id, status, remarks = '') => updateDoc(doc(db, COLLECTIONS.payments, id), {
- paymentStatus: status,
- remarks,
- updatedAt: serverTimestamp(),
- });
+ const updatePayment = async (id, updates) => {
+  await updateDoc(doc(db, COLLECTIONS.payments, id), updates);
+  await log('payment_updated', { paymentId: id, updates });
+ };
+
+ const deletePayment = async (id) => {
+  await deleteDoc(doc(db, COLLECTIONS.payments, id));
+  await log('payment_deleted', { paymentId: id });
+ };
+
+ const updateStatus = async (id, status, remarks = '') => {
+  await updateDoc(doc(db, COLLECTIONS.payments, id), {
+   paymentStatus: status,
+   remarks,
+   updatedAt: serverTimestamp(),
+  });
+  await log('payment_status_updated', { paymentId: id, status, remarks });
+ };
 
  return { payments, loading, addPayment, updatePayment, deletePayment, updateStatus };
 }

@@ -12,11 +12,13 @@ import {
  where,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import useAuditLog from './useAuditLog';
 import { COLLECTIONS, calculateOverdueDays } from '../lib/firestore-helpers';
 
 export function useOutgoingPayments(filterByUser = null) {
  const [outgoingPayments, setOutgoingPayments] = useState([]);
  const [loading, setLoading] = useState(true);
+ const { log } = useAuditLog();
 
  useEffect(() => {
  const q = filterByUser
@@ -56,12 +58,18 @@ export function useOutgoingPayments(filterByUser = null) {
  if (netPendingAmount <= 0 && (Number(data.amount) || 0) > 0) paymentStatus = 'paid';
  else if ((Number(data.paidAmount) || 0) > 0) paymentStatus = 'partial';
 
- return addDoc(collection(db, COLLECTIONS.outgoing_payments), {
+ const paymentRef = await addDoc(collection(db, COLLECTIONS.outgoing_payments), {
  ...data,
  netPendingAmount,
  paymentStatus,
  createdAt: serverTimestamp(),
  });
+ await log('outgoing_payment_created', {
+  paymentId: paymentRef.id,
+  vendorName: data.vendorName || '',
+  amount: Number(data.amount || 0),
+ });
+ return paymentRef;
  };
 
  const updateOutgoingPayment = async (id, updates) => {
@@ -70,15 +78,19 @@ export function useOutgoingPayments(filterByUser = null) {
  if (netPendingAmount <= 0 && (Number(updates.amount) || 0) > 0) paymentStatus = 'paid';
  else if ((Number(updates.paidAmount) || 0) > 0) paymentStatus = 'partial';
 
- return updateDoc(doc(db, COLLECTIONS.outgoing_payments, id), {
+ await updateDoc(doc(db, COLLECTIONS.outgoing_payments, id), {
  ...updates,
  netPendingAmount,
  paymentStatus,
  updatedAt: serverTimestamp(),
  });
+ await log('outgoing_payment_updated', { paymentId: id, updates });
  };
 
- const deleteOutgoingPayment = async (id) => deleteDoc(doc(db, COLLECTIONS.outgoing_payments, id));
+ const deleteOutgoingPayment = async (id) => {
+  await deleteDoc(doc(db, COLLECTIONS.outgoing_payments, id));
+  await log('outgoing_payment_deleted', { paymentId: id });
+ };
 
  return { outgoingPayments, loading, addOutgoingPayment, updateOutgoingPayment, deleteOutgoingPayment };
 }

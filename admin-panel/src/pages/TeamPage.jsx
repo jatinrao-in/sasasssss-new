@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react';
 import { Plus, Users, Mail, Phone, X, Shield, Search, Award, BarChart3, CheckCircle2 } from 'lucide-react';
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
-import { collection, doc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
-import { db, firebaseConfig } from '../lib/firebase';
+import { collection, getDocs, query, updateDoc, where } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { createTeamMember as createMemberApi } from '../lib/backendApi';
+import useAuditLog from '../hooks/useAuditLog';
 import { useTeam } from '../hooks/useTeam';
 import { useTasks } from '../hooks/useTasks';
 import { useToast } from '../hooks/useToast';
@@ -30,40 +31,6 @@ const ALL_PAGE_KEYS = [
  { key: 'settings', label: 'Settings' },
  { key: 'whatsapp', label: 'WhatsApp' },
 ];
-
-async function createTeamMemberFallback(form) {
- const response = await fetch(
- `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${firebaseConfig.apiKey}`,
- {
- method: 'POST',
- headers: { 'Content-Type': 'application/json' },
- body: JSON.stringify({ email: form.email, password: form.password, returnSecureToken: true }),
- },
- );
-
- const payload = await response.json();
-
- if (!response.ok) {
- const code = payload?.error?.message || response.statusText;
- const error = new Error(code);
- error.code = code;
- throw error;
- }
-
- await setDoc(doc(db, COLLECTIONS.users, payload.localId), {
- createdAt: serverTimestamp(),
- designation: form.designation || '',
- email: form.email,
- name: form.name,
- phone: form.phone || '',
- role: 'member',
- status: 'active',
- whatsapp: form.whatsapp || '',
- permissions: form.permissions || ['dashboard', 'projects', 'enquiry', 'followups', 'payments'],
- });
-}
-
-const hasBackend = !!import.meta.env.VITE_BACKEND_URL;
 
 function AddMemberModal({ onClose, onAdd, editing }) {
  const [form, setForm] = useState({
@@ -164,6 +131,7 @@ function AddMemberModal({ onClose, onAdd, editing }) {
 export default function TeamPage() {
  const toast = useToast();
  const { deleteState, confirmDelete, handleConfirm, handleClose } = useDelete();
+ const { log } = useAuditLog();
  const { members, loading, toggleStatus, updateMember, deleteMember } = useTeam();
  const [showModal, setShowModal] = useState(false);
  const [editingMember, setEditingMember] = useState(null);
@@ -223,6 +191,7 @@ export default function TeamPage() {
  assignedToName: '',
  })));
  await deleteMember(uid);
+ await log('member_unassigned_from_tasks', { memberUid: uid, reassignedTaskCount: taskSnapshot.docs.length });
  toast.success(`${name} removed from team`);
  },
  });
@@ -244,13 +213,13 @@ export default function TeamPage() {
  return;
  }
 
- if (hasBackend) {
-  // Vercel backend (replaces Firebase Cloud Function)
-  await createMemberApi(form);
-  } else {
-  // Direct Firebase REST fallback
-  await createTeamMemberFallback(form);
-  }
+ await createMemberApi(form);
+ await log('member_created', {
+  memberEmail: form.email,
+  memberName: form.name,
+  designation: form.designation || '',
+  permissions: form.permissions || [],
+ });
  toast.success(`${form.name} added! They can now log in to the Team Member PWA.`);
  } catch (error) {
  const message = error.message || error.details || '';

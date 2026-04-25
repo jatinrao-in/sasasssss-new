@@ -1,15 +1,9 @@
-﻿const API = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_BASE_URL || '';
+import { securePost } from './secureApi';
 
 export const notify = async (eventType, context) => {
   try {
-    await fetch(`${API}/api/notify`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ eventType, context })
-    });
-    // Silent fire-and-forget - never block the UI
+    await securePost('/api/notify', { eventType, context });
   } catch (error) {
-    // Silently fail - notification is non-critical
+    console.warn('Notify failed:', error);
   }
 };
-

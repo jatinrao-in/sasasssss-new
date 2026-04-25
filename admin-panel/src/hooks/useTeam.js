@@ -10,11 +10,13 @@ import {
  where,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import useAuditLog from './useAuditLog';
 import { COLLECTIONS } from '../lib/firestore-helpers';
 
 export function useTeam() {
  const [members, setMembers] = useState([]);
  const [loading, setLoading] = useState(true);
+ const { log } = useAuditLog();
 
  useEffect(() => {
  const teamQuery = query(
@@ -45,13 +47,23 @@ export function useTeam() {
  return () => unsubscribe();
  }, []);
 
- const updateMember = async (uid, updates) => updateDoc(doc(db, COLLECTIONS.users, uid), updates);
+ const updateMember = async (uid, updates) => {
+  await updateDoc(doc(db, COLLECTIONS.users, uid), updates);
+  await log('member_updated', { memberUid: uid, updates });
+ };
 
- const deleteMember = async (uid) => deleteDoc(doc(db, COLLECTIONS.users, uid));
+ const deleteMember = async (uid) => {
+  await deleteDoc(doc(db, COLLECTIONS.users, uid));
+  await log('member_deleted', { memberUid: uid });
+ };
 
- const toggleStatus = async (uid, currentStatus) => updateDoc(doc(db, COLLECTIONS.users, uid), {
- status: currentStatus === 'active' ? 'inactive' : 'active',
- });
+ const toggleStatus = async (uid, currentStatus) => {
+  const nextStatus = currentStatus === 'active' ? 'inactive' : 'active';
+  await updateDoc(doc(db, COLLECTIONS.users, uid), {
+   status: nextStatus,
+  });
+  await log('member_status_changed', { memberUid: uid, status: nextStatus });
+ };
 
  const getActiveMembers = () => members.filter((member) => member.status === 'active');
 

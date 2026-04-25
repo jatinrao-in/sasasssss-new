@@ -1,87 +1,147 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+} from 'firebase/auth';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { COLLECTIONS } from '../lib/firestore-helpers';
 
 const AuthContext = createContext(null);
 
 async function fetchUserProfile(uid, email) {
- const userDoc = await getDoc(doc(db, COLLECTIONS.users, uid));
+  const userDoc = await getDoc(doc(db, COLLECTIONS.users, uid));
 
- if (!userDoc.exists()) {
- return { uid, email, role: 'member', name: email };
- }
+  if (!userDoc.exists()) {
+    return {
+      uid,
+      email,
+      role: 'member',
+      name: email || 'Unknown user',
+      permissions: [],
+    };
+  }
 
- return { uid, ...userDoc.data() };
+  return { uid, email, ...userDoc.data() };
 }
 
+const buildCurrentUser = (firebaseUser, profile) => {
+  if (!firebaseUser) {
+    return null;
+  }
+
+  return {
+    uid: firebaseUser.uid,
+    email: firebaseUser.email,
+    displayName: firebaseUser.displayName,
+    ...profile,
+  };
+};
+
 export function AuthProvider({ children }) {
- const [user, setUser] = useState(null);
- const [userData, setUserData] = useState(null);
- const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
- useEffect(() => {
- const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
- if (!firebaseUser) {
- setUser(null);
- setUserData(null);
- setLoading(false);
- return;
- }
+  useEffect(() => {
+    let unsubscribeProfile = () => {};
 
- setUser(firebaseUser);
+    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+      unsubscribeProfile();
 
- try {
- setUserData(await fetchUserProfile(firebaseUser.uid, firebaseUser.email));
- } catch (error) {
- console.error('Error fetching user data:', error);
- setUserData({
- uid: firebaseUser.uid,
- email: firebaseUser.email,
- role: 'member',
- name: firebaseUser.email,
- });
- } finally {
- setLoading(false);
- }
- });
+      if (!firebaseUser) {
+        setUser(null);
+        setUserData(null);
+        setLoading(false);
+        return;
+      }
 
- return () => unsubscribe();
- }, []);
+      setUser(firebaseUser);
+      setLoading(true);
 
- const login = async (email, password) => {
- const credential = await signInWithEmailAndPassword(auth, email, password);
- const profile = await fetchUserProfile(credential.user.uid, credential.user.email);
- setUserData(profile);
- return profile;
- };
+      unsubscribeProfile = onSnapshot(
+        doc(db, COLLECTIONS.users, firebaseUser.uid),
+        (snapshot) => {
+          const profile = snapshot.exists()
+            ? { uid: firebaseUser.uid, email: firebaseUser.email, ...snapshot.data() }
+            : {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              role: 'member',
+              name: firebaseUser.email || 'Unknown user',
+              permissions: [],
+            };
 
- const logout = async () => {
- await signOut(auth);
- setUser(null);
- setUserData(null);
- };
+          setUserData(profile);
+          setLoading(false);
+        },
+        async (error) => {
+          console.error('Error listening to user profile:', error);
 
- const value = {
- user,
- userData,
- loading,
- login,
- logout,
- isAdmin: userData?.role === 'admin',
- isMember: userData?.role === 'member',
- };
+          try {
+            const fallbackProfile = await fetchUserProfile(firebaseUser.uid, firebaseUser.email);
+            setUserData(fallbackProfile);
+          } catch (fallbackError) {
+            console.error('Error fetching fallback user data:', fallbackError);
+            setUserData({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              role: 'member',
+              name: firebaseUser.email || 'Unknown user',
+              permissions: [],
+            });
+          } finally {
+            setLoading(false);
+          }
+        },
+      );
+    });
 
- return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+    return () => {
+      unsubscribeProfile();
+      unsubscribeAuth();
+    };
+  }, []);
+
+  const login = async (email, password) => {
+    const credential = await signInWithEmailAndPassword(auth, email, password);
+    const profile = await fetchUserProfile(credential.user.uid, credential.user.email);
+    setUserData(profile);
+    return profile;
+  };
+
+  const logout = async () => {
+    await signOut(auth);
+    setUser(null);
+    setUserData(null);
+  };
+
+  const currentUser = useMemo(
+    () => buildCurrentUser(user, userData),
+    [user, userData],
+  );
+
+  const value = {
+    user,
+    userData,
+    currentUser,
+    loading,
+    login,
+    logout,
+    isAdmin: currentUser?.role === 'admin',
+    isMember: currentUser?.role === 'member',
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
- const context = useContext(AuthContext);
+  const context = useContext(AuthContext);
 
- if (!context) {
- throw new Error('useAuth must be used within an AuthProvider');
- }
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
 
- return context;
+  return context;
 }

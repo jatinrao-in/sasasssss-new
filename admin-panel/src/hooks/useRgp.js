@@ -11,11 +11,13 @@ import {
  updateDoc,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import useAuditLog from './useAuditLog';
 import { COLLECTIONS } from '../lib/firestore-helpers';
 
 export function useRgp() {
  const [rgpList, setRgpList] = useState([]);
  const [loading, setLoading] = useState(true);
+ const { log } = useAuditLog();
 
  useEffect(() => {
  const rgpQuery = query(collection(db, COLLECTIONS.rgp), orderBy('createdAt', 'desc'));
@@ -35,17 +37,36 @@ export function useRgp() {
  return () => unsubscribe();
  }, []);
 
- const addRgp = async (rgpData) => addDoc(collection(db, COLLECTIONS.rgp), {
- ...rgpData,
- createdAt: serverTimestamp(),
- status: 'open',
- });
+ const addRgp = async (rgpData) => {
+  const rgpRef = await addDoc(collection(db, COLLECTIONS.rgp), {
+   ...rgpData,
+   createdAt: serverTimestamp(),
+   status: 'open',
+  });
 
- const updateRgp = async (id, updates) => updateDoc(doc(db, COLLECTIONS.rgp, id), updates);
+  await log('rgp_created', {
+   rgpId: rgpRef.id,
+   assignedTo: rgpData.assignedTo || '',
+   reference: rgpData.referenceNumber || rgpData.itemName || '',
+  });
 
- const deleteRgp = async (id) => deleteDoc(doc(db, COLLECTIONS.rgp, id));
+  return rgpRef;
+ };
 
- const markClosed = async (id) => updateDoc(doc(db, COLLECTIONS.rgp, id), { status: 'closed' });
+ const updateRgp = async (id, updates) => {
+  await updateDoc(doc(db, COLLECTIONS.rgp, id), updates);
+  await log('rgp_updated', { rgpId: id, updates });
+ };
+
+ const deleteRgp = async (id) => {
+  await deleteDoc(doc(db, COLLECTIONS.rgp, id));
+  await log('rgp_deleted', { rgpId: id });
+ };
+
+ const markClosed = async (id) => {
+  await updateDoc(doc(db, COLLECTIONS.rgp, id), { status: 'closed' });
+  await log('rgp_closed', { rgpId: id });
+ };
 
  return { rgpList, loading, addRgp, updateRgp, deleteRgp, markClosed };
 }

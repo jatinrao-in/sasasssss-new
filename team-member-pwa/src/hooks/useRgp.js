@@ -7,39 +7,50 @@ import {
   where,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { useRealtime } from '../context/RealtimeContext';
 import { COLLECTIONS } from '../lib/firestore-helpers';
 
 export function useRgp(filterByUser = null) {
+  const realtime = useRealtime();
   const [rgp, setRgp] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (realtime) {
+      const source = filterByUser
+        ? realtime.rgp.filter((item) => item.assignedTo === filterByUser)
+        : realtime.rgp;
+      setRgp(source);
+      setLoading(Boolean(realtime.loading?.rgp));
+      return undefined;
+    }
+
     if (!filterByUser) {
       setRgp([]);
       setLoading(false);
-      return;
+      return undefined;
     }
 
-    const q = query(
+    const ref = query(
       collection(db, COLLECTIONS.rgp),
       where('assignedTo', '==', filterByUser),
-      orderBy('createdAt', 'desc')
+      orderBy('createdAt', 'desc'),
     );
 
     const unsubscribe = onSnapshot(
-      q,
+      ref,
       (snapshot) => {
-        setRgp(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+        setRgp(snapshot.docs.map((itemDoc) => ({ id: itemDoc.id, ...itemDoc.data() })));
         setLoading(false);
       },
       (error) => {
         console.error('RGP listener error:', error);
         setLoading(false);
-      }
+      },
     );
 
     return () => unsubscribe();
-  }, [filterByUser]);
+  }, [filterByUser, realtime]);
 
   return { rgp, loading };
 }

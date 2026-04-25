@@ -12,6 +12,7 @@ import {
  where,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import useAuditLog from './useAuditLog';
 import {
  COLLECTIONS,
  calculateOverdueDays,
@@ -21,6 +22,7 @@ import {
 export function useFollowUps(filterByUser = null) {
  const [followUps, setFollowUps] = useState([]);
  const [loading, setLoading] = useState(true);
+ const { log } = useAuditLog();
 
  useEffect(() => {
  const followupQuery = filterByUser
@@ -53,21 +55,40 @@ export function useFollowUps(filterByUser = null) {
  return () => unsubscribe();
  }, [filterByUser]);
 
- const addFollowUp = async (followupData) => addDoc(collection(db, COLLECTIONS.followups), {
- ...followupData,
- assignedDate: serverTimestamp(),
- createdAt: serverTimestamp(),
- status: 'open',
- });
+ const addFollowUp = async (followupData) => {
+  const followUpRef = await addDoc(collection(db, COLLECTIONS.followups), {
+   ...followupData,
+   assignedDate: serverTimestamp(),
+   createdAt: serverTimestamp(),
+   status: 'open',
+  });
 
- const updateFollowUp = async (id, updates) => updateDoc(doc(db, COLLECTIONS.followups, id), updates);
+  await log('followup_created', {
+   followupId: followUpRef.id,
+   assignedTo: followupData.assignedTo || '',
+   title: followupData.title || followupData.customerName || '',
+  });
 
- const deleteFollowUp = async (id) => deleteDoc(doc(db, COLLECTIONS.followups, id));
+  return followUpRef;
+ };
 
- const markClosed = async (id) => updateDoc(doc(db, COLLECTIONS.followups, id), {
- status: 'closed',
- updatedAt: serverTimestamp(),
- });
+ const updateFollowUp = async (id, updates) => {
+  await updateDoc(doc(db, COLLECTIONS.followups, id), updates);
+  await log('followup_updated', { followupId: id, updates });
+ };
+
+ const deleteFollowUp = async (id) => {
+  await deleteDoc(doc(db, COLLECTIONS.followups, id));
+  await log('followup_deleted', { followupId: id });
+ };
+
+ const markClosed = async (id) => {
+  await updateDoc(doc(db, COLLECTIONS.followups, id), {
+   status: 'closed',
+   updatedAt: serverTimestamp(),
+  });
+  await log('followup_closed', { followupId: id });
+ };
 
  return { followUps, loading, addFollowUp, updateFollowUp, deleteFollowUp, markClosed };
 }

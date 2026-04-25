@@ -13,6 +13,7 @@ import {
  where,
 } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
+import useAuditLog from './useAuditLog';
 import {
  COLLECTIONS,
  calculateOverdueDays,
@@ -25,6 +26,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 export function useTasks(filterByUser = null) {
  const [tasks, setTasks] = useState([]);
  const [loading, setLoading] = useState(true);
+ const { log } = useAuditLog();
  // authReady tracks whether we have a definite auth state (null = loading, string = uid, 'admin' = admin)
  const [authReady, setAuthReady] = useState(false);
 
@@ -69,15 +71,29 @@ export function useTasks(filterByUser = null) {
   return () => unsubscribe();
  }, [filterByUser, authReady]);
 
- const addTask = async (taskData) => addDoc(collection(db, COLLECTIONS.tasks), {
- ...taskData,
- completionPercent: Number(taskData.completionPercent || 0),
- createdAt: serverTimestamp(),
- startDate: serverTimestamp(),
- status: 'open',
- });
+ const addTask = async (taskData) => {
+  const taskRef = await addDoc(collection(db, COLLECTIONS.tasks), {
+   ...taskData,
+   completionPercent: Number(taskData.completionPercent || 0),
+   createdAt: serverTimestamp(),
+   startDate: serverTimestamp(),
+   status: 'open',
+  });
 
- const updateTask = async (taskId, updates) => updateDoc(doc(db, COLLECTIONS.tasks, taskId), updates);
+  await log('task_created', {
+   taskId: taskRef.id,
+   taskName: taskData.title || '',
+   assignedTo: taskData.assignedTo || '',
+   projectId: taskData.projectId || '',
+  });
+
+  return taskRef;
+ };
+
+ const updateTask = async (taskId, updates) => {
+  await updateDoc(doc(db, COLLECTIONS.tasks, taskId), updates);
+  await log('task_updated', { taskId, updates });
+ };
 
  const updateCompletion = async (taskId, percent) => {
  const taskRef = doc(db, COLLECTIONS.tasks, taskId);
@@ -91,6 +107,14 @@ export function useTasks(filterByUser = null) {
  updatedAt: serverTimestamp(),
  });
 
+ await log('task_progress_updated', {
+  taskId,
+  taskName: taskData?.title || '',
+  projectId: taskData?.projectId || '',
+  completionPercent: Number(percent),
+  status: percent >= 100 ? 'completed' : 'open',
+ });
+
  if (taskData?.projectId) {
  await recalculateProjectCompletion(db, taskData.projectId);
  }
@@ -102,6 +126,12 @@ export function useTasks(filterByUser = null) {
  const taskData = taskSnapshot.exists() ? taskSnapshot.data() : null;
 
  await deleteDoc(taskRef);
+
+ await log('task_deleted', {
+  taskId,
+  taskName: taskData?.title || '',
+  projectId: taskData?.projectId || '',
+ });
 
  if (taskData?.projectId) {
  await recalculateProjectCompletion(db, taskData.projectId);

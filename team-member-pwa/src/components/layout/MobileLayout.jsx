@@ -8,6 +8,8 @@ const allNavItems = [
  { path: '/dashboard', label: 'Home', icon: Home, permKey: 'dashboard' },
  { path: '/tasks', label: 'My Tasks', icon: ClipboardList, permKey: 'projects' },
  { path: '/enquiries', label: 'Enquiries', icon: Search, permKey: 'enquiry' },
+ { path: '/follow-ups', label: 'Follow-ups', icon: RefreshCw, permKey: 'followups' },
+ { path: '/payments', label: 'Payments', icon: Bell, permKey: 'payments' },
  { path: '/rgp', label: 'RGP', icon: ArrowLeftRight, permKey: 'rgp' },
 ];
 
@@ -69,7 +71,7 @@ export default function MobileLayout() {
  });
 
  // Limit to max 4 permission-based items + always include Profile = max 5 total
- const displayItems = [...permissionItems.slice(0, 4), profileNavItem];
+ const displayItems = [...permissionItems, profileNavItem];
 
  return (
  <div 

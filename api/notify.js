@@ -1,23 +1,14 @@
+import { Timestamp } from 'firebase-admin/firestore';
 import { draftMessage } from './ai/draft-whatsapp.js';
+import { getAdminServices } from './_lib/firebaseAdmin.js';
+import { requireNotifyPermission, verifyFirebaseRequest } from './_lib/auth.js';
 import { sendViaMsg91 } from './whatsapp/send-text.js';
-import { initializeApp, cert, getApps } from 'firebase-admin/app';
-import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 
-let db;
-const initDb = () => {
-  if (!db) {
-    if (getApps().length === 0) {
-      initializeApp({
-        credential: cert({
-          projectId: process.env.FIREBASE_PROJECT_ID,
-          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-          privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
-        })
-      });
-    }
-    db = getFirestore();
-  }
-  return db;
+const setCorsHeaders = (req, res) => {
+  const origin = req.headers.origin || '*';
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 };
 
 const resolveCompanyContext = async (firestore, context) => {
@@ -44,12 +35,32 @@ const resolveCompanyContext = async (firestore, context) => {
   }
 };
 
+const getTitle = (eventType) => {
+  const titles = {
+    task_assigned: 'New Task Assigned',
+    task_completed: 'Task Completed',
+    task_overdue: 'Task Overdue',
+    salary_paid: 'Salary Credited',
+    enquiry_assigned: 'New Enquiry',
+    followup_due: 'Follow-up Due',
+    payment_due: 'Payment Reminder',
+    rgp_overdue: 'RGP Reminder',
+    tool_not_returned: 'Tool Return',
+  };
+
+  return titles[eventType] || 'Notification';
+};
+
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).end();
+  setCorsHeaders(req, res);
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
   const { eventType, context } = req.body || {};
 
@@ -57,35 +68,40 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing eventType or context' });
   }
 
-  const firestore = initDb();
+  const { db } = getAdminServices();
 
   try {
-    const resolvedContext = await resolveCompanyContext(firestore, context);
-    const message = await draftMessage(eventType, resolvedContext);
+    const authContext = await verifyFirebaseRequest(req);
+    requireNotifyPermission(authContext, eventType);
 
+    const resolvedContext = await resolveCompanyContext(db, context);
+    const message = await draftMessage(eventType, resolvedContext);
     const toNumber = resolvedContext.whatsappNumber;
-    if (!toNumber || toNumber.trim() === '') {
+
+    if (!toNumber || !String(toNumber).trim()) {
       return res.status(400).json({
         error: 'No WhatsApp number provided',
-        hint: 'Check that member.whatsapp field exists in Firestore /users collection'
+        hint: 'Check that the target profile has a WhatsApp number stored in Firestore',
       });
     }
 
     const sendResult = await sendViaMsg91(toNumber, message);
     const success = sendResult?.type === 'success' || sendResult?.message?.includes('success');
 
-    await firestore.collection('whatsapp_logs').add({
+    await db.collection('whatsapp_logs').add({
       eventType,
       toNumber,
       message,
       context: resolvedContext,
       status: success ? 'sent' : 'failed',
       response: sendResult,
-      sentAt: Timestamp.now()
+      requestedBy: authContext.decodedToken.uid,
+      requestedByRole: authContext.role,
+      sentAt: Timestamp.now(),
     });
 
     if (resolvedContext.memberUid) {
-      await firestore
+      await db
         .collection('notifications')
         .doc(resolvedContext.memberUid)
         .collection('items')
@@ -94,40 +110,31 @@ export default async function handler(req, res) {
           body: message.split('\n')[1] || message.substring(0, 60),
           type: eventType,
           read: false,
-          createdAt: Timestamp.now()
+          createdAt: Timestamp.now(),
         });
     }
 
     return res.status(200).json({ success: true, message, sent: success });
-
   } catch (error) {
     console.error('[notify]', error.message);
 
     try {
-      await firestore.collection('whatsapp_logs').add({
+      await db.collection('whatsapp_logs').add({
         eventType,
-        context: await resolveCompanyContext(firestore, context),
+        context: await resolveCompanyContext(db, context),
         status: 'failed',
         error: error.message,
-        sentAt: Timestamp.now()
+        sentAt: Timestamp.now(),
       });
-    } catch (_) {}
+    } catch {
+      // Logging should never hide the original error response.
+    }
 
-    return res.status(500).json({ error: error.message });
+    const statusCode = error.statusCode
+      || (String(error.code || '').startsWith('auth/') ? 401 : 0)
+      || (error.message.toLowerCase().includes('token') ? 401 : 500);
+    return res.status(statusCode).json({
+      error: statusCode === 401 ? 'Unauthorized' : error.message,
+    });
   }
 }
-
-const getTitle = (eventType) => {
-  const titles = {
-    task_assigned:     'New Task Assigned',
-    task_completed:    'Task Completed',
-    task_overdue:      'Task Overdue',
-    salary_paid:       'Salary Credited',
-    enquiry_assigned:  'New Enquiry',
-    followup_due:      'Follow-up Due',
-    payment_due:       'Payment Reminder',
-    rgp_overdue:       'RGP Reminder',
-    tool_not_returned: 'Tool Return'
-  };
-  return titles[eventType] || 'Notification';
-};

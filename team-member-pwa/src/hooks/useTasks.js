@@ -1,102 +1,129 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
- addDoc,
- collection,
- deleteDoc,
- doc,
- getDoc,
- onSnapshot,
- orderBy,
- query,
- serverTimestamp,
- updateDoc,
- where,
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  updateDoc,
+  where,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { useRealtime } from '../context/RealtimeContext';
 import {
- COLLECTIONS,
- calculateOverdueDays,
- deriveTaskStatus,
- recalculateProjectCompletion,
+  COLLECTIONS,
+  calculateOverdueDays,
+  deriveTaskStatus,
+  recalculateProjectCompletion,
 } from '../lib/firestore-helpers';
 
 export function useTasks(filterByUser = null) {
- const [tasks, setTasks] = useState([]);
- const [loading, setLoading] = useState(true);
+  const realtime = useRealtime();
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
 
- useEffect(() => {
- if (!filterByUser) {
- setTasks([]);
- setLoading(false);
- return;
- }
- 
- const taskQuery = query(
- collection(db, COLLECTIONS.tasks),
- where('assignedTo', '==', filterByUser),
- orderBy('createdAt', 'desc'),
- );
+  const realtimeTasks = useMemo(() => {
+    if (!realtime) {
+      return null;
+    }
 
- const unsubscribe = onSnapshot(
- taskQuery,
- (snapshot) => {
- const nextTasks = snapshot.docs.map((taskDoc) => {
- const task = { id: taskDoc.id, ...taskDoc.data() };
- task.overdueDays = task.status === 'completed' ? 0 : calculateOverdueDays(task.targetDate);
- task.status = deriveTaskStatus(task);
- return task;
- });
+    const source = Array.isArray(realtime.tasks) ? realtime.tasks : [];
+    const filtered = filterByUser
+      ? source.filter((task) => task.assignedTo === filterByUser)
+      : source;
 
- setTasks(nextTasks);
- setLoading(false);
- },
- (error) => {
- console.error('Tasks listener error:', error);
- setLoading(false);
- },
- );
+    return filtered.map((task) => {
+      const normalizedTask = { ...task };
+      normalizedTask.overdueDays = normalizedTask.status === 'completed'
+        ? 0
+        : calculateOverdueDays(normalizedTask.targetDate);
+      normalizedTask.status = deriveTaskStatus(normalizedTask);
+      return normalizedTask;
+    });
+  }, [realtime, filterByUser]);
 
- return () => unsubscribe();
- }, [filterByUser]);
+  useEffect(() => {
+    if (realtimeTasks) {
+      setTasks(realtimeTasks);
+      setLoading(Boolean(realtime?.loading?.tasks));
+      return undefined;
+    }
 
- const addTask = async (taskData) => addDoc(collection(db, COLLECTIONS.tasks), {
- ...taskData,
- completionPercent: Number(taskData.completionPercent || 0),
- createdAt: serverTimestamp(),
- startDate: serverTimestamp(),
- status: 'open',
- });
+    if (!filterByUser) {
+      setTasks([]);
+      setLoading(false);
+      return undefined;
+    }
 
- const updateTask = async (taskId, updates) => updateDoc(doc(db, COLLECTIONS.tasks, taskId), updates);
+    const taskQuery = query(
+      collection(db, COLLECTIONS.tasks),
+      where('assignedTo', '==', filterByUser),
+      orderBy('createdAt', 'desc'),
+    );
 
- const updateCompletion = async (taskId, percent) => {
- const taskRef = doc(db, COLLECTIONS.tasks, taskId);
- const taskSnapshot = await getDoc(taskRef);
- const taskData = taskSnapshot.exists() ? taskSnapshot.data() : null;
+    const unsubscribe = onSnapshot(
+      taskQuery,
+      (snapshot) => {
+        const nextTasks = snapshot.docs.map((taskDoc) => {
+          const task = { id: taskDoc.id, ...taskDoc.data() };
+          task.overdueDays = task.status === 'completed' ? 0 : calculateOverdueDays(task.targetDate);
+          task.status = deriveTaskStatus(task);
+          return task;
+        });
 
- await updateDoc(taskRef, {
- completedAt: percent >= 100 ? serverTimestamp() : null,
- completionPercent: Number(percent),
- status: percent >= 100 ? 'completed' : 'open',
- updatedAt: serverTimestamp(),
- });
+        setTasks(nextTasks);
+        setLoading(false);
+      },
+      (error) => {
+        console.error('Tasks listener error:', error);
+        setLoading(false);
+      },
+    );
 
- if (taskData?.projectId) {
- await recalculateProjectCompletion(db, taskData.projectId);
- }
- };
+    return () => unsubscribe();
+  }, [filterByUser, realtimeTasks, realtime?.loading?.tasks]);
 
- const deleteTask = async (taskId) => {
- const taskRef = doc(db, COLLECTIONS.tasks, taskId);
- const taskSnapshot = await getDoc(taskRef);
- const taskData = taskSnapshot.exists() ? taskSnapshot.data() : null;
+  const addTask = async (taskData) => addDoc(collection(db, COLLECTIONS.tasks), {
+    ...taskData,
+    completionPercent: Number(taskData.completionPercent || 0),
+    createdAt: serverTimestamp(),
+    startDate: serverTimestamp(),
+    status: 'open',
+  });
 
- await deleteDoc(taskRef);
+  const updateTask = async (taskId, updates) => updateDoc(doc(db, COLLECTIONS.tasks, taskId), updates);
 
- if (taskData?.projectId) {
- await recalculateProjectCompletion(db, taskData.projectId);
- }
- };
+  const updateCompletion = async (taskId, percent) => {
+    const taskRef = doc(db, COLLECTIONS.tasks, taskId);
+    const taskSnapshot = await getDoc(taskRef);
+    const taskData = taskSnapshot.exists() ? taskSnapshot.data() : null;
 
- return { tasks, loading, addTask, updateTask, updateCompletion, deleteTask };
+    await updateDoc(taskRef, {
+      completionPercent: Number(percent),
+      status: percent >= 100 ? 'completed' : 'open',
+      updatedAt: serverTimestamp(),
+    });
+
+    if (taskData?.projectId) {
+      await recalculateProjectCompletion(db, taskData.projectId);
+    }
+  };
+
+  const deleteTask = async (taskId) => {
+    const taskRef = doc(db, COLLECTIONS.tasks, taskId);
+    const taskSnapshot = await getDoc(taskRef);
+    const taskData = taskSnapshot.exists() ? taskSnapshot.data() : null;
+
+    await deleteDoc(taskRef);
+
+    if (taskData?.projectId) {
+      await recalculateProjectCompletion(db, taskData.projectId);
+    }
+  };
+
+  return { tasks, loading, addTask, updateTask, updateCompletion, deleteTask };
 }

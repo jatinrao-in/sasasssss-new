@@ -11,12 +11,14 @@ import {
   limit,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import useAuditLog from './useAuditLog';
 import { COLLECTIONS } from '../lib/firestore-helpers';
 
 export function useWhatsAppConfig() {
   const [configs, setConfigs] = useState([]);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { log } = useAuditLog();
 
   useEffect(() => {
     const configQuery = query(collection(db, COLLECTIONS.whatsapp_config));
@@ -77,6 +79,11 @@ export function useWhatsAppConfig() {
         },
         { merge: true }
       );
+      await log('whatsapp_config_saved', {
+        messageType,
+        isActive: Boolean(configData.isActive),
+        scheduledTime: configData.scheduledTime || '',
+      });
     } catch (err) {
       console.error('Error saving WhatsApp config:', err);
       throw err;

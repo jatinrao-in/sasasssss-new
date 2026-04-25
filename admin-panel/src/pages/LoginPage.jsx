@@ -1,12 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import {
+  ArrowRight,
+  Building2,
+  Eye,
+  EyeOff,
+  Lock,
+  Mail,
+} from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { redirectToPwa } from '../lib/teamMemberApp';
 import { useToast } from '../hooks/useToast';
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { login, logout, user, userData, loading: authLoading } = useAuth();
+  const { login, currentUser, loading: authLoading } = useAuth();
   const toast = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -14,12 +22,18 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // If already logged in as admin, redirect in useEffect to avoid React warnings.
   useEffect(() => {
-    if (!authLoading && user && userData?.role === 'admin') {
-      navigate('/dashboard', { replace: true });
+    if (authLoading || !currentUser) {
+      return;
     }
-  }, [authLoading, user, userData, navigate]);
+
+    if (currentUser.role === 'admin') {
+      navigate('/dashboard', { replace: true });
+      return;
+    }
+
+    redirectToPwa();
+  }, [authLoading, currentUser, navigate]);
 
   const getFirebaseErrorMessage = (code) => {
     switch (code) {
@@ -52,15 +66,16 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const data = await login(email, password);
-      if (data.role === 'admin') {
-        toast.success('Welcome back, Admin!');
-        navigate('/dashboard');
-      } else {
-        await logout();
-        setError('Access denied. This portal is for administrators only.');
-        toast.error('Access denied. Use the Team Member app instead.');
+      const profile = await login(email, password);
+
+      if (profile.role !== 'admin') {
+        toast.info('Redirecting you to the Team Member app...');
+        redirectToPwa();
+        return;
       }
+
+      toast.success('Welcome back, Admin!');
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       const message = getFirebaseErrorMessage(err.code);
       setError(message);
@@ -71,50 +86,36 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-gray-100 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-teal-100 rounded-full opacity-40 blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-100 rounded-full opacity-30 blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] opacity-5">
-          <div className="w-full h-full border border-teal-400 rounded-full" />
-          <div className="absolute inset-8 border border-teal-400 rounded-full" />
-          <div className="absolute inset-16 border border-teal-400 rounded-full" />
-          <div className="absolute inset-24 border border-teal-400 rounded-full" />
-        </div>
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-teal-50 via-white to-gray-100 p-4">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -right-40 -top-40 h-96 w-96 rounded-full bg-teal-100 opacity-40 blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-blue-100 opacity-30 blur-3xl" />
       </div>
 
-      <div className="w-full max-w-md relative z-10">
-        {/* Card */}
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-          {/* Top accent bar */}
+      <div className="relative z-10 w-full max-w-md">
+        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-xl">
           <div className="h-1 bg-gradient-to-r from-teal-500 to-teal-700" />
 
           <div className="px-8 py-10">
-            {/* Logo */}
-            <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-teal-600 rounded-2xl shadow-lg mb-4">
-                <Building2 className="w-8 h-8 text-white" />
+            <div className="mb-8 text-center">
+              <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-teal-600 shadow-lg">
+                <Building2 className="h-8 w-8 text-white" />
               </div>
               <h1 className="text-2xl font-bold text-gray-900">Welcome Back</h1>
-              <p className="text-gray-500 text-sm mt-1">Sign in to your admin account</p>
+              <p className="mt-1 text-sm text-gray-500">Sign in to your admin account</p>
             </div>
 
-            {/* Form */}
             <form onSubmit={handleLogin} className="space-y-5">
               {error && (
-                <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-lg border border-red-100">
+                <div className="rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
                   {error}
                 </div>
               )}
 
-              {/* Email */}
               <div>
-                <label className="label" htmlFor="email">
-                  Email Address
-                </label>
+                <label className="label" htmlFor="email">Email Address</label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <input
                     id="email"
                     type="email"
@@ -126,13 +127,10 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* Password */}
               <div>
-                <label className="label" htmlFor="password">
-                  Password
-                </label>
+                <label className="label" htmlFor="password">Password</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
@@ -143,37 +141,35 @@ export default function LoginPage() {
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
+                    onClick={() => setShowPassword((value) => !value)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
               </div>
 
-              {/* Forgot password */}
               <div className="flex justify-end">
-                <a href="#" className="text-xs text-teal-600 hover:text-teal-700 font-medium">
+                <a href="#" className="text-xs font-medium text-teal-600 hover:text-teal-700">
                   Forgot password?
                 </a>
               </div>
 
-              {/* Submit */}
               <button
                 type="submit"
                 disabled={loading}
                 id="login-btn"
-                className="w-full bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400 text-white py-2.5 rounded-lg font-semibold text-sm transition-colors duration-200 flex items-center justify-center gap-2 shadow-sm"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-teal-600 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-teal-700 disabled:bg-teal-400"
               >
                 {loading ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                     Signing in...
                   </>
                 ) : (
                   <>
                     Sign In
-                    <ArrowRight className="w-4 h-4" />
+                    <ArrowRight className="h-4 w-4" />
                   </>
                 )}
               </button>
@@ -181,8 +177,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Footer */}
-        <p className="text-center text-xs text-gray-400 mt-6">
+        <p className="mt-6 text-center text-xs text-gray-400">
           (c) 2024 AdminPanel Enterprise Suite. All rights reserved.
         </p>
       </div>
