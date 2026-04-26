@@ -1015,7 +1015,7 @@ export default function WhatsAppAutomationPage() {
 
           <div className="flex justify-end gap-3">
             <button type="button" className="btn-secondary" onClick={() => setPreviewOpen(false)}>Cancel</button>
-            <button type="button" className="btn-primary" disabled={sending} onClick={handleSendCustomMessage}>
+            <button type="button" className="btn-primary" disabled={sending} onClick={handleSendCustom}>
               {sending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               {sending ? 'Sending...' : 'Send Now'}
             </button>
