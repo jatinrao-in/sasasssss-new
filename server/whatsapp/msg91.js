@@ -1,6 +1,5 @@
 import { handleConfigError, requireEnv } from '../config.js';
 
-const MSG91_BULK_TEXT_ENDPOINT = 'https://control.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/';
 
 export function normalizeIndianWhatsAppNumber(toNumber) {
   const digits = String(toNumber ?? '')
@@ -48,19 +47,39 @@ export async function sendViaMsg91(toNumber, message) {
 
   const fullPhone = normalizeIndianWhatsAppNumber(toNumber);
 
+  const templateName = process.env.MSG91_TEMPLATE_NAME || "general_message";
+
   const payload = {
     integrated_number: MSG91_INTEGRATED_NUMBER,
-    content_type: 'text',
+    content_type: "template",
     payload: {
-      messaging_product: 'whatsapp',
-      type: 'text',
-      to: fullPhone,
-      text: { body: message },
-    },
+      messaging_product: "whatsapp",
+      type: "template",
+      template: {
+        name: templateName,
+        language: {
+          code: "en"
+        },
+        components: [
+          {
+            type: "body",
+            parameters: [
+              {
+                type: "text",
+                text: message
+              }
+            ]
+          }
+        ]
+      },
+      to: fullPhone
+    }
   };
 
+  const url = 'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/';
+
   const response = await fetch(
-    MSG91_BULK_TEXT_ENDPOINT,
+    url,
     {
       method: 'POST',
       headers: {
