@@ -1,89 +1,119 @@
 import { auth } from './firebase';
 
-function normalizeApiBaseUrl(value) {
-  const trimmed = String(value || '').trim();
-  const sanitized = trimmed.replace(/\\r\\n|\\n|\\r/g, '');
+// PERMANENT: Always use production URL
+// API runs on Vercel — not localhost
+const API_BASE = 
+  import.meta.env.VITE_API_BASE_URL?.
+    replace(/\/$/, '') || 
+  'https://sasasssss.vercel.app';
 
-  if (!sanitized) {
-    return '';
-  }
-
-  try {
-    const url = new URL(sanitized);
-    const normalizedPath = url.pathname
-      .replace(/\/+$/, '')
-      .replace(/\/r$/, '');
-
-    return `${url.origin}${normalizedPath}`.replace(/\/$/, '');
-  } catch {
-    return sanitized
-      .replace(/\/+$/, '')
-      .replace(/\/r$/, '');
-  }
-}
-
-function normalizeEndpoint(endpoint) {
-  const trimmed = String(endpoint || '').trim();
-
-  if (!trimmed.startsWith('/')) {
-    throw new Error(`API endpoint must start with "/": ${endpoint}`);
-  }
-
-  return trimmed.replace(/^\/r(?=\/|$)/, '');
-}
-
-const API_BASE_URL = normalizeApiBaseUrl(
-  import.meta.env.VITE_API_BASE_URL || 
-  (import.meta.env.DEV 
-    ? 'http://localhost:3000'
-    : 'https://sasasssss.vercel.app')
-);
-
-const buildUrl = (endpoint) => {
-  const normalizedEndpoint = normalizeEndpoint(endpoint);
-
-  return API_BASE_URL
-    ? `${API_BASE_URL}${normalizedEndpoint}`
-    : normalizedEndpoint;
-};
+console.log('API Base URL:', API_BASE);
 
 const getAuthToken = async () => {
-  const user = auth.currentUser;
-
-  if (!user) {
-    throw new Error('Not authenticated');
-  }
-
-  return user.getIdToken();
-};
-
-const parseResponse = async (response) => {
-  const contentType = response.headers.get('content-type') || '';
-
-  if (contentType.includes('application/json')) {
-    return response.json();
-  }
-
-  const text = await response.text();
-  return text ? { message: text } : null;
-};
-
-export const securePost = async (endpoint, data = {}) => {
-  const token = await getAuthToken();
-  const response = await fetch(buildUrl(endpoint), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(data),
+  return new Promise((resolve, reject) => {
+    // Wait for auth to be ready
+    const unsubscribe = auth
+      .onAuthStateChanged(async (user) => {
+        unsubscribe();
+        if (!user) {
+          reject(new Error('Not authenticated'));
+          return;
+        }
+        try {
+          const token = 
+            await user.getIdToken(true);
+          resolve(token);
+        } catch (err) {
+          reject(err);
+        }
+      });
   });
+};
 
-  const payload = await parseResponse(response);
-
-  if (!response.ok) {
-    throw new Error(payload?.error || `API error: ${response.status}`);
+export const securePost = async (
+  endpoint, data
+) => {
+  try {
+    // Remove any leading slash issues
+    const cleanEndpoint = endpoint
+      .startsWith('/') 
+      ? endpoint 
+      : `/${endpoint}`;
+    
+    // Build full URL
+    const url = 
+      `${API_BASE}${cleanEndpoint}`;
+    
+    console.log('API call to:', url);
+    
+    // Get auth token
+    const token = await getAuthToken();
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(data)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response
+        .json().catch(() => ({}));
+      throw new Error(
+        errorData.error || 
+        `API error: ${response.status}`
+      );
+    }
+    
+    return await response.json();
+    
+  } catch (error) {
+    // Better error messages
+    if (error.message.includes(
+      'ERR_CONNECTION_REFUSED')) {
+      throw new Error(
+        'Cannot connect to API server. ' +
+        'Check VITE_API_BASE_URL setting.'
+      );
+    }
+    if (error.message.includes('Failed to fetch')) {
+      throw new Error(
+        'Network error. Check internet ' +
+        'connection and API URL.'
+      );
+    }
+    throw error;
   }
+};
 
-  return payload;
+export const secureGet = async (endpoint) => {
+  try {
+    const cleanEndpoint = endpoint
+      .startsWith('/') 
+      ? endpoint 
+      : `/${endpoint}`;
+    
+    const url = `${API_BASE}${cleanEndpoint}`;
+    const token = await getAuthToken();
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(
+        `API error: ${response.status}`
+      );
+    }
+    
+    return await response.json();
+    
+  } catch (error) {
+    throw error;
+  }
 };

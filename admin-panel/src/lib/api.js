@@ -1,33 +1,56 @@
 import { securePost } from './secureApi';
 
-function normalizeApiBaseUrl(value) {
-  const trimmed = String(value || '').trim();
-  const sanitized = trimmed.replace(/\\r\\n|\\n|\\r/g, '');
+// WhatsApp functions
+export const sendWhatsAppCustom = async (
+  recipients, message, type = 'custom'
+) => {
+  return await securePost(
+    '/api/whatsapp/send-custom',
+    { recipients, message, type }
+  );
+};
 
-  if (!sanitized) {
-    return '';
-  }
+export const sendTaskNotification = async (
+  taskData
+) => {
+  return await securePost(
+    '/api/notify',
+    { 
+      eventType: 'task_assigned',
+      context: taskData 
+    }
+  );
+};
 
+export const sendSalaryNotification = async (
+  salaryData
+) => {
+  return await securePost(
+    '/api/notify',
+    {
+      eventType: 'salary_paid',
+      context: salaryData
+    }
+  );
+};
+
+// All other notify calls
+export const notify = async (
+  eventType, context
+) => {
   try {
-    const url = new URL(sanitized);
-    const normalizedPath = url.pathname
-      .replace(/\/+$/, '')
-      .replace(/\/r$/, '');
-
-    return `${url.origin}${normalizedPath}`.replace(/\/$/, '');
-  } catch {
-    return sanitized
-      .replace(/\/+$/, '')
-      .replace(/\/r$/, '');
+    await securePost('/api/notify', {
+      eventType,
+      context
+    });
+  } catch (error) {
+    // Silent fail — never block UI
+    console.error('Notify failed:', 
+      error.message);
   }
-}
+};
 
-const API_BASE = normalizeApiBaseUrl(
-  import.meta.env.VITE_API_BASE_URL ||
-  import.meta.env.VITE_BACKEND_URL ||
-  '',
-);
-
+// Gemini AI functions
 export const suggestTaskAssignment = async (taskDescription, teamMembers) => (
   securePost('/api/ai/suggest-task', { taskDescription, teamMembers })
 );
@@ -43,5 +66,3 @@ export const draftWhatsAppMessage = async (context) => (
 export const getDashboardInsights = async (data) => (
   securePost('/api/ai/business-summary', { data })
 );
-
-export { API_BASE };

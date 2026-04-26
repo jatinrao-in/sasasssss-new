@@ -28,7 +28,7 @@ import useAuditLog from '../hooks/useAuditLog';
 import useDelete from '../hooks/useDelete';
 import { useTeam } from '../hooks/useTeam';
 import { useToast } from '../hooks/useToast';
-import { securePost } from '../lib/secureApi';
+import { sendWhatsAppCustom } from '../lib/api';
 import { clearCollection } from '../lib/deleteActions';
 import { db } from '../lib/firebase';
 import { COLLECTIONS, setDocument, timestampToDate } from '../lib/firestore-helpers';
@@ -463,34 +463,38 @@ export default function WhatsAppAutomationPage() {
     ));
   };
 
-  const handleSendCustomMessage = async () => {
+  const handleSendCustom = async () => {
+    if (!customMessage.trim()) {
+      toast.error('Please write a message');
+      return;
+    }
+    
+    if (!selectedRecipients.length) {
+      toast.error('Please select recipients');
+      return;
+    }
+    
     setSending(true);
-
+    
     try {
-      const payload = {
-        recipients: selectedRecipients,
-        type: composeMode === 'template' ? templateSelection : 'custom',
-      };
-
-      if (composeMode === 'template') {
-        payload.templateKey = templateSelection;
-      } else {
-        payload.message = customMessage.trim();
+      const result = await sendWhatsAppCustom(
+        selectedRecipients,
+        customMessage,
+        'custom'
+      );
+      
+      if (result.success) {
+        toast.success(
+          `Sent: ${result.summary.sent}, ` +
+          `Failed: ${result.summary.failed}`
+        );
+        setSendResults(result.results);
+        setShowResults(true);
+        setCustomMessage('');
       }
-
-      const result = await securePost('/api/whatsapp/send-custom', payload);
-      setSendResults(result.results || []);
-      setSendSummary(result.summary || { sent: 0, failed: 0, total: 0 });
-      setResultsOpen(true);
-      setPreviewOpen(false);
-      await log('whatsapp_custom_message_sent', {
-        recipients: selectedRecipients.map((member) => member.id),
-        mode: composeMode,
-        summary: result.summary || {},
-      });
-      toast.success(`Sent: ${result.summary?.sent || 0}, Failed: ${result.summary?.failed || 0}`);
     } catch (error) {
-      toast.error(`Send failed: ${error.message}`);
+      toast.error('Send failed: ' + 
+        error.message);
     } finally {
       setSending(false);
     }
