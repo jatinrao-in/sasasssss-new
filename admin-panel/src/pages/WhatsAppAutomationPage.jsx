@@ -182,7 +182,11 @@ function ModalShell({ open, onOpenChange, title, description, children }) {
               <Dialog.Description className="mt-1 text-sm text-[var(--text-muted)]">
                 {description}
               </Dialog.Description>
-            ) : null}
+            ) : (
+              <Dialog.Description className="sr-only">
+                Dialog
+              </Dialog.Description>
+            )}
           </div>
 
           {children}
@@ -482,14 +486,31 @@ export default function WhatsAppAutomationPage() {
         customMessage,
         'custom'
       );
+
+      console.log('Full result:', JSON.stringify(result));
+
+      if (result.results) {
+        result.results.forEach(r => {
+          console.log('Member:', r.memberName,
+            'Status:', r.status,
+            'Error:', r.error,
+            'MSG91:', r.msg91Response
+          );
+        });
+      }
       
-      if (result.success) {
+      if (result.success || result.summary) {
         toast.success(
-          `Sent: ${result.summary.sent}, ` +
-          `Failed: ${result.summary.failed}`
+          `Sent: ${result.summary?.sent || 0}, ` +
+          `Failed: ${result.summary?.failed || 0}`
         );
-        setSendResults(result.results);
-        setShowResults(true);
+        if (result.results) {
+          setSendResults(result.results);
+        }
+        if (result.summary) {
+          setSendSummary(result.summary);
+        }
+        setResultsOpen(true);
         setCustomMessage('');
       }
     } catch (error) {
