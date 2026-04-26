@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   Wallet, Check, Edit2, X, Save, Users,
   AlertTriangle, ChevronDown, RefreshCw,
@@ -16,7 +16,7 @@ import { useToast } from '../hooks/useToast';
 import useDelete from '../hooks/useDelete';
 import { formatCurrency, getInitials } from '../lib/formatters';
 import { addDocumentToCollection, getNotificationItemsCollection } from '../lib/firestore-helpers';
-import { notify } from '../lib/notify';
+import { notifySalaryPaid } from '../lib/notify';
 import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
 import DeleteButton from '../components/DeleteButton';
 
@@ -354,19 +354,7 @@ export default function SalaryPage() {
           
           const member = teamMembers.find(m => m.id === row.uid);
           if (member?.whatsapp) {
-            notify('salary_paid', {
-              memberUid: row.uid,
-              whatsappNumber: member.whatsapp,
-              memberName: row.memberName,
-              month: formatMonthLabel(month),
-              workingDays: row.workingDays ?? '-',
-              presentDays: row.presentDays ?? '-',
-              lopDays: row.lopDays ?? 0,
-              baseSalary: row.baseSalary?.toLocaleString('en-IN') ?? '-',
-              lopDeduction: row.lopDeduction?.toLocaleString('en-IN') ?? '0',
-              netSalary: row.netSalary?.toLocaleString('en-IN') ?? '-',
-              paidDate: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-            });
+            notifySalaryPaid(member, row, formatMonthLabel(month));
           }
         } catch (notifErr) {
           console.warn('Notification failed (non-fatal):', notifErr.message);
@@ -452,19 +440,7 @@ export default function SalaryPage() {
         pending.map(r => {
           const member = teamMembers.find(m => m.id === r.uid);
           if (member?.whatsapp) {
-            return notify('salary_paid', {
-              memberUid: r.uid,
-              whatsappNumber: member.whatsapp,
-              memberName: r.memberName,
-              month: formatMonthLabel(month),
-              workingDays: r.workingDays ?? '-',
-              presentDays: r.presentDays ?? '-',
-              lopDays: r.lopDays ?? 0,
-              baseSalary: r.baseSalary?.toLocaleString('en-IN') ?? '-',
-              lopDeduction: r.lopDeduction?.toLocaleString('en-IN') ?? '0',
-              netSalary: r.netSalary?.toLocaleString('en-IN') ?? '-',
-              paidDate: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-            });
+            return notifySalaryPaid(member, r, formatMonthLabel(month));
           }
           return Promise.resolve();
         })

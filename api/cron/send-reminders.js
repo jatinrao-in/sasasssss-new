@@ -7,16 +7,17 @@ import {
   formatIstDate,
   formatIstTime,
   getCompanyName,
-  getMemberTaskContext,
   getTeamSummaryContext,
   mergeAutomationSettings,
-  renderTemplate,
-  writeWhatsAppLog,
 } from '../../server/whatsapp/automation.js';
-import { handleConfigError, sendViaMsg91 } from '../../server/whatsapp/msg91.js';
+import {
+  handleConfigError,
+  sendDailyReminder,
+  sendGeneralMessage,
+} from '../../server/whatsapp/msg91.js';
 
-function sleep(milliseconds) {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function getSlotConfig(slot, settings) {
@@ -24,18 +25,14 @@ function getSlotConfig(slot, settings) {
     return {
       enabled: Boolean(settings.morningEnabled),
       time: settings.morningTime,
-      template: settings.morningTemplate,
     };
   }
-
   if (slot === 'evening') {
     return {
       enabled: Boolean(settings.eveningEnabled),
       time: settings.eveningTime,
-      template: settings.eveningTemplate,
     };
   }
-
   const error = new Error('slot must be "morning" or "evening"');
   error.statusCode = 400;
   throw error;
@@ -50,9 +47,7 @@ function shouldBypassTimeCheck(req) {
 }
 
 export default async function handler(req, res) {
-  if (handleCors(req, res, 'GET, OPTIONS')) {
-    return;
-  }
+  if (handleCors(req, res, 'GET, OPTIONS')) return;
 
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -67,6 +62,7 @@ export default async function handler(req, res) {
 
     const { db } = getAdminServices();
     const slot = String(req.query?.slot || '').trim().toLowerCase();
+
     const [settingsDoc, companyDoc, runtimeDoc] = await Promise.all([
       db.doc('settings/whatsapp_automation').get(),
       db.doc('settings/company').get(),
@@ -79,6 +75,7 @@ export default async function handler(req, res) {
 
     const settings = mergeAutomationSettings(settingsDoc.data());
     const slotConfig = getSlotConfig(slot, settings);
+
     if (!slotConfig.enabled) {
       return res.status(200).json({ success: true, slot, message: `${slot} reminder disabled` });
     }
@@ -86,6 +83,7 @@ export default async function handler(req, res) {
     const now = new Date();
     const currentIstTime = formatIstTime(now);
     const currentIstDate = formatIstDate(now);
+
     if (!shouldBypassTimeCheck(req) && currentIstTime !== slotConfig.time) {
       return res.status(200).json({
         success: true,
@@ -104,32 +102,66 @@ export default async function handler(req, res) {
     }
 
     const companyName = getCompanyName(companyDoc);
+
     const usersSnap = await db.collection('users')
       .where('role', '==', 'member')
       .where('status', '==', 'active')
       .get();
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     const memberResults = [];
 
     for (const userDoc of usersSnap.docs) {
       const user = { uid: userDoc.id, ...userDoc.data() };
-      let renderedMessage = '';
+
+      if (!user.whatsapp) {
+        memberResults.push({
+          memberName: user.name || 'Unknown',
+          memberUid: userDoc.id,
+          phone: '',
+          status: 'skipped',
+          error: 'No WhatsApp number',
+        });
+        continue;
+      }
 
       try {
-        const templateVariables = await getMemberTaskContext(db, userDoc.id, user, companyName, now);
-        renderedMessage = renderTemplate(slotConfig.template, templateVariables).trim();
+        // Count tasks for this member
+        const tasksSnap = await db.collection('tasks')
+          .where('assignedTo', '==', userDoc.id)
+          .get();
 
-        const sendResult = await sendViaMsg91(user.whatsapp || '', renderedMessage);
+        const tasks = tasksSnap.docs.map((d) => d.data());
+
+        const pendingTasks = tasks.filter((t) => t.status !== 'completed').length;
+        const overdueTasks = tasks.filter((t) => {
+          if (t.status === 'completed') return false;
+          const target = t.targetDate?.toDate?.() || (t.targetDate ? new Date(t.targetDate) : null);
+          return target && target < today;
+        }).length;
+
+        // Use daily_reminder template (variables: name, pendingTasks, overdueTasks)
+        const sendResult = await sendDailyReminder(
+          user.whatsapp,
+          user.name || 'Team Member',
+          pendingTasks,
+          overdueTasks,
+        );
+
         const status = sendResult.sent ? 'sent' : 'failed';
 
-        await writeWhatsAppLog(db, {
+        await db.collection('whatsapp_logs').add({
           to: sendResult.to,
           memberName: user.name || 'Unknown',
           memberUid: userDoc.id,
           messageType: slot,
-          message: renderedMessage,
+          template: 'daily_reminder',
           status,
           msg91Response: sendResult.result,
+          pendingTasks,
+          overdueTasks,
           sentAt: Timestamp.now(),
         });
 
@@ -138,21 +170,21 @@ export default async function handler(req, res) {
           memberUid: userDoc.id,
           phone: sendResult.to,
           status,
-          message: renderedMessage,
-          msg91Response: sendResult.result,
+          pendingTasks,
+          overdueTasks,
         });
       } catch (error) {
-        await writeWhatsAppLog(db, {
+        await db.collection('whatsapp_logs').add({
           to: user.whatsapp || '',
           memberName: user.name || 'Unknown',
           memberUid: userDoc.id,
           messageType: slot,
-          message: renderedMessage,
+          template: 'daily_reminder',
           status: 'failed',
           msg91Response: error.providerResponse || { error: error.message },
           error: error.message,
           sentAt: Timestamp.now(),
-        });
+        }).catch(() => {});
 
         memberResults.push({
           memberName: user.name || 'Unknown',
@@ -160,80 +192,66 @@ export default async function handler(req, res) {
           phone: user.whatsapp || '',
           status: 'failed',
           error: error.message,
-          message: renderedMessage,
         });
       }
 
-      await sleep(300);
+      await sleep(500);
     }
 
+    // ── Admin summary ────────────────────────────────────────────────────────
     const adminResults = [];
     if (settings.adminSummaryEnabled) {
       const summaryContext = await getTeamSummaryContext(db, companyName, memberResults, now);
-      const adminMessage = renderTemplate(settings.adminTemplate, summaryContext).trim();
+      const totalPending = memberResults.reduce((s, r) => s + (r.pendingTasks || 0), 0);
+      const totalOverdue = memberResults.reduce((s, r) => s + (r.overdueTasks || 0), 0);
 
-      for (const adminNumber of settings.adminNumbers.filter(Boolean)) {
+      const adminSummaryText =
+        `Daily ${slot} summary for ${currentIstDate}:\n` +
+        `Members notified: ${memberResults.length}\n` +
+        `Total pending tasks: ${totalPending}\n` +
+        `Total overdue tasks: ${totalOverdue}`;
+
+      for (const adminNumber of (settings.adminNumbers || []).filter(Boolean)) {
         try {
-          const sendResult = await sendViaMsg91(adminNumber, adminMessage);
+          const sendResult = await sendGeneralMessage(adminNumber, 'Admin', adminSummaryText);
           const status = sendResult.sent ? 'sent' : 'failed';
 
-          await writeWhatsAppLog(db, {
+          await db.collection('whatsapp_logs').add({
             to: sendResult.to,
             memberName: 'Admin Summary',
             messageType: 'admin_summary',
-            message: adminMessage,
+            template: 'general_message',
             status,
             msg91Response: sendResult.result,
             sentAt: Timestamp.now(),
-          });
+          }).catch(() => {});
 
-          adminResults.push({
-            phone: sendResult.to,
-            status,
-            msg91Response: sendResult.result,
-          });
+          adminResults.push({ phone: sendResult.to, status });
         } catch (error) {
-          await writeWhatsAppLog(db, {
-            to: adminNumber,
-            memberName: 'Admin Summary',
-            messageType: 'admin_summary',
-            message: adminMessage,
-            status: 'failed',
-            msg91Response: error.providerResponse || { error: error.message },
-            error: error.message,
-            sentAt: Timestamp.now(),
-          });
-
-          adminResults.push({
-            phone: adminNumber,
-            status: 'failed',
-            error: error.message,
-          });
+          adminResults.push({ phone: adminNumber, status: 'failed', error: error.message });
         }
 
-        await sleep(300);
+        await sleep(500);
       }
     }
 
-    await db.doc('settings/whatsapp_automation_runtime').set({
-      lastRunDates: {
-        ...(runtimeData?.lastRunDates || {}),
-        [slot]: currentIstDate,
+    // ── Record last-run timestamp ────────────────────────────────────────────
+    await db.doc('settings/whatsapp_automation_runtime').set(
+      {
+        lastRunDates: { ...(runtimeData?.lastRunDates || {}), [slot]: currentIstDate },
+        lastRunTimes: { ...(runtimeData?.lastRunTimes || {}), [slot]: currentIstTime },
+        updatedAt: Timestamp.now(),
       },
-      lastRunTimes: {
-        ...(runtimeData?.lastRunTimes || {}),
-        [slot]: currentIstTime,
-      },
-      updatedAt: Timestamp.now(),
-    }, { merge: true });
+      { merge: true },
+    );
 
     const { start } = buildDayRangeIst(now);
     return res.status(200).json({
       success: true,
       slot,
       processed: memberResults.length,
-      sent: memberResults.filter((result) => result.status === 'sent').length,
-      failed: memberResults.filter((result) => result.status === 'failed').length,
+      sent: memberResults.filter((r) => r.status === 'sent').length,
+      failed: memberResults.filter((r) => r.status === 'failed').length,
       adminSummaryProcessed: adminResults.length,
       date: currentIstDate,
       scheduledTime: slotConfig.time,
@@ -241,13 +259,10 @@ export default async function handler(req, res) {
       results: memberResults,
       adminResults,
     });
+
   } catch (error) {
     console.error('send-reminders failed:', error.message);
-
-    if (handleConfigError(res, error)) {
-      return;
-    }
-
+    if (handleConfigError(res, error)) return;
     return res.status(error.statusCode || 500).json({ error: error.message });
   }
 }
