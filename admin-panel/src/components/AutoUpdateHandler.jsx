@@ -47,6 +47,7 @@ export default function AutoUpdateHandler() {
         disposed
         || inFlightRef.current
         || document.visibilityState === 'hidden'
+        || import.meta.env.DEV
       ) {
         return;
       }

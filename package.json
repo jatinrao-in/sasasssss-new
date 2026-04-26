@@ -2,10 +2,16 @@
   "name": "saya-industrial-workspace",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=20.0.0 <25"
+  },
   "scripts": {
     "build": "npm run build:admin && npm run build:pwa",
     "build:admin": "npm --prefix admin-panel run build",
     "build:pwa": "npm --prefix team-member-pwa run build",
+    "vercel:pull:prod": "vercel pull --yes --environment=production",
+    "verify:vercel": "node scripts/validate-env.mjs admin-panel --env-file .vercel/.env.production.local && node scripts/validate-env.mjs team-member-pwa --env-file .vercel/.env.production.local && node scripts/validate-env.mjs backend --env-file .vercel/.env.production.local && vercel build --prod",
+    "deploy:vercel:prod": "npm run vercel:pull:prod && npm run verify:vercel && vercel deploy --prebuilt --prod",
     "emulators": "firebase emulators:start --only auth,firestore"
   },
   "dependencies": {

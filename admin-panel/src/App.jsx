@@ -24,39 +24,26 @@ import NotificationLogsPage from './pages/NotificationLogsPage';
 import SplashScreen from './components/SplashScreen';
 import AIAssistantPanel from './components/ui/AIAssistantPanel';
 import AutoUpdateHandler from './components/AutoUpdateHandler';
-import { getFirstAccessiblePath } from './lib/accessControl';
+
+// Login route — redirect if already logged in
+const LoginRoute = () => {
+  const { currentUser, loading } = useAuth();
+  
+  if (loading) return <SplashScreen />;
+  
+  if (currentUser?.role === 'admin') {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return <LoginPage />;
+};
 
 function AdminLayout() {
   return (
-    <ProtectedRoute requiredRole="admin">
+    <ProtectedRoute>
       <Layout />
       <AIAssistantPanel />
     </ProtectedRoute>
-  );
-}
-
-function AdminHomeRedirect() {
-  const { currentUser, loading } = useAuth();
-
-  if (loading) {
-    return <SplashScreen />;
-  }
-
-  if (!currentUser) {
-    return <Navigate to="/" replace />;
-  }
-
-  const firstAccessiblePath = getFirstAccessiblePath(currentUser, 'admin');
-
-  if (firstAccessiblePath) {
-    return <Navigate to={firstAccessiblePath} replace />;
-  }
-
-  return (
-    <RestrictedPage
-      message="Your account is active, but you do not currently have any admin pages assigned."
-      subtext="Ask your main administrator to grant access to at least one admin page."
-    />
   );
 }
 
@@ -67,12 +54,12 @@ export default function App() {
       <AuthProvider>
         <RealtimeProvider>
           <ToastProvider>
-            <SplashScreen />
             <Routes>
-              <Route path="/" element={<LoginPage />} />
+              {/* Public route */}
+              <Route path="/login" element={<LoginRoute />} />
 
+              {/* Protected admin routes */}
               <Route element={<AdminLayout />}>
-                <Route path="/home" element={<AdminHomeRedirect />} />
                 <Route
                   path="/dashboard"
                   element={(
@@ -190,7 +177,12 @@ export default function App() {
                 <Route path="/rgp-challan" element={<Navigate to="/rgp" replace />} />
               </Route>
 
-              <Route path="*" element={<Navigate to="/" replace />} />
+              {/* Default redirect */}
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/home" element={<Navigate to="/dashboard" replace />} />
+
+              {/* 404 */}
+              <Route path="*" element={<Navigate to="/login" replace />} />
             </Routes>
           </ToastProvider>
         </RealtimeProvider>

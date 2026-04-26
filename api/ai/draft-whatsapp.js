@@ -1,6 +1,6 @@
 import { generateText } from '../../server/ai.js';
 import { handleConfigError } from '../../server/config.js';
-import { handlePreflight, setCorsHeaders } from '../../server/cors.js';
+import { handleCors } from '../../server/cors.js';
 import { requireAdmin, verifyFirebaseRequest } from '../../server/auth.js';
 
 export const draftMessage = async (eventType, context) => {
@@ -277,9 +277,7 @@ export const draftMessage = async (eventType, context) => {
 };
 
 export default async function handler(req, res) {
-  setCorsHeaders(req, res);
-
-  if (handlePreflight(req, res)) {
+  if (handleCors(req, res)) {
     return;
   }
 

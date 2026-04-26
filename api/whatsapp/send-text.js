@@ -1,51 +1,11 @@
-import { handleConfigError, requireEnv } from '../../server/config.js';
-import { handlePreflight, setCorsHeaders } from '../../server/cors.js';
+import { handleCors } from '../../server/cors.js';
 import { requireAdmin, verifyFirebaseRequest } from '../../server/auth.js';
+import { handleConfigError, sendViaMsg91 } from '../../server/whatsapp/msg91.js';
 
-export const sendViaMsg91 = async (toNumber, message) => {
-  const {
-    MSG91_AUTH_KEY,
-    MSG91_INTEGRATED_NUMBER,
-  } = requireEnv(['MSG91_AUTH_KEY', 'MSG91_INTEGRATED_NUMBER']);
-
-  const phone = toNumber
-    .replace(/\D/g, '')
-    .replace(/^0/, '')
-    .replace(/^91/, '');
-  const fullPhone = `91${phone}`;
-
-  const payload = {
-    integrated_number: MSG91_INTEGRATED_NUMBER,
-    content_type: 'text',
-    payload: {
-      messaging_product: 'whatsapp',
-      type: 'text',
-      to: fullPhone,
-      text: { body: message }
-    }
-  };
-
-  const response = await fetch(
-    'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/',
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authkey: MSG91_AUTH_KEY
-      },
-      body: JSON.stringify(payload)
-    }
-  );
-
-  const result = await response.json();
-
-  return result;
-};
+export { sendViaMsg91 } from '../../server/whatsapp/msg91.js';
 
 export default async function handler(req, res) {
-  setCorsHeaders(req, res);
-
-  if (handlePreflight(req, res)) {
+  if (handleCors(req, res)) {
     return;
   }
 
@@ -63,7 +23,7 @@ export default async function handler(req, res) {
     }
 
     const result = await sendViaMsg91(toNumber, message);
-    return res.status(200).json({ success: true, result });
+    return res.status(200).json({ success: true, result: result.result, to: result.to, sent: result.sent });
   } catch (error) {
     console.error('Critical:', error.message);
 

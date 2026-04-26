@@ -1,5 +1,6 @@
 import { Timestamp } from 'firebase-admin/firestore';
 import { handleConfigError } from '../server/config.js';
+import { handleCors } from '../server/cors.js';
 import { getAdminServices } from '../server/firebaseAdmin.js';
 import { requireAdmin, verifyFirebaseRequest } from '../server/auth.js';
 import {
@@ -9,18 +10,9 @@ import {
   sanitizePermissions,
 } from '../server/accessControl.js';
 
-const setCorsHeaders = (req, res) => {
-  const origin = req.headers.origin || '*';
-  res.setHeader('Access-Control-Allow-Origin', origin);
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-};
-
 export default async function handler(req, res) {
-  setCorsHeaders(req, res);
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (handleCors(req, res)) {
+    return;
   }
 
   if (req.method !== 'POST') {

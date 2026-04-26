@@ -7,7 +7,7 @@ import {
 } from 'firebase/firestore';
 import {
   getAuth,
-  indexedDBLocalPersistence,
+  browserLocalPersistence,
   setPersistence,
 } from 'firebase/auth';
 import { getMessaging } from 'firebase/messaging';
@@ -51,7 +51,10 @@ export const db = (() => {
 })();
 
 export const auth = getAuth(app);
-void setPersistence(auth, indexedDBLocalPersistence).catch(() => {});
+
+// Set persistence ONCE
+setPersistence(auth, browserLocalPersistence)
+  .catch(err => console.error('Persistence error:', err));
 
 export const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
 

@@ -1,6 +1,9 @@
 // Firebase Messaging Service Worker
 // Must stay in /public/ so it is served from the app root.
 
+// Ignore update check errors
+self.addEventListener('error', () => {});
+
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
 

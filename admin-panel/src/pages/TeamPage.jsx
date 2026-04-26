@@ -259,7 +259,7 @@ function AccountModal({ editing, mainAdminUid, onClose, onSave }) {
               <label className="label">Phone</label>
               <input
                 className="input-field"
-                type="number"
+                type="tel"
                 placeholder="Enter phone number"
                 value={form.phone}
                 onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))}
@@ -270,7 +270,7 @@ function AccountModal({ editing, mainAdminUid, onClose, onSave }) {
               <label className="label">WhatsApp Number</label>
               <input
                 className="input-field"
-                type="number"
+                type="tel"
                 placeholder="Enter WhatsApp number"
                 value={form.whatsapp}
                 onChange={(event) => setForm((prev) => ({ ...prev, whatsapp: event.target.value }))}

@@ -3,7 +3,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 
-const target = process.argv[2];
+const args = process.argv.slice(2);
+const target = args[0];
+
+const extraEnvFiles = [];
+for (let index = 1; index < args.length; index += 1) {
+  if (args[index] === '--env-file' && args[index + 1]) {
+    extraEnvFiles.push(args[index + 1]);
+    index += 1;
+  }
+}
 
 if (!target) {
   console.error('Usage: node scripts/validate-env.mjs <admin-panel|team-member-pwa|backend>');
@@ -50,7 +59,29 @@ const requiredByApp = {
 };
 
 function hasSuspiciousNewlineCharacters(value) {
-  return /\\[rn]|[\r\n]/.test(String(value ?? ''));
+  return /[\r\n]|\\r\\n|\\n|\\r/.test(String(value ?? ''));
+}
+
+function normalizeScalarEnvValue(value) {
+  return String(value ?? '')
+    .trim()
+    .replace(/\\r\\n|\\n|\\r/g, '')
+    .trim();
+}
+
+function isPlainOriginUrl(value) {
+  const trimmed = normalizeScalarEnvValue(value);
+
+  if (!trimmed) {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.origin === trimmed;
+  } catch {
+    return false;
+  }
 }
 
 function normalizePrivateKey(value) {
@@ -63,35 +94,105 @@ function normalizePrivateKey(value) {
     .trim();
 }
 
+function hasClosingQuote(value, quoteCharacter) {
+  if (!value.endsWith(quoteCharacter)) {
+    return false;
+  }
+
+  let backslashCount = 0;
+  for (let index = value.length - 2; index >= 0 && value[index] === '\\'; index -= 1) {
+    backslashCount += 1;
+  }
+
+  return backslashCount % 2 === 0;
+}
+
+function unwrapQuotedValue(value) {
+  const trimmed = String(value ?? '').trim();
+
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"'))
+    || (trimmed.startsWith('\'') && trimmed.endsWith('\''))
+  ) {
+    return trimmed.slice(1, -1);
+  }
+
+  return trimmed;
+}
+
 function parseEnvFile(filePath) {
   if (!fs.existsSync(filePath)) {
     return {};
   }
 
-  return fs.readFileSync(filePath, 'utf8')
-    .split(/\r?\n/)
-    .reduce((acc, line) => {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith('#')) {
-        return acc;
+  const lines = fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/, '').split(/\r?\n/);
+  const parsed = {};
+  let multilineKey = null;
+  let multilineQuote = null;
+  let multilineValue = [];
+
+  for (const line of lines) {
+    if (multilineKey) {
+      multilineValue.push(line);
+
+      if (hasClosingQuote(line, multilineQuote)) {
+        parsed[multilineKey] = unwrapQuotedValue(multilineValue.join('\n'));
+        multilineKey = null;
+        multilineQuote = null;
+        multilineValue = [];
       }
 
-      const separatorIndex = trimmed.indexOf('=');
-      if (separatorIndex === -1) {
-        return acc;
-      }
+      continue;
+    }
 
-      const key = trimmed.slice(0, separatorIndex).trim();
-      const value = trimmed.slice(separatorIndex + 1).trim().replace(/^['"]|['"]$/g, '');
-      acc[key] = value;
-      return acc;
-    }, {});
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) {
+      continue;
+    }
+
+    const separatorIndex = line.indexOf('=');
+    if (separatorIndex === -1) {
+      continue;
+    }
+
+    const key = line.slice(0, separatorIndex).trim().replace(/^export\s+/, '');
+    const value = line.slice(separatorIndex + 1).trim();
+
+    if (!value) {
+      parsed[key] = '';
+      continue;
+    }
+
+    const quoteCharacter = value.startsWith('"') || value.startsWith('\'') ? value[0] : null;
+    if (quoteCharacter && !hasClosingQuote(value, quoteCharacter)) {
+      multilineKey = key;
+      multilineQuote = quoteCharacter;
+      multilineValue = [value];
+      continue;
+    }
+
+    parsed[key] = unwrapQuotedValue(value);
+  }
+
+  if (multilineKey) {
+    parsed[multilineKey] = unwrapQuotedValue(multilineValue.join('\n'));
+  }
+
+  return parsed;
 }
+
+const resolvedExtraEnvFiles = extraEnvFiles
+  .map((filePath) => (path.isAbsolute(filePath) ? filePath : path.resolve(appDir, filePath)));
 
 const fileValues = envFiles.reduce(
   (acc, fileName) => ({ ...acc, ...parseEnvFile(path.join(appDir, fileName)) }),
   {},
 );
+const explicitFileValues = resolvedExtraEnvFiles.reduce(
+  (acc, fileName) => ({ ...acc, ...parseEnvFile(fileName) }),
+  {},
+);
+const mergedFileValues = { ...fileValues, ...explicitFileValues };
 
 const requiredKeys = requiredByApp[target];
 
@@ -101,7 +202,7 @@ if (!requiredKeys) {
 }
 
 const missing = requiredKeys.filter((key) => {
-  const value = process.env[key] ?? fileValues[key];
+  const value = process.env[key] ?? mergedFileValues[key];
   return !String(value || '').trim();
 });
 
@@ -111,7 +212,12 @@ if (missing.length > 0) {
 }
 
 const suspicious = requiredKeys.filter((key) => {
-  const value = process.env[key] ?? fileValues[key];
+  const value = process.env[key] ?? mergedFileValues[key];
+
+  if (key.includes('PRIVATE_KEY')) {
+    return false;
+  }
+
   return hasSuspiciousNewlineCharacters(value);
 });
 
@@ -121,8 +227,19 @@ if (suspicious.length > 0) {
   );
 }
 
+if (target !== 'backend') {
+  const apiBaseUrl = process.env.VITE_API_BASE_URL ?? mergedFileValues.VITE_API_BASE_URL;
+
+  if (!isPlainOriginUrl(apiBaseUrl)) {
+    console.error(
+      '[env] VITE_API_BASE_URL must be a plain origin like https://sasasssss.vercel.app with no trailing slash or extra path.',
+    );
+    process.exit(1);
+  }
+}
+
 if (target === 'backend') {
-  const privateKey = normalizePrivateKey(process.env.FIREBASE_PRIVATE_KEY ?? fileValues.FIREBASE_PRIVATE_KEY);
+  const privateKey = normalizePrivateKey(process.env.FIREBASE_PRIVATE_KEY ?? mergedFileValues.FIREBASE_PRIVATE_KEY);
   const hasPemBoundary = /-----BEGIN (?:RSA )?PRIVATE KEY-----/.test(privateKey)
     && /-----END (?:RSA )?PRIVATE KEY-----/.test(privateKey);
 

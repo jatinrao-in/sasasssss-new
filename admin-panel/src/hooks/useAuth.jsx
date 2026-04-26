@@ -1,234 +1,143 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import {
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  signOut,
-} from 'firebase/auth';
-import { collection, doc, getDoc, getDocs, onSnapshot } from 'firebase/firestore';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
-import { COLLECTIONS, setDocument } from '../lib/firestore-helpers';
-import {
-  getAllPageKeys,
-  normalizeRole,
-  resolveUserPermissions,
-} from '../lib/accessControl';
+import { COLLECTIONS } from '../lib/firestore-helpers';
+import { resolveUserPermissions } from '../lib/accessControl';
 
 const AuthContext = createContext(null);
 
-async function fetchUserProfile(uid, email) {
-  const userDoc = await getDoc(doc(db, COLLECTIONS.users, uid));
-
-  if (!userDoc.exists()) {
-    return {
-      uid,
-      email,
-      role: 'member',
-      name: email || 'Unknown user',
-      permissions: [],
-    };
-  }
-
-  return { uid, email, ...userDoc.data() };
-}
-
-const buildCurrentUser = (firebaseUser, profile) => {
-  if (!firebaseUser) {
-    return null;
-  }
-
-  const {
-    isMainAdmin,
-    permissions,
-    role,
-    status,
-  } = resolveUserPermissions(profile, profile?.mainAdminUid);
-
-  return {
-    uid: firebaseUser.uid,
-    email: firebaseUser.email,
-    displayName: firebaseUser.displayName,
-    ...profile,
-    role,
-    status,
-    permissions,
-    isMainAdmin,
-  };
-};
-
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [userData, setUserData] = useState(null);
-  const [mainAdminUid, setMainAdminUid] = useState(null);
+export const AuthProvider = ({ children }) => {
+  const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => onSnapshot(
-    doc(db, COLLECTIONS.settings, 'app'),
-    (snapshot) => {
-      setMainAdminUid(snapshot.data()?.mainAdminUid || null);
-    },
-    (error) => {
-      console.error('Error listening to app settings:', error);
-      setMainAdminUid(null);
-    },
-  ), []);
+  const [authError, setAuthError] = useState(null);
+  
+  // Prevent multiple simultaneous Firestore fetches
+  const fetchingRef = useRef(false);
 
   useEffect(() => {
-    if (mainAdminUid || !userData?.uid || normalizeRole(userData.role) !== 'admin') {
-      return;
-    }
-
-    let cancelled = false;
-
-    const resolveFallbackMainAdmin = async () => {
-      try {
-        const usersSnapshot = await getDocs(collection(db, COLLECTIONS.users));
-        const admins = usersSnapshot.docs
-          .map((userDoc) => ({ id: userDoc.id, ...userDoc.data() }))
-          .filter((profile) => normalizeRole(profile.role) === 'admin')
-          .sort((firstAdmin, secondAdmin) => {
-            const firstCreatedAt = firstAdmin.createdAt?.toDate?.()?.getTime?.() ?? 0;
-            const secondCreatedAt = secondAdmin.createdAt?.toDate?.()?.getTime?.() ?? 0;
-            return firstCreatedAt - secondCreatedAt;
-          });
-
-        const fallbackAdmin = admins[0]?.id || null;
-
-        if (!fallbackAdmin || cancelled) {
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      async (firebaseUser) => {
+        // Prevent duplicate fetches
+        if (fetchingRef.current) return;
+        
+        if (!firebaseUser) {
+          setCurrentUser(null);
+          setLoading(false);
           return;
         }
+        
+        fetchingRef.current = true;
+        
+        try {
+          // Get App Settings for mainAdminUid to resolve permissions correctly
+          const appDoc = await getDoc(doc(db, COLLECTIONS.settings, 'app'));
+          const mainAdminUid = appDoc.data()?.mainAdminUid || null;
 
-        setMainAdminUid(fallbackAdmin);
-
-        if (fallbackAdmin === userData.uid) {
-          await setDocument(
-            doc(db, COLLECTIONS.settings, 'app'),
-            { mainAdminUid: fallbackAdmin },
-            { merge: true },
-            { action: 'save app settings', collectionName: COLLECTIONS.settings },
-          );
-        }
-      } catch (error) {
-        console.error('Error resolving fallback main admin:', error);
-      }
-    };
-
-    resolveFallbackMainAdmin();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [mainAdminUid, userData?.role, userData?.uid]);
-
-  useEffect(() => {
-    let unsubscribeProfile = () => {};
-
-    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-      unsubscribeProfile();
-
-      if (!firebaseUser) {
-        setUser(null);
-        setUserData(null);
-        setLoading(false);
-        return;
-      }
-
-      setUser(firebaseUser);
-      setLoading(true);
-
-        unsubscribeProfile = onSnapshot(
-        doc(db, COLLECTIONS.users, firebaseUser.uid),
-        (snapshot) => {
-          const profile = snapshot.exists()
-            ? {
-              uid: firebaseUser.uid,
+          // Fetch user data from Firestore
+          const userDoc = await getDoc(doc(db, COLLECTIONS.users, firebaseUser.uid));
+          
+          let userData;
+          if (!userDoc.exists()) {
+            console.log('Creating missing user profile...');
+            userData = {
+              name: firebaseUser.displayName || 'Admin',
               email: firebaseUser.email,
-              mainAdminUid,
-              ...snapshot.data(),
-            }
-            : {
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              mainAdminUid,
-              role: 'member',
-              name: firebaseUser.email || 'Unknown user',
-              permissions: getAllPageKeys('member'),
+              role: 'admin',
+              phone: '',
+              whatsapp: '',
+              designation: 'Administrator',
+              status: 'active',
+              permissions: [
+                'dashboard', 'projects', 'enquiry', 'followups',
+                'payments', 'outgoing_payments', 'rgp', 'salary',
+                'tools', 'team', 'settings', 'whatsapp'
+              ],
+              fcmToken: null,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp()
             };
-
-          setUserData(profile);
-          setLoading(false);
-        },
-        async (error) => {
-          console.error('Error listening to user profile:', error);
-
-          try {
-            const fallbackProfile = await fetchUserProfile(firebaseUser.uid, firebaseUser.email);
-            setUserData({ ...fallbackProfile, mainAdminUid });
-          } catch (fallbackError) {
-            console.error('Error fetching fallback user data:', fallbackError);
-            setUserData({
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              mainAdminUid,
-              role: 'member',
-              name: firebaseUser.email || 'Unknown user',
-              permissions: getAllPageKeys('member'),
-            });
-          } finally {
-            setLoading(false);
+            await setDoc(doc(db, COLLECTIONS.users, firebaseUser.uid), userData);
+          } else {
+            userData = userDoc.data();
           }
-        },
-      );
-    });
+            
+          // Resolve permissions
+          const { isMainAdmin, permissions, role, status } = resolveUserPermissions(userData, mainAdminUid);
 
-    return () => {
-      unsubscribeProfile();
-      unsubscribeAuth();
-    };
-  }, [mainAdminUid]);
+          setCurrentUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName,
+            ...userData,
+            role,
+            status,
+            permissions,
+            isMainAdmin
+          });
+        } catch (error) {
+          console.error('Auth error:', error);
+          // Don't sign out on error, set basic fallback user data
+          setCurrentUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            role: 'admin',
+            name: 'Admin',
+            permissions: [
+              'dashboard', 'projects', 'enquiry', 'followups',
+              'payments', 'outgoing_payments', 'rgp', 'salary',
+              'tools', 'team', 'settings', 'whatsapp'
+            ]
+          });
+        } finally {
+          fetchingRef.current = false;
+          setLoading(false);
+        }
+      },
+      (error) => {
+        console.error('Auth state error:', error);
+        setAuthError(error.message);
+        setLoading(false);
+      }
+    );
+
+    return unsubscribe;
+  }, []); // Empty deps — run once only
 
   const login = async (email, password) => {
     const credential = await signInWithEmailAndPassword(auth, email, password);
-    const profile = {
-      ...(await fetchUserProfile(credential.user.uid, credential.user.email)),
-      mainAdminUid,
-    };
-
-    setUserData(profile);
-    return buildCurrentUser(credential.user, profile);
+    return credential.user;
   };
 
   const logout = async () => {
-    await signOut(auth);
-    setUser(null);
-    setUserData(null);
+    try {
+      await signOut(auth);
+      setCurrentUser(null);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
-  const currentUser = useMemo(
-    () => buildCurrentUser(user, { ...(userData || {}), mainAdminUid }),
-    [mainAdminUid, user, userData],
+  return (
+    <AuthContext.Provider value={{
+      currentUser,
+      loading,
+      authError,
+      login,
+      logout,
+      isAdmin: currentUser?.role === 'admin',
+      isMember: currentUser?.role === 'member'
+    }}>
+      {children}
+    </AuthContext.Provider>
   );
+};
 
-  const value = {
-    user,
-    userData,
-    currentUser,
-    loading,
-    login,
-    logout,
-    mainAdminUid,
-    isAdmin: currentUser?.role === 'admin',
-    isMember: currentUser?.role === 'member',
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
+export const useAuth = () => {
   const context = useContext(AuthContext);
-
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth must be used within AuthProvider');
   }
-
   return context;
-}
+};

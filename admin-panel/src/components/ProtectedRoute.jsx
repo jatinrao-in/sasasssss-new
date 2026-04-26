@@ -1,34 +1,28 @@
 import { Navigate } from 'react-router-dom';
-import SplashScreen from './SplashScreen';
-import RestrictedPage from './RestrictedPage';
 import { useAuth } from '../hooks/useAuth';
-import { redirectToPwa } from '../lib/teamMemberApp';
+import SplashScreen from './SplashScreen';
 
-export default function ProtectedRoute({ children, requiredRole }) {
+const ProtectedRoute = ({ children }) => {
   const { currentUser, loading } = useAuth();
 
+  // Show splash while auth loads
+  // NEVER redirect during loading
   if (loading) {
     return <SplashScreen />;
   }
 
+  // Not logged in → go to login
   if (!currentUser) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
 
-  if (requiredRole && currentUser.role !== requiredRole) {
-    redirectToPwa();
-    return null;
+  // Logged in but not admin
+  if (currentUser.role !== 'admin') {
+    return <Navigate to="/login" replace />;
   }
 
-  if (!currentUser.isMainAdmin && currentUser.status === 'inactive') {
-    return (
-      <RestrictedPage
-        title="Account Inactive"
-        message="Your admin account is currently inactive."
-        subtext="Contact your main administrator to restore access."
-      />
-    );
-  }
-
+  // All good — show page
   return children;
-}
+};
+
+export default ProtectedRoute;

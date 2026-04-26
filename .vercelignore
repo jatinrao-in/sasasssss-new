@@ -1,0 +1,14 @@
+.env*
+!.env.example
+.vercel
+.firebase
+.codex-logs
+firebase-debug.log
+*firebase-adminsdk-*.json
+node_modules
+admin-panel/node_modules
+team-member-pwa/node_modules
+admin-panel/dist
+team-member-pwa/dist
+admin-panel/build_output.txt
+vercel-backend

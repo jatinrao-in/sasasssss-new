@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
@@ -9,13 +9,12 @@ import {
   Mail,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { redirectToPwa } from '../lib/teamMemberApp';
-import { getFirstAccessiblePath } from '../lib/accessControl';
 import { useToast } from '../hooks/useToast';
+import SplashScreen from '../components/SplashScreen';
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { login, logout, currentUser, loading: authLoading } = useAuth();
+  const { login, currentUser, loading: authLoading } = useAuth();
   const toast = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,18 +22,16 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // If already logged in → redirect
+  // Only run when loading is done
   useEffect(() => {
-    if (authLoading || !currentUser) {
-      return;
+    if (!authLoading && currentUser?.role === 'admin') {
+      navigate('/dashboard', { replace: true });
     }
+  }, [currentUser, authLoading, navigate]);
 
-    if (currentUser.role === 'admin') {
-      navigate(getFirstAccessiblePath(currentUser, 'admin') || '/home', { replace: true });
-      return;
-    }
-
-    redirectToPwa();
-  }, [authLoading, currentUser, navigate]);
+  // Don't render form while checking auth
+  if (authLoading) return <SplashScreen />;
 
   const getFirebaseErrorMessage = (code) => {
     switch (code) {
@@ -67,29 +64,13 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const profile = await login(email, password);
-
-      if (profile.role !== 'admin') {
-        toast.info('Redirecting you to the Team Member app...');
-        redirectToPwa();
-        return;
-      }
-
-      if (!profile.isMainAdmin && profile.status === 'inactive') {
-        await logout();
-        const message = 'Your admin account is inactive. Contact your main administrator.';
-        setError(message);
-        toast.error(message);
-        return;
-      }
-
+      await login(email, password);
       toast.success('Welcome back, Admin!');
-      navigate(getFirstAccessiblePath(profile, 'admin') || '/home', { replace: true });
+      // Navigation is handled by useEffect or LoginRoute
     } catch (err) {
       const message = getFirebaseErrorMessage(err.code);
       setError(message);
       toast.error(message);
-    } finally {
       setLoading(false);
     }
   };
@@ -166,11 +147,11 @@ export default function LoginPage() {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || authLoading}
                 id="login-btn"
                 className="flex w-full items-center justify-center gap-2 rounded-lg bg-teal-600 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-teal-700 disabled:bg-teal-400"
               >
-                {loading ? (
+                {loading || authLoading ? (
                   <>
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                     Signing in...

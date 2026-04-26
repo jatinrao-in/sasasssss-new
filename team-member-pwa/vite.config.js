@@ -73,6 +73,7 @@ export default defineConfig({
         // ✅ FIX: Denylist Firebase + API from SW interception entirely
         navigateFallbackDenylist: [
           /^\/admin(?:\/.*)?$/,
+          /^\/api(?:\/.*)?$/,
           /^\/_/,
           /\/[^/?]+\.[^/]+$/,  // URLs with file extensions
           /firestore\.googleapis\.com/,

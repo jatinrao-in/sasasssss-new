@@ -1,16 +1,10 @@
 import { Timestamp } from 'firebase-admin/firestore';
 import { draftMessage } from './ai/draft-whatsapp.js';
 import { handleConfigError } from '../server/config.js';
+import { handleCors } from '../server/cors.js';
 import { getAdminServices } from '../server/firebaseAdmin.js';
 import { requireNotifyPermission, verifyFirebaseRequest } from '../server/auth.js';
 import { sendViaMsg91 } from './whatsapp/send-text.js';
-
-const setCorsHeaders = (req, res) => {
-  const origin = req.headers.origin || '*';
-  res.setHeader('Access-Control-Allow-Origin', origin);
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-};
 
 const resolveCompanyContext = async (firestore, context) => {
   if (context?.company && String(context.company).trim()) {
@@ -52,10 +46,8 @@ const getTitle = (eventType) => {
 };
 
 export default async function handler(req, res) {
-  setCorsHeaders(req, res);
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (handleCors(req, res)) {
+    return;
   }
 
   if (req.method !== 'POST') {
