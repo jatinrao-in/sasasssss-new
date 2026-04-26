@@ -29,7 +29,38 @@ void recoverAdminRouteFromPwaShell().then((handled) => {
     return;
   }
 
-  registerSW({ immediate: true });
+  // Aggressive auto-update polling for Service Worker
+  registerSW({
+    immediate: true,
+    onRegisteredSW(swUrl, r) {
+      // Poll every 1 minute for a new Service Worker
+      r && setInterval(async () => {
+        if (r.installing || !navigator.onLine) return;
+
+        try {
+          // Fetch sw.js with cache busting
+          const resp = await fetch(swUrl, {
+            cache: 'no-store',
+            headers: { 'cache': 'no-store', 'cache-control': 'no-cache' },
+          });
+          if (resp?.status === 200) {
+            await r.update();
+          }
+        } catch {
+          // Ignore fetch errors (offline, etc)
+        }
+      }, 60 * 1000);
+    },
+  });
+
+  // Force reload when a new service worker takes over
+  let refreshing = false;
+  navigator.serviceWorker?.addEventListener('controllerchange', () => {
+    if (!refreshing) {
+      refreshing = true;
+      window.location.reload();
+    }
+  });
 
   ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
