@@ -500,66 +500,83 @@ export default function SettingsPage() {
     updateSavingState('backup', true);
 
     try {
-      const collectionNames = [
-        COLLECTIONS.users,
-        COLLECTIONS.projects,
-        COLLECTIONS.tasks,
-        COLLECTIONS.expenses,
-        COLLECTIONS.enquiries,
-        COLLECTIONS.followups,
-        COLLECTIONS.payments,
-        COLLECTIONS.outgoing_payments,
-        COLLECTIONS.rgp,
-        COLLECTIONS.tools,
-        COLLECTIONS.whatsapp_logs,
+      const backup = {};
+      const simpleCollections = [
+        'users',
+        'projects',
+        'tasks',
+        'expenses',
+        'enquiries',
+        'followups',
+        'payments',
+        'outgoing_payments',
+        'rgp',
+        'tools',
+        'whatsapp_logs',
+        'audit_logs',
+        'automation_rules',
       ];
 
-      const backup = {
-        generatedAt: new Date().toISOString(),
-      };
-
-      const topLevelCollections = await Promise.all(collectionNames.map(async (collectionName) => {
-        const snapshot = await getDocs(collection(db, collectionName));
-        return [
-          collectionName,
-          snapshot.docs.map((docSnap) => ({
+      for (const collectionName of simpleCollections) {
+        try {
+          const snapshot = await getDocs(collection(db, collectionName));
+          backup[collectionName] = snapshot.docs.map((docSnap) => ({
             id: docSnap.id,
-            ...serializeValue(docSnap.data()),
-          })),
-        ];
-      }));
+            ...docSnap.data(),
+          }));
+          console.log(`Backed up ${collectionName}:`, snapshot.size, 'docs');
+        } catch (collectionError) {
+          console.error(`Error backing up ${collectionName}:`, collectionError.message);
+          backup[collectionName] = [];
+        }
+      }
 
-      topLevelCollections.forEach(([collectionName, records]) => {
-        backup[collectionName] = records;
-      });
+      try {
+        const settingsSnapshot = await getDocs(collection(db, 'settings'));
+        backup.settings = settingsSnapshot.docs.map((docSnap) => ({
+          id: docSnap.id,
+          ...docSnap.data(),
+        }));
+      } catch (settingsError) {
+        console.error('Error backing up settings:', settingsError.message);
+        backup.settings = [];
+      }
 
-      const [settingsSnapshot, salaryRootSnapshot, notificationRootSnapshot] = await Promise.all([
-        getDocs(collection(db, COLLECTIONS.settings)),
-        getDocs(collection(db, COLLECTIONS.salary)),
-        getDocs(collection(db, COLLECTIONS.notifications)),
-      ]);
-      const userIds = [...new Set([
-        ...backup[COLLECTIONS.users].map((user) => user.id),
-        ...salaryRootSnapshot.docs.map((docSnap) => docSnap.id),
-        ...notificationRootSnapshot.docs.map((docSnap) => docSnap.id),
-      ])];
+      const json = JSON.stringify(
+        backup,
+        (key, value) => {
+          if (typeof value?.toDate === 'function') {
+            return value.toDate().toISOString();
+          }
 
-      backup.salary = await fetchNestedRecords(COLLECTIONS.salary, userIds, 'months');
-      backup.notifications = await fetchNestedRecords(COLLECTIONS.notifications, userIds, 'items');
+          if (value?.seconds) {
+            return new Date(value.seconds * 1000).toISOString();
+          }
 
-      backup.settings = settingsSnapshot.docs.map((docSnap) => ({
-        id: docSnap.id,
-        ...serializeValue(docSnap.data()),
-      }));
+          return value;
+        },
+        2,
+      );
+
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
 
       const now = new Date();
-      const fileName = `backup_${now.toISOString().replace(/[:.]/g, '-').slice(0, 16)}.json`;
-      downloadTextFile(JSON.stringify(backup, null, 2), fileName, 'application/json');
+      const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}`;
+      anchor.download = `saya_backup_${dateStr}.json`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+
       localStorage.setItem('lastBackup', now.toISOString());
       setLastBackup(now.toISOString());
-      await log('full_backup_downloaded', { generatedAt: now.toISOString() });
-      toast.success('Backup downloaded!');
+      await log('full_backup_downloaded', { generatedAt: now.toISOString(), collections: Object.keys(backup) });
+      toast.success('Backup downloaded successfully!');
     } catch (error) {
+      console.error('Backup error:', error);
       toast.error(`Backup failed: ${error.message}`);
     } finally {
       updateSavingState('backup', false);

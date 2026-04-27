@@ -39,10 +39,15 @@ function isSameDay(firstDate, secondDate) {
 
 function normalizeFollowUp(followUp) {
   const normalized = { ...followUp };
+  normalized.companyName = normalized.companyName || normalized.customerName || '';
+  normalized.contactPerson = normalized.contactPerson || '';
+  normalized.contactPhone = normalized.contactPhone || normalized.phone || '';
+  normalized.description = normalized.description || normalized.notes || '';
   normalized.status = normalizeFollowupStatus(normalized.status);
   normalized.isClosed = normalized.status === 'closed';
   normalized.dueDate = normalized.nextFollowupDate || normalized.targetDate;
   normalized.overdueDays = normalized.isClosed ? 0 : calculateOverdueDays(normalized.dueDate);
+  normalized.rescheduleCount = Number(normalized.rescheduleCount || 0);
 
   const dueDateValue = toDateValue(normalized.dueDate);
   const today = new Date();
@@ -132,6 +137,8 @@ export function useFollowUps(filterByUser = null) {
     assignedDate: serverTimestamp(),
     createdAt: serverTimestamp(),
     status: 'open',
+    rescheduleCount: Number(followupData.rescheduleCount || 0),
+    outcome: followupData.outcome ?? null,
   }, 'save follow-up');
 
   const updateFollowUp = async (id, updates) => updateDocument(

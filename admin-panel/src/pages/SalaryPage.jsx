@@ -338,11 +338,18 @@ export default function SalaryPage() {
         toast.error('Please save salary data first');
         return;
       }
+      if (!row.netSalary || Number(row.netSalary) <= 0) {
+        toast.error('Invalid salary amount. Please enter correct salary.');
+        return;
+      }
+      if (row.status === 'paid') {
+        toast.error('Salary already marked as paid');
+        return;
+      }
       setProcessing(true);
       try {
         await markPaid(row.uid, month);
 
-        // Send in-app notification
         try {
           await addDocumentToCollection(getNotificationItemsCollection(db, row.uid), {
             message: `Your salary of ${formatCurrency(row.netSalary)} for ${formatMonthLabel(month)} has been processed.`,
@@ -351,10 +358,10 @@ export default function SalaryPage() {
             read: false,
             createdAt: serverTimestamp(),
           }, { action: 'save salary notification', collectionName: 'notification_items' });
-          
+
           const member = teamMembers.find(m => m.id === row.uid);
-          if (member?.whatsapp) {
-            notifySalaryPaid(member, row, formatMonthLabel(month));
+          if (member) {
+            await notifySalaryPaid(member, { ...row, status: 'paid' }, formatMonthLabel(month));
           }
         } catch (notifErr) {
           console.warn('Notification failed (non-fatal):', notifErr.message);
@@ -412,9 +419,9 @@ export default function SalaryPage() {
 
   // Bulk: mark all paid.
   const handleBulkMarkPaid = useCallback(async () => {
-    const pending = rows.filter((r) => r.status === 'pending' && r.hasData);
+    const pending = rows.filter((r) => r.status === 'pending' && r.hasData && Number(r.netSalary) > 0);
     if (!pending.length) {
-      toast.error('No pending salaries with saved data');
+      toast.error('No pending salaries with valid saved data');
       return;
     }
     if (!window.confirm(`Mark ${pending.length} salaries as paid?`)) return;
@@ -422,7 +429,6 @@ export default function SalaryPage() {
     try {
       await bulkMarkPaid(pending);
 
-      // Notify all
       await Promise.allSettled(
         pending.map((r) =>
           addDocumentToCollection(getNotificationItemsCollection(db, r.uid), {
@@ -433,17 +439,6 @@ export default function SalaryPage() {
             createdAt: serverTimestamp(),
           }, { action: 'save salary notification', collectionName: 'notification_items' })
         )
-      );
-      
-      // WhatsApp notifications for bulk
-      await Promise.allSettled(
-        pending.map(r => {
-          const member = teamMembers.find(m => m.id === r.uid);
-          if (member?.whatsapp) {
-            return notifySalaryPaid(member, r, formatMonthLabel(month));
-          }
-          return Promise.resolve();
-        })
       );
 
       toast.success(`Marked ${pending.length} salaries as paid!`);
@@ -647,7 +642,7 @@ export default function SalaryPage() {
                             disabled={processing}
                             className="text-xs text-green-600 hover:bg-green-50 px-2 py-1 rounded font-medium flex items-center gap-1 transition-colors disabled:opacity-50"
                           >
-                            <Check className="w-3 h-3" /> Pay
+                            <Check className="w-3 h-3" /> Mark as Paid
                           </button>
                         )}
                         {row.hasData && (

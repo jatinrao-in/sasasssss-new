@@ -32,11 +32,16 @@ const getTitle = (eventType) => {
   return titles[eventType] || 'Notification';
 };
 
+const stripCurrencyPrefix = (value) => String(value || '')
+  .replace(/^rs\.?/i, '')
+  .replace(/^₹/, '')
+  .trim();
+
 const getBody = (eventType, context) => {
   const bodies = {
     task_assigned: `New task: ${context.taskName}`,
     task_overdue: `${context.taskName} is overdue`,
-    salary_paid: `Salary of Rs.${context.netSalary} credited for ${context.month}`,
+    salary_paid: `Salary of Rs.${stripCurrencyPrefix(context.netSalary)} credited for ${context.month}`,
     payment_due: `Follow up: ${context.customerName}`,
     rgp_overdue: `RGP ${context.docNumber} needs action`,
     tool_not_returned: `Return ${context.toolName}`,
@@ -76,7 +81,7 @@ async function dispatchWhatsApp(eventType, context) {
       return sendSalaryCredited(
         to,
         context.memberName,
-        context.netSalary   || '0',
+        stripCurrencyPrefix(context.netSalary) || '0',
         context.month       || '',
         context.paidDate    || new Date().toLocaleDateString('en-IN'),
       );

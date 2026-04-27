@@ -1,4 +1,4 @@
-﻿import { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
  Plus, X, LayoutGrid, Columns3, Search, FileText,
  TrendingUp, Clock, BarChart3, Eye, Calendar,
@@ -18,8 +18,6 @@ import ExportButton from '../components/ui/ExportButton';
 import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
 import DeleteButton from '../components/DeleteButton';
 import BulkDeleteBar from '../components/BulkDeleteBar';
-import { notify } from '../lib/notify';
-import { formatDate as fmtDate } from '../lib/helpers';
 
 const PIPELINE_STAGES = [
  { id: 'new', label: 'New' },
@@ -30,18 +28,23 @@ const PIPELINE_STAGES = [
  { id: 'on_hold', label: 'On Hold' },
 ];
 
-const ENQUIRY_TYPES = ['AMC', 'Installation', 'Repair', 'Service', 'Supply', 'Consulting', 'Other'];
+const ENQUIRY_TYPES = ['Quotation', 'Visit', 'Costing'];
 const COLORS = ['#0d9488', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
 function EnquiryModal({ onClose, onSubmit, members, editing }) {
  const [form, setForm] = useState({
- customerName: editing?.customerName || '',
- phone: editing?.phone || '',
+ companyName: editing?.companyName || editing?.customerName || '',
+ contactPerson: editing?.contactPerson || '',
+ contactPhone: editing?.contactPhone || editing?.phone || '',
+ description: editing?.description || '',
  taskType: editing?.taskType || '',
  assignedTo: editing?.assignedTo || '',
  assignedToName: editing?.assignedToName || '',
  targetDate: editing?.targetDate
  ? (typeof editing.targetDate.toDate === 'function' ? editing.targetDate.toDate().toISOString().split('T')[0] : new Date(editing.targetDate).toISOString().split('T')[0])
+ : '',
+ nextFollowupDate: editing?.nextFollowupDate
+ ? (typeof editing.nextFollowupDate.toDate === 'function' ? editing.nextFollowupDate.toDate().toISOString().split('T')[0] : new Date(editing.nextFollowupDate).toISOString().split('T')[0])
  : '',
  amount: editing?.amount || '',
  status: editing?.status || 'open',
@@ -53,16 +56,19 @@ function EnquiryModal({ onClose, onSubmit, members, editing }) {
  const [saving, setSaving] = useState(false);
 
  const handleSubmit = async () => {
- if (!form.customerName) return;
+ if (!form.companyName) return;
  setSaving(true);
  try {
  await onSubmit({
- customerName: form.customerName,
- phone: form.phone,
+ companyName: form.companyName,
+ contactPerson: form.contactPerson,
+ contactPhone: form.contactPhone,
+ description: form.description,
  taskType: form.taskType,
  assignedTo: form.assignedTo,
  assignedToName: form.assignedToName,
  targetDate: form.targetDate ? Timestamp.fromDate(new Date(form.targetDate)) : null,
+ nextFollowupDate: form.nextFollowupDate ? Timestamp.fromDate(new Date(form.nextFollowupDate)) : null,
  amount: Number(form.amount) || 0,
  status: form.status,
  pipelineStage: form.pipelineStage,
@@ -86,21 +92,29 @@ function EnquiryModal({ onClose, onSubmit, members, editing }) {
  </div>
  <div className="px-6 py-5 space-y-4 overflow-y-auto">
  <div className="grid grid-cols-2 gap-3">
- <div><label className="label">Customer Name *</label>
- <input className="input-field" placeholder="Customer name" value={form.customerName} onChange={e => setForm({...form, customerName: e.target.value})} /></div>
- <div><label className="label">Phone</label>
- <input className="input-field" placeholder="+91 XXXX XXXXXX" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} /></div>
+ <div><label className="label">Company Name *</label>
+ <input className="input-field" placeholder="Company name" value={form.companyName} onChange={e => setForm({...form, companyName: e.target.value})} /></div>
+ <div><label className="label">Contact Person</label>
+ <input className="input-field" placeholder="Contact person" value={form.contactPerson} onChange={e => setForm({...form, contactPerson: e.target.value})} /></div>
  </div>
  <div className="grid grid-cols-2 gap-3">
- <div><label className="label">Type</label>
+ <div><label className="label">Phone Number</label>
+ <input className="input-field" placeholder="+91 XXXX XXXXXX" value={form.contactPhone} onChange={e => setForm({...form, contactPhone: e.target.value})} /></div>
+ <div><label className="label">Task Type</label>
  <select className="input-field" value={form.taskType} onChange={e => setForm({...form, taskType: e.target.value})}>
  <option value="">Select type</option>
  {ENQUIRY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
  </select></div>
+ </div>
+ <div><label className="label">Description / Activity</label>
+ <textarea className="input-field resize-none" rows={2} placeholder="What needs to be done" value={form.description} onChange={e => setForm({...form, description: e.target.value})} /></div>
+ <div className="grid grid-cols-2 gap-3">
  <div><label className="label">Pipeline Stage</label>
  <select className="input-field" value={form.pipelineStage} onChange={e => setForm({...form, pipelineStage: e.target.value})}>
  {PIPELINE_STAGES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
  </select></div>
+ <div><label className="label">Next Followup Date</label>
+ <input className="input-field" type="date" value={form.nextFollowupDate} onChange={e => setForm({...form, nextFollowupDate: e.target.value})} /></div>
  </div>
  <div className="grid grid-cols-2 gap-3">
  <div><label className="label">Assign To</label>
@@ -154,9 +168,13 @@ function EnquiryDetailPanel({ enquiry, onClose }) {
  <FileText className="w-5 h-5 text-teal-600" />
  </div>
  <div>
- <p className="font-semibold text-gray-900">{enquiry.customerName}</p>
- <p className="text-xs text-gray-400">{enquiry.phone || 'No phone'}</p>
+ <p className="font-semibold text-gray-900">{enquiry.companyName || enquiry.customerName}</p>
+ <p className="text-xs text-gray-400">{enquiry.contactPerson ? `${enquiry.contactPerson} | ` : ''}{enquiry.contactPhone || enquiry.phone || 'No phone'}</p>
  </div>
+ </div>
+ <div className="bg-gray-50 rounded-lg p-3">
+ <p className="text-[10px] text-gray-400 mb-1">Activity / Description</p>
+ <p className="text-sm font-semibold whitespace-pre-wrap">{enquiry.description || '-'}</p>
  </div>
  <div className="grid grid-cols-2 gap-3">
  <div className="bg-gray-50 rounded-lg p-3"><p className="text-[10px] text-gray-400 mb-1">Type</p><p className="text-sm font-semibold">{enquiry.taskType || '-'}</p></div>
@@ -197,10 +215,12 @@ export default function EnquiryPage() {
  const filtered = useMemo(() => {
  return enquiries.filter(e => {
  const matchSearch = search === '' ||
- (e.customerName || '').toLowerCase().includes(search.toLowerCase()) ||
+ (e.companyName || '').toLowerCase().includes(search.toLowerCase()) ||
+ (e.contactPerson || '').toLowerCase().includes(search.toLowerCase()) ||
  (e.taskType || '').toLowerCase().includes(search.toLowerCase()) ||
- (e.phone || '').includes(search);
- const matchStatus = filterStatus === 'All' || e.status === filterStatus;
+ (e.description || '').toLowerCase().includes(search.toLowerCase()) ||
+ (e.contactPhone || '').includes(search);
+ const matchStatus = filterStatus === 'All' || e.statusCategory === filterStatus;
  const matchType = filterType === 'All' || e.taskType === filterType;
  return matchSearch && matchStatus && matchType;
  });
@@ -232,11 +252,11 @@ export default function EnquiryPage() {
  // Analytics
  const analytics = useMemo(() => {
  const total = enquiries.length;
- const closed = enquiries.filter(e => e.status === 'closed').length;
+ const closed = enquiries.filter(e => e.isClosed).length;
  const won = enquiries.filter(e => e.pipelineStage === 'won').length;
  const lost = enquiries.filter(e => e.pipelineStage === 'lost').length;
- const open = enquiries.filter(e => e.status !== 'closed').length;
- const overdue = enquiries.filter(e => e.status === 'overdue').length;
+ const open = enquiries.filter(e => !e.isClosed).length;
+ const overdue = enquiries.filter(e => e.statusCategory === 'overdue').length;
  const conversionRate = total > 0 ? Math.round((won / total) * 100) : 0;
  const totalValue = enquiries.reduce((s, e) => s + Number(e.amount || 0), 0);
  const wonValue = enquiries.filter(e => e.pipelineStage === 'won').reduce((s, e) => s + Number(e.amount || 0), 0);
@@ -258,19 +278,6 @@ export default function EnquiryPage() {
   try {
    await addEnquiry(data);
    toast.success('Enquiry added!');
-   // Silent WhatsApp notification
-   if (data.assignedTo) {
-    const member = activeMembers.find(m => m.id === data.assignedTo);
-    notify('enquiry_assigned', {
-     memberUid: data.assignedTo,
-     whatsappNumber: member?.whatsapp || '',
-     memberName: member?.name || data.assignedToName || '',
-     enquiryType: data.taskType || 'Enquiry',
-     assignedDate: fmtDate(new Date()),
-     targetDate: data.targetDate ? fmtDate(data.targetDate.toDate?.() || new Date(data.targetDate)) : 'Not set',
-     nextFollowup: 'As per schedule',
-    });
-   }
   } catch (err) {
    toast.error('Failed: ' + err.message);
    throw err;
@@ -317,7 +324,15 @@ export default function EnquiryPage() {
  });
  };
 
- const statusColors = { open: 'badge-blue', overdue: 'badge-red', closed: 'badge-green' };
+ const statusColors = {
+ open: 'badge-blue',
+ in_progress: 'badge-yellow',
+ quoted: 'badge-blue',
+ won: 'badge-green',
+ lost: 'badge-red',
+ on_hold: 'badge-gray',
+ closed: 'badge-green',
+ };
  const priorityColors = { low: 'text-gray-400', medium: 'text-blue-500', high: 'text-amber-500', critical: 'text-red-500' };
 
  return (
@@ -335,13 +350,15 @@ export default function EnquiryPage() {
  <ExportButton
  data={filtered}
  columns={[
- { key: 'customerName', label: 'Customer' },
- { key: 'taskType', label: 'Type' },
+ { key: 'companyName', label: 'Company' },
+ { key: 'contactPerson', label: 'Contact Person' },
+ { key: 'contactPhone', label: 'Phone Number' },
+ { key: 'description', label: 'Description' },
+ { key: 'taskType', label: 'Task Type' },
  { key: 'assignedToName', label: 'Assigned' },
- { key: 'amount', label: 'Value' },
- { key: 'priority', label: 'Priority' },
  { key: 'status', label: 'Status' },
- { key: 'pipelineStage', label: 'Pipeline' },
+ { key: 'targetDate', label: 'Target Date' },
+ { key: 'nextFollowupDate', label: 'Next Followup Date' },
  ]}
  filename="enquiries"
  />
@@ -456,7 +473,7 @@ export default function EnquiryPage() {
  <div className="flex items-center gap-3 flex-wrap">
  <div className="relative flex-1 max-w-xs">
  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
- <input type="text" placeholder="Search customer, type..." className="input-field pl-9 w-full"
+ <input type="text" placeholder="Search company, contact, phone..." className="input-field pl-9 w-full"
  value={search} onChange={e => setSearch(e.target.value)} />
  </div>
  <select className="input-field w-32" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
@@ -500,7 +517,7 @@ export default function EnquiryPage() {
  <div className="mb-2 flex justify-end opacity-0 group-hover:opacity-100 transition-opacity" onClick={(event) => event.stopPropagation()}>
  <DeleteButton onClick={() => deleteEnquiryRecord(item.id, item.taskType || 'general')} showLabel={false} />
  </div>
- <p className="text-sm font-semibold text-[var(--text-primary)] mb-1">{item.customerName}</p>
+ <p className="text-sm font-semibold text-[var(--text-primary)] mb-1">{item.companyName || 'Untitled enquiry'}</p>
  <p className="text-[10px] text-gray-400">{item.taskType || 'General'}</p>
  {item.amount > 0 && <p className="text-[10px] font-medium text-teal-600 mt-1">{formatCurrency(item.amount)}</p>}
  <div className="flex items-center justify-between mt-2">
@@ -525,10 +542,9 @@ export default function EnquiryPage() {
  title="Select all enquiries"
  />
  </th>
- <th className="table-header">Customer</th><th className="table-header">Type</th>
+ <th className="table-header">Company</th><th className="table-header">Task Type</th>
  <th className="table-header">Assigned</th><th className="table-header">Target Date</th>
- <th className="table-header">Value</th><th className="table-header">Priority</th>
- <th className="table-header">Status</th><th className="table-header">Actions</th>
+ <th className="table-header">Next Followup</th><th className="table-header">Status</th><th className="table-header">Actions</th>
  </tr></thead>
  <tbody>
  {filtered.map(e => (
@@ -543,18 +559,13 @@ export default function EnquiryPage() {
  />
  </td>
  <td className="table-cell">
- <div><p className="font-medium text-gray-900">{e.customerName}</p>
- <p className="text-[10px] text-gray-400">{e.phone || ''}</p></div>
+ <div><p className="font-medium text-gray-900">{e.companyName || 'Untitled enquiry'}</p>
+ <p className="text-[10px] text-gray-400">{e.contactPerson ? `${e.contactPerson} | ` : ''}{e.contactPhone || ''}</p></div>
  </td>
  <td className="table-cell text-gray-600 text-xs">{e.taskType || '-'}</td>
  <td className="table-cell text-gray-600 text-xs">{e.assignedToName || '-'}</td>
  <td className="table-cell text-[var(--text-muted)] text-xs">{formatDate(e.targetDate)}</td>
- <td className="table-cell font-medium text-sm">{e.amount ? formatCurrency(e.amount) : '-'}</td>
- <td className="table-cell">
- <span className={`text-xs font-medium ${priorityColors[e.priority] || 'text-gray-400'}`}>
- {(e.priority || 'medium').charAt(0).toUpperCase() + (e.priority || 'medium').slice(1)}
- </span>
- </td>
+ <td className="table-cell text-[var(--text-muted)] text-xs">{formatDate(e.nextFollowupDate)}</td>
  <td className="table-cell">
  <span className={`badge ${statusColors[e.status] || 'badge-gray'}`}>{e.status}</span>
  {(e.overdueDays || 0) > 0 && <span className="text-[10px] text-red-400 ml-1">{e.overdueDays}d</span>}

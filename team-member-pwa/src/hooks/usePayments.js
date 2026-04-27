@@ -23,6 +23,30 @@ import {
   updateDocument,
 } from '../lib/firestore-helpers';
 
+function normalizePaymentStatus(value) {
+  return String(value || 'pending')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_');
+}
+
+function normalizePayment(payment) {
+  const normalized = { ...payment };
+  normalized.paymentStatus = normalizePaymentStatus(normalized.paymentStatus);
+  normalized.partialPayments = Array.isArray(normalized.partialPayments) ? normalized.partialPayments : [];
+  normalized.totalPaid = Number(normalized.totalPaid || normalized.finalAmount || 0);
+  normalized.netPending = Number.isFinite(Number(normalized.netPending))
+    ? Number(normalized.netPending)
+    : Math.max(0, Number(normalized.amount || 0) - normalized.totalPaid);
+  normalized.netPendingAmount = Number.isFinite(Number(normalized.netPendingAmount))
+    ? Number(normalized.netPendingAmount)
+    : normalized.netPending;
+  normalized.overdueDays = normalized.paymentStatus === 'received'
+    ? 0
+    : calculateOverdueDays(normalized.targetPaymentDate);
+  return normalized;
+}
+
 export function usePayments(filterByUser = null) {
   const realtime = useRealtime();
   const [payments, setPayments] = useState([]);
@@ -37,13 +61,7 @@ export function usePayments(filterByUser = null) {
       ? realtime.payments.filter((item) => item.assignedTo === filterByUser)
       : realtime.payments;
 
-    return source.map((payment) => {
-      const normalized = { ...payment };
-      normalized.overdueDays = normalized.paymentStatus === 'received'
-        ? 0
-        : calculateOverdueDays(normalized.targetPaymentDate);
-      return normalized;
-    });
+    return source.map(normalizePayment);
   }, [realtime, filterByUser]);
 
   useEffect(() => {
@@ -73,13 +91,10 @@ export function usePayments(filterByUser = null) {
       paymentQuery,
       (snapshot) => {
         logSnapshot('usePayments', snapshot);
-        const nextPayments = snapshot.docs.map((paymentDoc) => {
-          const payment = { id: paymentDoc.id, ...paymentDoc.data() };
-          payment.overdueDays = payment.paymentStatus === 'received'
-            ? 0
-            : calculateOverdueDays(payment.targetPaymentDate);
-          return payment;
-        });
+        const nextPayments = snapshot.docs.map((paymentDoc) => normalizePayment({
+          id: paymentDoc.id,
+          ...paymentDoc.data(),
+        }));
 
         setPayments(nextPayments);
         setLoading(false);
@@ -107,11 +122,17 @@ export function usePayments(filterByUser = null) {
     'update payment',
   );
 
-  const updateStatus = async (id, status, remarks = '') => updateDocument(db, COLLECTIONS.payments, id, {
-    paymentStatus: status,
-    remarks,
-    updatedAt: serverTimestamp(),
-  }, 'update payment status');
+  const updateStatus = async (id, statusOrUpdates, remarks = '') => {
+    const updates = typeof statusOrUpdates === 'object' && statusOrUpdates !== null
+      ? statusOrUpdates
+      : {
+        paymentStatus: statusOrUpdates,
+        remarks,
+        updatedAt: serverTimestamp(),
+      };
+
+    return updateDocument(db, COLLECTIONS.payments, id, updates, 'update payment status');
+  };
 
   return { payments, loading, addPayment, updatePayment, updateStatus };
 }

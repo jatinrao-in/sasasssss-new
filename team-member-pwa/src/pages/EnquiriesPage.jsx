@@ -331,9 +331,22 @@ export default function EnquiriesPage() {
                 {getStatusBadge(enquiry.status)}
               </div>
 
+              <div className="mt-4 border-b border-gray-100 pb-4">
+                <p className="text-sm font-semibold text-gray-900">
+                  Company: {enquiry.companyName || enquiry.customerName || 'N/A'}
+                </p>
+                <p className="mt-1 text-xs text-gray-500">
+                  Contact: {enquiry.contactPerson ? `${enquiry.contactPerson} | ` : ''}{enquiry.contactPhone || enquiry.phone || 'N/A'}
+                </p>
+                <p className="mt-2 text-sm text-gray-700">
+                  <span className="font-medium">Activity:</span> {enquiry.description || 'No description provided'}
+                </p>
+              </div>
+
               <div className="mt-4 space-y-1.5 text-xs text-[var(--text-secondary)]">
                 <p><span className="font-medium text-[var(--text-primary)]">Assigned:</span> {formatDate(enquiry.assignedDate || enquiry.createdAt)}</p>
                 <p><span className="font-medium text-[var(--text-primary)]">Target:</span> {formatDate(enquiry.targetDate)}</p>
+                <p><span className="font-medium text-[var(--text-primary)]">Next Followup:</span> {formatDate(enquiry.nextFollowupDate)}</p>
                 {enquiry.overdueDays > 0 && !enquiry.isClosed && (
                   <p className="font-semibold text-red-600">
                     Overdue: {enquiry.overdueDays} day{enquiry.overdueDays === 1 ? '' : 's'}
@@ -384,7 +397,7 @@ export default function EnquiriesPage() {
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Enquiry</p>
                 <p className="mt-1 text-sm font-medium text-[var(--text-primary)]">
-                  {selectedEnquiry.customerName || selectedEnquiry.client || selectedEnquiry.taskType || 'Assigned enquiry'}
+                  {selectedEnquiry.companyName || selectedEnquiry.customerName || selectedEnquiry.taskType || 'Assigned enquiry'}
                 </p>
               </div>
 

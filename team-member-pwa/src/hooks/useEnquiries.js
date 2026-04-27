@@ -34,6 +34,10 @@ function normalizeEnquiryStatus(value) {
 
 function normalizeEnquiry(enquiry) {
   const normalized = { ...enquiry };
+  normalized.companyName = normalized.companyName || normalized.customerName || '';
+  normalized.contactPerson = normalized.contactPerson || '';
+  normalized.contactPhone = normalized.contactPhone || normalized.phone || '';
+  normalized.description = normalized.description || normalized.notes || '';
   normalized.status = normalizeEnquiryStatus(normalized.status);
   normalized.isClosed = CLOSED_ENQUIRY_STATUSES.has(normalized.status);
   normalized.overdueDays = normalized.isClosed ? 0 : calculateOverdueDays(normalized.targetDate);
@@ -116,6 +120,7 @@ export function useEnquiries(filterByUser = null) {
     assignedDate: serverTimestamp(),
     createdAt: serverTimestamp(),
     status: 'open',
+    overdueDays: 0,
   }, 'save enquiry');
 
   const updateEnquiry = async (id, updates) => updateDocument(

@@ -14,9 +14,34 @@ import {
  addDocument,
  calculateOverdueDays,
  deleteDocument,
- deriveOpenItemStatus,
  updateDocument,
 } from '../lib/firestore-helpers';
+
+const CLOSED_ENQUIRY_STATUSES = new Set(['closed', 'won', 'lost']);
+
+function normalizeEnquiryStatus(value) {
+ return String(value || 'open')
+  .trim()
+  .toLowerCase()
+  .replace(/\s+/g, '_');
+}
+
+function normalizeEnquiry(enquiry) {
+ const normalized = { ...enquiry };
+ normalized.companyName = normalized.companyName || normalized.customerName || '';
+ normalized.contactPerson = normalized.contactPerson || '';
+ normalized.contactPhone = normalized.contactPhone || normalized.phone || '';
+ normalized.description = normalized.description || normalized.notes || '';
+ normalized.status = normalizeEnquiryStatus(normalized.status);
+ normalized.isClosed = CLOSED_ENQUIRY_STATUSES.has(normalized.status);
+ normalized.overdueDays = normalized.isClosed ? 0 : calculateOverdueDays(normalized.targetDate);
+ normalized.statusCategory = normalized.isClosed
+  ? 'closed'
+  : normalized.overdueDays > 0
+   ? 'overdue'
+   : 'open';
+ return normalized;
+}
 
 export function useEnquiries(filterByUser = null) {
  const [enquiries, setEnquiries] = useState([]);
@@ -35,12 +60,10 @@ export function useEnquiries(filterByUser = null) {
  const unsubscribe = onSnapshot(
  enquiryQuery,
  (snapshot) => {
- const nextEnquiries = snapshot.docs.map((enquiryDoc) => {
- const enquiry = { id: enquiryDoc.id, ...enquiryDoc.data() };
- enquiry.overdueDays = enquiry.status === 'closed' ? 0 : calculateOverdueDays(enquiry.targetDate);
- enquiry.status = deriveOpenItemStatus(enquiry);
- return enquiry;
- });
+ const nextEnquiries = snapshot.docs.map((enquiryDoc) => normalizeEnquiry({
+  id: enquiryDoc.id,
+  ...enquiryDoc.data(),
+ }));
 
  setEnquiries(nextEnquiries);
  setLoading(false);
@@ -60,11 +83,12 @@ export function useEnquiries(filterByUser = null) {
    assignedDate: serverTimestamp(),
    createdAt: serverTimestamp(),
    status: 'open',
+   overdueDays: 0,
   }, 'save enquiry');
 
   await log('enquiry_created', {
    enquiryId: enquiryRef.id,
-   customerName: enquiryData.customerName || '',
+   companyName: enquiryData.companyName || enquiryData.customerName || '',
    assignedTo: enquiryData.assignedTo || '',
   });
 

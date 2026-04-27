@@ -1,4 +1,4 @@
-﻿import { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
  Plus, X, Search, Calendar, LayoutGrid, Clock,
  CheckCircle2, XCircle, MinusCircle, MessageSquare,
@@ -20,7 +20,7 @@ import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
 import DeleteButton from '../components/DeleteButton';
 import BulkDeleteBar from '../components/BulkDeleteBar';
 
-const FOLLOWUP_TYPES = ['Phone Call', 'Meeting', 'Site Visit', 'Email', 'WhatsApp', 'Other'];
+const FOLLOWUP_TYPES = ['Quotation', 'Visit', 'Costing'];
 const OUTCOMES = [
  { value: 'positive', label: 'Positive', icon: CheckCircle2, color: 'text-green-600 bg-green-50 border-green-200' },
  { value: 'neutral', label: 'Neutral', icon: MinusCircle, color: 'text-amber-600 bg-amber-50 border-amber-200' },
@@ -30,8 +30,10 @@ const COLORS = ['#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6'];
 
 function FollowupModal({ onClose, onSubmit, members, editing }) {
  const [form, setForm] = useState({
- customerName: editing?.customerName || '',
- phone: editing?.phone || '',
+ companyName: editing?.companyName || editing?.customerName || '',
+ contactPerson: editing?.contactPerson || '',
+ contactPhone: editing?.contactPhone || editing?.phone || '',
+ description: editing?.description || editing?.notes || '',
  taskType: editing?.taskType || '',
  assignedTo: editing?.assignedTo || '',
  assignedToName: editing?.assignedToName || '',
@@ -40,26 +42,34 @@ function FollowupModal({ onClose, onSubmit, members, editing }) {
  : new Date().toISOString().split('T')[0],
  status: editing?.status || 'open',
  outcome: editing?.outcome || '',
- notes: editing?.notes || '',
+ nextFollowupDate: editing?.nextFollowupDate
+ ? (typeof editing.nextFollowupDate.toDate === 'function' ? editing.nextFollowupDate.toDate().toISOString().split('T')[0] : new Date(editing.nextFollowupDate).toISOString().split('T')[0])
+ : editing?.targetDate
+ ? (typeof editing.targetDate.toDate === 'function' ? editing.targetDate.toDate().toISOString().split('T')[0] : new Date(editing.targetDate).toISOString().split('T')[0])
+ : '',
  rescheduleCount: editing?.rescheduleCount || 0,
+ notes: editing?.notes || '',
  });
  const [saving, setSaving] = useState(false);
 
  const handleSubmit = async () => {
- if (!form.customerName) return;
+ if (!form.companyName) return;
  setSaving(true);
  try {
  const data = {
- customerName: form.customerName,
- phone: form.phone,
+ companyName: form.companyName,
+ contactPerson: form.contactPerson,
+ contactPhone: form.contactPhone,
+ description: form.description,
  taskType: form.taskType,
  assignedTo: form.assignedTo,
  assignedToName: form.assignedToName,
  targetDate: form.targetDate ? Timestamp.fromDate(new Date(form.targetDate)) : null,
  status: form.status,
  outcome: form.outcome,
- notes: form.notes,
+ nextFollowupDate: form.nextFollowupDate ? Timestamp.fromDate(new Date(form.nextFollowupDate)) : null,
  rescheduleCount: form.rescheduleCount,
+ notes: form.notes,
  };
  await onSubmit(data);
  onClose();
@@ -76,16 +86,24 @@ function FollowupModal({ onClose, onSubmit, members, editing }) {
  <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100"><X className="w-4 h-4 text-gray-500" /></button>
  </div>
  <div className="px-6 py-5 space-y-4 overflow-y-auto">
- <div><label className="label">Customer Name *</label>
- <input className="input-field" placeholder="Customer name" value={form.customerName} onChange={e => setForm({...form, customerName: e.target.value})} /></div>
+ <div><label className="label">Company Name *</label>
+ <input className="input-field" placeholder="Company name" value={form.companyName} onChange={e => setForm({...form, companyName: e.target.value})} /></div>
  <div className="grid grid-cols-2 gap-3">
- <div><label className="label">Phone</label>
- <input className="input-field" placeholder="+91 XXXXX XXXXX" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} /></div>
- <div><label className="label">Type</label>
+ <div><label className="label">Contact Person</label>
+ <input className="input-field" placeholder="Contact person" value={form.contactPerson} onChange={e => setForm({...form, contactPerson: e.target.value})} /></div>
+ <div><label className="label">Contact Phone</label>
+ <input className="input-field" placeholder="+91 XXXXX XXXXX" value={form.contactPhone} onChange={e => setForm({...form, contactPhone: e.target.value})} /></div>
+ </div>
+ <div><label className="label">Description / Activity</label>
+ <textarea className="input-field resize-none" rows={3} placeholder="What needs to be done" value={form.description} onChange={e => setForm({...form, description: e.target.value})} /></div>
+ <div className="grid grid-cols-2 gap-3">
+ <div><label className="label">Task Type</label>
  <select className="input-field" value={form.taskType} onChange={e => setForm({...form, taskType: e.target.value})}>
  <option value="">Select type</option>
  {FOLLOWUP_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
  </select></div>
+ <div><label className="label">Target Date</label>
+ <input className="input-field" type="date" value={form.targetDate} onChange={e => setForm({...form, targetDate: e.target.value})} /></div>
  </div>
  <div className="grid grid-cols-2 gap-3">
  <div><label className="label">Assign To</label>
@@ -94,8 +112,8 @@ function FollowupModal({ onClose, onSubmit, members, editing }) {
  <option value="">Select member</option>
  {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
  </select></div>
- <div><label className="label">Target Date</label>
- <input className="input-field" type="date" value={form.targetDate} onChange={e => setForm({...form, targetDate: e.target.value})} /></div>
+ <div><label className="label">Next Followup Date</label>
+ <input className="input-field" type="date" value={form.nextFollowupDate} onChange={e => setForm({...form, nextFollowupDate: e.target.value})} /></div>
  </div>
  {editing && (
  <>
@@ -156,9 +174,12 @@ export default function FollowupPage() {
  const filtered = useMemo(() => {
  return followups.filter(f => {
  const matchSearch = search === '' ||
- (f.customerName || '').toLowerCase().includes(search.toLowerCase()) ||
+ (f.companyName || '').toLowerCase().includes(search.toLowerCase()) ||
+ (f.contactPerson || '').toLowerCase().includes(search.toLowerCase()) ||
+ (f.contactPhone || '').includes(search) ||
+ (f.description || '').toLowerCase().includes(search.toLowerCase()) ||
  (f.taskType || '').toLowerCase().includes(search.toLowerCase());
- const matchStatus = filterStatus === 'All' || f.status === filterStatus;
+ const matchStatus = filterStatus === 'All' || f.statusCategory === filterStatus;
  const matchType = filterType === 'All' || f.taskType === filterType;
  return matchSearch && matchStatus && matchType;
  });
@@ -192,8 +213,9 @@ export default function FollowupPage() {
  const today = new Date();
  today.setHours(0, 0, 0, 0);
  return followups.filter(f => {
- if (f.status === 'closed') return false;
- const d = f.targetDate?.toDate ? f.targetDate.toDate() : new Date(f.targetDate);
+ if (f.isClosed) return false;
+ const rawDate = f.nextFollowupDate || f.targetDate;
+ const d = rawDate?.toDate ? rawDate.toDate() : new Date(rawDate);
  if (isNaN(d?.getTime())) return false;
  d.setHours(0, 0, 0, 0);
  return d.getTime() === today.getTime();
@@ -258,7 +280,8 @@ export default function FollowupPage() {
 
   const openReschedule = (item) => {
   setRescheduleItem(item);
-  const td = item.targetDate?.toDate ? item.targetDate.toDate() : new Date(item.targetDate);
+  const rawDate = item.nextFollowupDate || item.targetDate;
+  const td = rawDate?.toDate ? rawDate.toDate() : new Date(rawDate);
   setNewRescheduleDate(!isNaN(td?.getTime()) ? td.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
   };
 
@@ -267,7 +290,7 @@ export default function FollowupPage() {
   setRescheduleSaving(true);
   try {
   await updateFollowup(rescheduleItem.id, {
-  targetDate: Timestamp.fromDate(new Date(newRescheduleDate)),
+  nextFollowupDate: Timestamp.fromDate(new Date(newRescheduleDate)),
   rescheduleCount: (rescheduleItem.rescheduleCount || 0) + 1,
   });
   toast.success('Rescheduled!');
@@ -277,8 +300,8 @@ export default function FollowupPage() {
   };
 
  const statusColors = { open: 'badge-blue', overdue: 'badge-red', closed: 'badge-green' };
- const open = followups.filter(f => f.status !== 'closed').length;
- const overdue = followups.filter(f => f.status === 'overdue').length;
+ const open = followups.filter(f => !f.isClosed).length;
+ const overdue = followups.filter(f => f.statusCategory === 'overdue').length;
 
  return (
  <div className="space-y-6 page-transition">
@@ -291,9 +314,11 @@ export default function FollowupPage() {
  <ExportButton
  data={filtered}
  columns={[
- { key: 'customerName', label: 'Customer' },
- { key: 'phone', label: 'Phone' },
- { key: 'taskType', label: 'Type' },
+ { key: 'companyName', label: 'Company' },
+ { key: 'contactPerson', label: 'Contact Person' },
+ { key: 'contactPhone', label: 'Phone' },
+ { key: 'description', label: 'Description' },
+ { key: 'taskType', label: 'Task Type' },
  { key: 'assignedToName', label: 'Assigned' },
  { key: 'status', label: 'Status' },
  { key: 'outcome', label: 'Outcome' },
@@ -334,7 +359,7 @@ export default function FollowupPage() {
  <div className="flex-1">
  <p className="font-semibold">{todayFollowups.length} Follow-up{todayFollowups.length > 1 ? 's' : ''} Due Today</p>
  <p className="text-xs opacity-75 mt-0.5">
- {todayFollowups.slice(0, 3).map(f => f.customerName).join(', ')}
+ {todayFollowups.slice(0, 3).map(f => f.companyName || 'Untitled').join(', ')}
  {todayFollowups.length > 3 && ` +${todayFollowups.length - 3} more`}
  </p>
  </div>
@@ -372,7 +397,7 @@ export default function FollowupPage() {
  <div className="flex items-center gap-3 flex-wrap">
  <div className="relative flex-1 max-w-xs">
  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
- <input type="text" placeholder="Search customer..." className="input-field pl-9 w-full"
+ <input type="text" placeholder="Search company, contact, phone..." className="input-field pl-9 w-full"
  value={search} onChange={e => setSearch(e.target.value)} />
  </div>
  <select className="input-field w-32" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
@@ -410,7 +435,7 @@ export default function FollowupPage() {
  <div className="card">
  <CalendarView
  items={filtered}
- dateField="targetDate"
+ dateField="dueDate"
  onDayClick={(day, items) => {
  if (items.length === 1) { setEditing(items[0]); setShowModal(true); }
  }}
@@ -429,8 +454,8 @@ export default function FollowupPage() {
  title="Select all follow-ups"
  />
  </th>
- <th className="table-header">Customer</th><th className="table-header">Type</th>
- <th className="table-header">Assigned</th><th className="table-header">Target Date</th>
+ <th className="table-header">Company</th><th className="table-header">Task Type</th>
+ <th className="table-header">Assigned</th><th className="table-header">Next Followup</th>
  <th className="table-header">Reschedules</th><th className="table-header">Outcome</th>
  <th className="table-header">Status</th><th className="table-header">Actions</th>
  </tr></thead>
@@ -447,12 +472,12 @@ export default function FollowupPage() {
  />
  </td>
  <td className="table-cell">
- <div><p className="font-medium text-gray-900">{f.customerName}</p>
- <p className="text-[10px] text-gray-400">{f.phone || ''}</p></div>
+ <div><p className="font-medium text-gray-900">{f.companyName || 'Untitled follow-up'}</p>
+ <p className="text-[10px] text-gray-400">{f.contactPerson ? `${f.contactPerson} | ` : ''}{f.contactPhone || ''}</p></div>
  </td>
  <td className="table-cell text-gray-600 text-xs">{f.taskType || '-'}</td>
  <td className="table-cell text-gray-600 text-xs">{f.assignedToName || '-'}</td>
- <td className="table-cell text-[var(--text-muted)] text-xs">{formatDate(f.targetDate)}</td>
+ <td className="table-cell text-[var(--text-muted)] text-xs">{formatDate(f.nextFollowupDate || f.targetDate)}</td>
  <td className="table-cell text-center">
  {(f.rescheduleCount || 0) > 0 ? (
  <span className="text-xs font-medium text-amber-500">x{f.rescheduleCount}</span>
@@ -472,7 +497,7 @@ export default function FollowupPage() {
  <td className="table-cell">
  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
  <button onClick={() => { setEditing(f); setShowModal(true); }} className="text-xs text-teal-600 hover:bg-teal-50 px-2 py-1 rounded font-medium">Edit</button>
- {f.status !== 'closed' && (
+ {!f.isClosed && (
  <button onClick={() => openReschedule(f)} className="text-xs text-amber-600 hover:bg-amber-50 px-2 py-1 rounded font-medium">Reschedule</button>
  )}
  <DeleteButton onClick={() => deleteFollowupRecord(f.id)} />
@@ -493,8 +518,8 @@ export default function FollowupPage() {
   <div className="absolute inset-0 bg-black/40" onClick={() => setRescheduleItem(null)} />
   <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6">
   <h2 className="text-lg font-semibold text-gray-900 mb-1">Reschedule Follow-Up</h2>
-  <p className="text-sm text-gray-500 mb-4">{rescheduleItem.customerName}</p>
-  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1">New Target Date</label>
+  <p className="text-sm text-gray-500 mb-4">{rescheduleItem.companyName || 'Untitled follow-up'}</p>
+  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1">New Followup Date</label>
   <input type="date" className="input-field mb-5 w-full" value={newRescheduleDate} onChange={e => setNewRescheduleDate(e.target.value)} />
   <div className="flex gap-3">
   <button onClick={() => setRescheduleItem(null)} className="btn-secondary flex-1">Cancel</button>

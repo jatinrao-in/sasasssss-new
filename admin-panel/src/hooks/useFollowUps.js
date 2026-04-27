@@ -14,9 +14,34 @@ import {
  addDocument,
  calculateOverdueDays,
  deleteDocument,
- deriveOpenItemStatus,
  updateDocument,
 } from '../lib/firestore-helpers';
+
+function normalizeFollowupStatus(value) {
+ return String(value || 'open')
+  .trim()
+  .toLowerCase()
+  .replace(/\s+/g, '_');
+}
+
+function normalizeFollowUp(followUp) {
+ const normalized = { ...followUp };
+ normalized.companyName = normalized.companyName || normalized.customerName || '';
+ normalized.contactPerson = normalized.contactPerson || '';
+ normalized.contactPhone = normalized.contactPhone || normalized.phone || '';
+ normalized.description = normalized.description || normalized.notes || '';
+ normalized.status = normalizeFollowupStatus(normalized.status);
+ normalized.isClosed = normalized.status === 'closed';
+ normalized.dueDate = normalized.nextFollowupDate || normalized.targetDate;
+ normalized.overdueDays = normalized.isClosed ? 0 : calculateOverdueDays(normalized.dueDate);
+ normalized.statusCategory = normalized.isClosed
+  ? 'closed'
+  : normalized.overdueDays > 0
+   ? 'overdue'
+   : 'open';
+ normalized.rescheduleCount = Number(normalized.rescheduleCount || 0);
+ return normalized;
+}
 
 export function useFollowUps(filterByUser = null) {
  const [followUps, setFollowUps] = useState([]);
@@ -35,12 +60,10 @@ export function useFollowUps(filterByUser = null) {
  const unsubscribe = onSnapshot(
  followupQuery,
  (snapshot) => {
- const nextFollowUps = snapshot.docs.map((followupDoc) => {
- const followup = { id: followupDoc.id, ...followupDoc.data() };
- followup.overdueDays = followup.status === 'closed' ? 0 : calculateOverdueDays(followup.targetDate);
- followup.status = deriveOpenItemStatus(followup);
- return followup;
- });
+ const nextFollowUps = snapshot.docs.map((followupDoc) => normalizeFollowUp({
+  id: followupDoc.id,
+  ...followupDoc.data(),
+ }));
 
  setFollowUps(nextFollowUps);
  setLoading(false);
@@ -60,12 +83,14 @@ export function useFollowUps(filterByUser = null) {
    assignedDate: serverTimestamp(),
    createdAt: serverTimestamp(),
    status: 'open',
+   rescheduleCount: Number(followupData.rescheduleCount || 0),
+   outcome: followupData.outcome ?? null,
   }, 'save follow-up');
 
   await log('followup_created', {
    followupId: followUpRef.id,
    assignedTo: followupData.assignedTo || '',
-   title: followupData.title || followupData.customerName || '',
+   title: followupData.companyName || followupData.customerName || '',
   });
 
   return followUpRef;

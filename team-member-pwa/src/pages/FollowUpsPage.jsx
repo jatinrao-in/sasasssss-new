@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CalendarClock, MessageSquarePlus, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { CalendarClock, CheckCircle2, MessageSquarePlus, RefreshCw } from 'lucide-react';
 import { Timestamp, increment, serverTimestamp } from 'firebase/firestore';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -7,7 +7,6 @@ import { Button } from '../components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../components/ui/sheet';
 import { Label } from '../components/ui/label';
-import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
 import { useAuth } from '../hooks/useAuth';
 import { useFollowUps } from '../hooks/useFollowUps';
 import { useToast } from '../hooks/useToast';
@@ -27,20 +26,6 @@ const OUTCOMES = [
   { value: 'neutral', label: 'Neutral', tone: 'border-amber-200 bg-amber-50 text-amber-700' },
   { value: 'negative', label: 'Negative', tone: 'border-red-200 bg-red-50 text-red-700' },
 ];
-
-function humanizeStatus(status) {
-  return String(status || 'open')
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (character) => character.toUpperCase());
-}
-
-function getStatusBadge(status) {
-  if (status === 'closed') {
-    return <Badge variant="secondary">Closed</Badge>;
-  }
-
-  return <Badge variant="default">{humanizeStatus(status)}</Badge>;
-}
 
 function SummaryCard({ label, value, accentClass }) {
   return (
@@ -63,10 +48,10 @@ function FollowUpCardSkeleton() {
         </div>
         <div className="space-y-2">
           <div className="h-3 w-40 animate-pulse rounded bg-gray-100" />
-          <div className="h-3 w-32 animate-pulse rounded bg-gray-100" />
+          <div className="h-3 w-44 animate-pulse rounded bg-gray-100" />
           <div className="h-3 w-36 animate-pulse rounded bg-gray-100" />
         </div>
-        <div className="mt-4 h-16 animate-pulse rounded-xl bg-gray-50" />
+        <div className="mt-4 h-20 animate-pulse rounded-xl bg-gray-50" />
         <div className="mt-4 flex gap-2">
           <div className="h-11 flex-1 animate-pulse rounded-lg bg-gray-100" />
           <div className="h-11 flex-1 animate-pulse rounded-lg bg-gray-100" />
@@ -77,45 +62,51 @@ function FollowUpCardSkeleton() {
   );
 }
 
+function getStatusBadge(item) {
+  if (item.isClosed) {
+    return <Badge variant="secondary">Closed</Badge>;
+  }
+
+  return <Badge variant="default">Open</Badge>;
+}
+
 function FollowUpCard({
   item,
-  highlighted = false,
   onMarkDone,
   onReschedule,
   onAddNote,
 }) {
   return (
-    <Card
-      className={`border-l-4 ${
-        item.overdueDays > 0 && !item.isClosed ? 'border-l-red-500' : 'border-l-transparent'
-      } ${highlighted ? 'border-teal-200 bg-teal-50/70' : ''}`}
-    >
+    <Card className={item.overdueDays > 0 && !item.isClosed ? 'border-l-4 border-l-red-500' : 'border-l-4 border-l-transparent'}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <Badge className="capitalize">{item.taskType || 'Follow-up'}</Badge>
-          {getStatusBadge(item.status)}
+          {getStatusBadge(item)}
+        </div>
+
+        <div className="mt-4 border-b border-gray-100 pb-4">
+          <p className="text-sm font-semibold text-gray-900">
+            Company: {item.companyName || 'N/A'}
+          </p>
+          <p className="mt-1 text-xs text-gray-500">
+            Contact: {item.contactPerson ? `${item.contactPerson} | ` : ''}{item.contactPhone || 'N/A'}
+          </p>
+          <p className="mt-2 text-sm text-gray-700">
+            <span className="font-medium">Activity:</span> {item.description || 'No description provided'}
+          </p>
         </div>
 
         <div className="mt-4 space-y-1.5 text-xs text-[var(--text-secondary)]">
-          <p><span className="font-medium text-[var(--text-primary)]">Assigned:</span> {formatDate(item.assignedDate || item.createdAt)}</p>
           <p><span className="font-medium text-[var(--text-primary)]">Target:</span> {formatDate(item.targetDate)}</p>
-          <p><span className="font-medium text-[var(--text-primary)]">Next Follow-up:</span> {formatDate(item.nextFollowupDate || item.targetDate)}</p>
+          <p><span className="font-medium text-[var(--text-primary)]">Next Followup:</span> {formatDate(item.nextFollowupDate || item.targetDate)}</p>
+          <p><span className="font-medium text-[var(--text-primary)]">Rescheduled:</span> {item.rescheduleCount || 0} time{item.rescheduleCount === 1 ? '' : 's'}</p>
           {item.overdueDays > 0 && !item.isClosed && (
             <p className="font-semibold text-red-600">
-              Overdue: {item.overdueDays} day{item.overdueDays === 1 ? '' : 's'} overdue
+              Overdue: {item.overdueDays} day{item.overdueDays === 1 ? '' : 's'}
             </p>
           )}
-        </div>
-
-        <div className="mt-4 rounded-xl bg-gray-50 p-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-400">Notes</p>
-          <p className="mt-2 text-sm leading-6 text-[var(--text-primary)]">
-            {item.remarks || item.notes || 'No notes added yet.'}
-          </p>
-          {(item.rescheduleCount || 0) > 0 && (
-            <p className="mt-3 text-xs font-semibold text-amber-600">
-              Rescheduled {item.rescheduleCount} time{item.rescheduleCount === 1 ? '' : 's'}
-            </p>
+          {item.isClosed && item.outcome && (
+            <p><span className="font-medium text-[var(--text-primary)]">Outcome:</span> {item.outcome}</p>
           )}
         </div>
 
@@ -158,11 +149,11 @@ export default function FollowUpsPage() {
   const [noteSheetOpen, setNoteSheetOpen] = useState(false);
   const [selectedFollowUp, setSelectedFollowUp] = useState(null);
   const [selectedOutcome, setSelectedOutcome] = useState('positive');
+  const [completionNote, setCompletionNote] = useState('');
   const [rescheduleDate, setRescheduleDate] = useState('');
   const [rescheduleReason, setRescheduleReason] = useState('');
   const [noteText, setNoteText] = useState('');
   const [saving, setSaving] = useState(false);
-  const [confirmState, setConfirmState] = useState({ open: false, onConfirm: null });
 
   const dueTodayItems = useMemo(
     () => followUps.filter((item) => item.isDueToday && !item.isClosed),
@@ -173,6 +164,7 @@ export default function FollowUpsPage() {
     total: followUps.length,
     dueToday: dueTodayItems.length,
     overdue: followUps.filter((item) => item.overdueDays > 0 && !item.isClosed).length,
+    closed: followUps.filter((item) => item.isClosed).length,
   }), [dueTodayItems.length, followUps]);
 
   const filteredFollowUps = useMemo(() => followUps.filter((item) => {
@@ -213,6 +205,7 @@ export default function FollowUpsPage() {
     setNoteSheetOpen(false);
     setSelectedFollowUp(null);
     setSelectedOutcome('positive');
+    setCompletionNote('');
     setRescheduleDate('');
     setRescheduleReason('');
     setNoteText('');
@@ -230,6 +223,7 @@ export default function FollowUpsPage() {
   const openCompleteSheet = (item) => {
     setSelectedFollowUp(item);
     setSelectedOutcome(item.outcome || 'positive');
+    setCompletionNote(item.closingNote || '');
     setCompleteSheetOpen(true);
   };
 
@@ -247,7 +241,7 @@ export default function FollowUpsPage() {
 
   const openNoteSheet = (item) => {
     setSelectedFollowUp(item);
-    setNoteText('');
+    setNoteText(item.remarks || '');
     setNoteSheetOpen(true);
   };
 
@@ -261,6 +255,7 @@ export default function FollowUpsPage() {
       await updateFollowUp(selectedFollowUp.id, {
         status: 'closed',
         outcome: selectedOutcome,
+        closingNote: completionNote.trim(),
         closedAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -271,20 +266,6 @@ export default function FollowUpsPage() {
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleMarkDone = () => {
-    if (!selectedFollowUp) {
-      return;
-    }
-
-    setConfirmState({
-      open: true,
-      onConfirm: async () => {
-        setConfirmState({ open: false, onConfirm: null });
-        await saveCompletedFollowUp();
-      },
-    });
   };
 
   const handleReschedule = async () => {
@@ -350,31 +331,11 @@ export default function FollowUpsPage() {
       <div className="overflow-x-auto px-4 pb-1">
         <div className="flex gap-3">
           <SummaryCard label="Total" value={summary.total} accentClass="from-teal-500 to-teal-600" />
-          <SummaryCard label="Due Today" value={summary.dueToday} accentClass="from-sky-500 to-blue-600" />
+          <SummaryCard label="Due Today" value={summary.dueToday} accentClass="from-orange-400 to-amber-500" />
           <SummaryCard label="Overdue" value={summary.overdue} accentClass="from-rose-500 to-red-600" />
+          <SummaryCard label="Closed" value={summary.closed} accentClass="from-emerald-500 to-green-600" />
         </div>
       </div>
-
-      {dueTodayItems.length > 0 && !loading && !error && (
-        <div className="mx-4 mt-4 rounded-2xl border border-teal-200 bg-teal-50 p-4">
-          <div className="mb-3 flex items-center gap-2 text-teal-700">
-            <RefreshCw className="h-4 w-4" />
-            <h2 className="text-sm font-semibold">Due Today ({dueTodayItems.length})</h2>
-          </div>
-          <div className="space-y-3">
-            {dueTodayItems.map((item) => (
-              <FollowUpCard
-                key={item.id}
-                item={item}
-                highlighted
-                onMarkDone={openCompleteSheet}
-                onReschedule={openRescheduleSheet}
-                onAddNote={openNoteSheet}
-              />
-            ))}
-          </div>
-        </div>
-      )}
 
       <div className="px-4 pt-4">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -408,7 +369,7 @@ export default function FollowUpsPage() {
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-teal-50 text-teal-600">
                 <RefreshCw className="h-8 w-8" />
               </div>
-              <h2 className="mt-4 text-base font-semibold text-[var(--text-primary)]">No follow-ups assigned</h2>
+              <h2 className="mt-4 text-base font-semibold text-[var(--text-primary)]">No followups assigned yet</h2>
               <p className="mt-2 max-w-[260px] text-sm leading-6 text-[var(--text-secondary)]">
                 Follow-ups assigned by admin will appear here.
               </p>
@@ -430,7 +391,7 @@ export default function FollowUpsPage() {
       <Sheet open={completeSheetOpen} onOpenChange={setCompleteSheetOpen}>
         <SheetContent>
           <SheetHeader>
-            <SheetTitle>Mark Follow-up Done</SheetTitle>
+            <SheetTitle>Mark as completed?</SheetTitle>
           </SheetHeader>
 
           {selectedFollowUp && (
@@ -438,7 +399,7 @@ export default function FollowUpsPage() {
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Follow-up</p>
                 <p className="mt-1 text-sm font-medium text-[var(--text-primary)]">
-                  {selectedFollowUp.customerName || selectedFollowUp.taskType || 'Assigned follow-up'}
+                  {selectedFollowUp.companyName || selectedFollowUp.taskType || 'Assigned follow-up'}
                 </p>
               </div>
 
@@ -462,8 +423,20 @@ export default function FollowUpsPage() {
                 </div>
               </div>
 
-              <Button className="h-11 w-full" onClick={handleMarkDone} disabled={saving}>
-                {saving ? 'Saving...' : 'Mark Done'}
+              <div className="space-y-2">
+                <Label htmlFor="followup-completion-note">Note</Label>
+                <textarea
+                  id="followup-completion-note"
+                  rows={4}
+                  value={completionNote}
+                  onChange={(event) => setCompletionNote(event.target.value)}
+                  placeholder="Optional closing note..."
+                  className="flex min-h-[120px] w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+
+              <Button className="h-11 w-full" onClick={saveCompletedFollowUp} disabled={saving}>
+                {saving ? 'Saving...' : 'Confirm'}
               </Button>
             </div>
           )}
@@ -479,7 +452,7 @@ export default function FollowUpsPage() {
           {selectedFollowUp && (
             <div className="space-y-5 py-2">
               <div className="space-y-2">
-                <Label htmlFor="followup-reschedule-date">New Follow-up Date</Label>
+                <Label htmlFor="followup-reschedule-date">New date</Label>
                 <input
                   id="followup-reschedule-date"
                   type="date"
@@ -502,7 +475,7 @@ export default function FollowUpsPage() {
               </div>
 
               <Button className="h-11 w-full" onClick={handleReschedule} disabled={saving}>
-                {saving ? 'Saving...' : 'Save Reschedule'}
+                {saving ? 'Saving...' : 'Save'}
               </Button>
             </div>
           )}
@@ -537,23 +510,12 @@ export default function FollowUpsPage() {
               </div>
 
               <Button className="h-11 w-full" onClick={handleAddNote} disabled={saving}>
-                {saving ? 'Saving...' : 'Save Note'}
+                {saving ? 'Saving...' : 'Save'}
               </Button>
             </div>
           )}
         </SheetContent>
       </Sheet>
-
-      <DeleteConfirmDialog
-        isOpen={confirmState.open}
-        onClose={() => setConfirmState({ open: false, onConfirm: null })}
-        onConfirm={() => confirmState.onConfirm?.()}
-        title="Complete follow-up?"
-        description="Mark this follow-up as completed?"
-        confirmLabel="Yes, Complete"
-        loadingLabel="Completing..."
-        isDeleting={saving}
-      />
     </div>
   );
 }
