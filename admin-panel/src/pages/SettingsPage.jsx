@@ -8,6 +8,7 @@ import {
   Database,
   Download,
   FileClock,
+  FileText,
   LoaderCircle,
   RotateCcw,
   Save,
@@ -57,6 +58,7 @@ import {
   getMaintenanceColor,
   getMaintenanceMetrics,
 } from '../lib/systemConfig';
+import { DELIVERY_CERTIFICATE_FILE_NAME, generateDeliveryPDF } from '../utils/generateDeliveryPDF';
 
 const settingsSections = [
   { id: 'company', label: 'Company', icon: Building2 },
@@ -251,6 +253,7 @@ export default function SettingsPage() {
     password: false,
     notifications: false,
     backup: false,
+    certificate: false,
   });
   const [maintenanceDialogOpen, setMaintenanceDialogOpen] = useState(false);
   const [maintenancePasscode, setMaintenancePasscode] = useState('');
@@ -717,6 +720,24 @@ export default function SettingsPage() {
     }
   };
 
+  const handleDownloadDeliveryCertificate = async () => {
+    updateSavingState('certificate', true);
+
+    try {
+      generateDeliveryPDF();
+      await log('delivery_certificate_downloaded', {
+        fileName: DELIVERY_CERTIFICATE_FILE_NAME,
+        generatedAt: new Date().toISOString(),
+        generatedBy: currentUser?.name || currentUser?.email || 'Administrator',
+      });
+      toast.success('Delivery certificate downloaded successfully!');
+    } catch (error) {
+      toast.error(`Certificate download failed: ${error.message}`);
+    } finally {
+      updateSavingState('certificate', false);
+    }
+  };
+
   const handleExportAuditCsv = () => {
     const header = ['Action', 'Performed By', 'Date & Time', 'Details'];
     const rows = filteredAuditLogs.map((entry) => [
@@ -837,7 +858,7 @@ export default function SettingsPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label className="label">Company Name</label>
               <input
@@ -917,7 +938,7 @@ export default function SettingsPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label className="label">Date Format</label>
               <select
@@ -1153,7 +1174,7 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className="label">Full Name</label>
                 <input
@@ -1201,7 +1222,7 @@ export default function SettingsPage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               <div>
                 <label className="label">Current Password</label>
                 <input
@@ -1249,42 +1270,82 @@ export default function SettingsPage() {
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Data Backup</h2>
             <p className="mt-1 text-sm text-[var(--text-muted)]">
-              Download a full JSON backup of Firestore data, including nested salary and notification records.
+              Download your operational backup files and the formal delivery certificate from one place.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-teal-200 bg-teal-50 p-5">
-            <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-teal-100">
-                <Download className="h-6 w-6 text-teal-600" />
+          <div className="grid gap-5 xl:grid-cols-2">
+            <div className="rounded-2xl border border-teal-200 bg-teal-50 p-5">
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-teal-100">
+                  <Download className="h-6 w-6 text-teal-600" />
+                </div>
+                <div>
+                  <p className="text-base font-semibold text-teal-800">Download Full Backup</p>
+                  <p className="mt-1 text-sm text-teal-700">
+                    Includes users, projects, tasks, expenses, enquiries, followups, payments, outgoing payments, RGP,
+                    tools, salary, notifications, WhatsApp logs, and settings.
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-base font-semibold text-teal-800">Download Full Backup</p>
-                <p className="mt-1 text-sm text-teal-700">
-                  Includes users, projects, tasks, expenses, enquiries, followups, payments, outgoing payments, RGP,
-                  tools, salary, notifications, WhatsApp logs, and settings.
-                </p>
-              </div>
+
+              <button
+                type="button"
+                onClick={downloadBackup}
+                disabled={saving.backup}
+                className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-teal-700 disabled:opacity-60"
+              >
+                {saving.backup ? (
+                  <>
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Preparing Backup...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4" />
+                    Download Backup Now
+                  </>
+                )}
+              </button>
             </div>
 
-            <button
-              type="button"
-              onClick={downloadBackup}
-              disabled={saving.backup}
-              className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-teal-700 disabled:opacity-60"
-            >
-              {saving.backup ? (
-                <>
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  Preparing Backup...
-                </>
-              ) : (
-                <>
-                  <Download className="h-4 w-4" />
-                  Download Backup Now
-                </>
-              )}
-            </button>
+            <div className="rounded-2xl border border-slate-200 bg-[var(--bg-card)] p-5 shadow-sm">
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-slate-100">
+                  <FileText className="h-6 w-6 text-slate-700" />
+                </div>
+                <div>
+                  <p className="text-base font-semibold text-gray-900">Download Delivery Certificate</p>
+                  <p className="mt-1 text-sm text-[var(--text-muted)]">
+                    Generate the 8-page software delivery certificate PDF for Saya Industrial with corporate formatting,
+                    page numbers, and payment details.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                File: {DELIVERY_CERTIFICATE_FILE_NAME}
+              </div>
+
+              <button
+                type="button"
+                onClick={handleDownloadDeliveryCertificate}
+                disabled={saving.certificate}
+                className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:opacity-60"
+              >
+                {saving.certificate ? (
+                  <>
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Generating Certificate...
+                  </>
+                ) : (
+                  <>
+                    <FileText className="h-4 w-4" />
+                    Download Delivery Certificate
+                  </>
+                )}
+              </button>
+            </div>
           </div>
 
           {lastBackup && (
@@ -1312,7 +1373,7 @@ export default function SettingsPage() {
             </button>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <div>
               <label className="label">Start Date</label>
               <input
@@ -1571,7 +1632,7 @@ export default function SettingsPage() {
                   />
                 </div>
 
-                <div className="flex justify-end gap-3">
+                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                   <button type="button" className="btn-secondary" onClick={() => setMaintenanceDialogOpen(false)}>
                     Cancel
                   </button>
@@ -1633,7 +1694,7 @@ export default function SettingsPage() {
                   </p>
                 </div>
 
-                <div className="flex justify-end gap-3">
+                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                   <button
                     type="button"
                     className="btn-secondary"

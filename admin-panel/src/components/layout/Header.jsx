@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, Search, ChevronDown, X, CheckCheck, LogOut, Sun, Moon } from 'lucide-react';
+import { Bell, Search, ChevronDown, X, CheckCheck, LogOut, Sun, Moon, Menu } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useDarkMode } from '../../hooks/useDarkMode';
@@ -17,7 +17,7 @@ const notificationBadges = {
  rgp: 'RGP',
 };
 
-export default function Header({ collapsed }) {
+export default function Header({ collapsed, onMenuToggle }) {
  const { currentUser, userData, logout } = useAuth();
  const toast = useToast();
  const { deleteState, confirmDelete, handleConfirm, handleClose } = useDelete();
@@ -74,11 +74,19 @@ export default function Header({ collapsed }) {
  return (
  <>
  <header
- className={`fixed top-0 right-0 h-16 bg-[var(--bg-card)] border-b border-gray-100 z-30 flex items-center px-6 gap-4 transition-all duration-300 ${
- collapsed ? 'left-16' : 'left-60'
+ className={`fixed top-0 right-0 left-0 z-30 flex h-16 items-center gap-3 border-b border-gray-100 bg-[var(--bg-card)] px-3 transition-all duration-300 sm:px-4 lg:gap-4 lg:px-6 ${
+ collapsed ? 'lg:left-16' : 'lg:left-60'
  }`}
  >
- <div className="relative flex-1 max-w-md">
+ <button
+ onClick={onMenuToggle}
+ className="rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-50 lg:hidden"
+ aria-label="Open sidebar"
+ >
+ <Menu className="h-5 w-5" />
+ </button>
+
+ <div className="relative min-w-0 flex-1 max-w-none sm:max-w-md">
  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
  <input
  type="text"
@@ -90,11 +98,11 @@ export default function Header({ collapsed }) {
  />
  </div>
 
- <div className="flex items-center gap-3 ml-auto">
+ <div className="ml-auto flex items-center gap-1.5 sm:gap-3">
  {/* Dark mode toggle */}
  <button
  onClick={toggle}
- className="p-2 rounded-lg hover:bg-gray-50 transition-colors"
+ className="rounded-lg p-2 transition-colors hover:bg-gray-50"
  title={dark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
  >
  {dark ? (
@@ -108,7 +116,7 @@ export default function Header({ collapsed }) {
  <button
  id="notification-bell"
  onClick={() => setShowNotifications(!showNotifications)}
- className="relative p-2 rounded-lg hover:bg-gray-50 transition-colors"
+ className="relative rounded-lg p-2 transition-colors hover:bg-gray-50"
  >
  <Bell className="w-5 h-5 text-gray-600" />
  {unreadCount > 0 && (
@@ -118,7 +126,7 @@ export default function Header({ collapsed }) {
  )}
  </button>
 
- <div className="w-px h-6 bg-gray-200" />
+ <div className="hidden h-6 w-px bg-gray-200 sm:block" />
 
  {/* Profile */}
  <div className="relative">
@@ -160,7 +168,7 @@ export default function Header({ collapsed }) {
  {showNotifications && (
  <>
  <div className="fixed inset-0 z-40 modal-overlay" onClick={() => setShowNotifications(false)} />
- <div className="fixed top-0 right-0 h-screen w-96 bg-[var(--bg-card)] shadow-2xl z-50 flex flex-col notification-drawer">
+ <div className="fixed top-0 right-0 z-50 flex h-screen w-full max-w-sm flex-col bg-[var(--bg-card)] shadow-2xl notification-drawer">
  <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-primary)]">
  <div>
  <h3 className="font-semibold text-[var(--text-primary)]">Notifications</h3>

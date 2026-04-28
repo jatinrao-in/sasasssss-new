@@ -896,8 +896,8 @@ export default function WhatsAppAutomationPage() {
         </div>
       </section>
 
-      <div className="grid gap-6">
-        <section className="card space-y-5">
+        <div className="grid gap-6">
+          <section className="card space-y-5">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold text-gray-900">Automated Schedule</h2>
@@ -971,7 +971,7 @@ export default function WhatsAppAutomationPage() {
               <div className="mt-4 space-y-3">
                 <p className="text-sm font-medium text-gray-800">Admin WhatsApp Numbers</p>
                 {[0, 1, 2].map((index) => (
-                  <div key={index} className="flex items-center gap-3">
+                  <div key={index} className="flex flex-col gap-3 sm:flex-row sm:items-center">
                     <input
                       className="input-field flex-1"
                       placeholder={`Number ${index + 1}: +91XXXXXXXXXX`}
@@ -985,7 +985,7 @@ export default function WhatsAppAutomationPage() {
                     />
                     <button
                       type="button"
-                      className="btn-secondary"
+                      className="btn-secondary justify-center sm:justify-start"
                       disabled={scheduleDisabled}
                       onClick={() => {
                         const nextNumbers = [...settings.adminNumbers];
@@ -1147,7 +1147,7 @@ export default function WhatsAppAutomationPage() {
           <div className="space-y-3">
             <p className="text-sm font-semibold text-gray-800">Step 2 - Message</p>
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {[
                 { key: 'write', label: 'Write Message' },
                 { key: 'template', label: 'Use Template' },
@@ -1331,11 +1331,11 @@ export default function WhatsAppAutomationPage() {
             </table>
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-[var(--text-muted)]">
               Showing {paginatedLogs.length ? (page - 1) * LOG_PAGE_SIZE + 1 : 0}-{Math.min(page * LOG_PAGE_SIZE, filteredLogs.length)} of {filteredLogs.length}
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 self-start sm:self-auto">
               <button type="button" className="btn-secondary" disabled={page === 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>
                 <ChevronLeft className="h-4 w-4" />
               </button>
@@ -1373,7 +1373,7 @@ export default function WhatsAppAutomationPage() {
             </pre>
           </div>
 
-          <div className="flex justify-end gap-3">
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <button type="button" className="btn-secondary" onClick={() => setPreviewOpen(false)}>Cancel</button>
             <button type="button" className="btn-primary" disabled={!canSendNow} onClick={handleSendCustom}>
               {sending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -1460,7 +1460,7 @@ export default function WhatsAppAutomationPage() {
               />
             </div>
 
-            <div className="flex justify-end gap-3">
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <button type="button" className="btn-secondary" onClick={() => setBalanceStep('request')}>
                 Back
               </button>
@@ -1496,7 +1496,7 @@ export default function WhatsAppAutomationPage() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-3">
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <button type="button" className="btn-secondary" disabled={updatingBalance} onClick={() => setBalanceStep('request')}>
                 Back
               </button>

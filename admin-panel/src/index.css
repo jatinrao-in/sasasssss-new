@@ -314,7 +314,8 @@
   body {
     background-color: #f9fafb;
     color: #111827;
-    min-width: 1024px;
+    min-width: 320px;
+    overflow-x: hidden;
   }
 
   /* --- Dark Mode --- */
@@ -358,7 +359,7 @@
     border-radius: 12px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     border: 1px solid #f3f4f6;
-    padding: 24px;
+    padding: 16px;
     transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s;
   }
   
@@ -829,20 +830,27 @@
 /* ALERT BANNERS                          */
 /* ======================================= */
 
-.alert-banner {
+  .alert-banner {
   border-radius: 12px;
   padding: 12px 16px;
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
   cursor: pointer;
   transition: all 0.2s;
   font-size: 13px;
-}
+  }
 
 .alert-banner:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+@media (min-width: 640px) {
+  .card {
+    padding: 24px;
+  }
 }
 
 .alert-banner-red { background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; }
