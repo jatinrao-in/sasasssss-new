@@ -4,8 +4,9 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import KeyboardShortcuts from '../ui/KeyboardShortcuts';
 import { DarkModeProvider } from '../../hooks/useDarkMode';
+import MaintenanceAlert from '../MaintenanceAlert';
 
-export default function Layout() {
+export default function Layout({ maintenanceReady = false }) {
  const [collapsed, setCollapsed] = useState(false);
  const [shortcutAction, setShortcutAction] = useState(null);
 
@@ -29,6 +30,7 @@ export default function Layout() {
  <Outlet context={{ shortcutAction }} />
  </div>
  </main>
+ <MaintenanceAlert enabled={maintenanceReady} />
  <KeyboardShortcuts onShortcut={handleShortcut} />
  </div>
  </DarkModeProvider>

@@ -1,16 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
+import * as Dialog from '@radix-ui/react-dialog';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   Bell,
   Building2,
+  Clock3,
   Database,
   Download,
   FileClock,
+  LoaderCircle,
   RotateCcw,
   Save,
   Settings2,
   Shield,
+  Wrench,
   Trash2,
   User,
+  X,
 } from 'lucide-react';
 import {
   collection,
@@ -18,6 +24,7 @@ import {
   getDoc,
   getDocs,
   limit,
+  onSnapshot,
   orderBy,
   query,
   serverTimestamp,
@@ -39,12 +46,22 @@ import {
   COLLECTIONS,
   deleteDocumentRef,
   setDocument,
+  timestampToDate,
   updateDocumentRef,
 } from '../lib/firestore-helpers';
+import {
+  MAINTENANCE_CYCLE_DAYS,
+  MAINTENANCE_PASSCODE,
+  addDays,
+  formatDateForInput,
+  getMaintenanceColor,
+  getMaintenanceMetrics,
+} from '../lib/systemConfig';
 
 const settingsSections = [
   { id: 'company', label: 'Company', icon: Building2 },
   { id: 'preferences', label: 'Preferences', icon: Settings2 },
+  { id: 'maintenance', label: 'Maintenance', icon: Wrench },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'profile', label: 'Admin Profile', icon: User },
   { id: 'backup', label: 'Data Backup', icon: Database },
@@ -166,6 +183,19 @@ function formatDateTime(value) {
   });
 }
 
+function formatDateLabel(value) {
+  const parsedDate = timestampToDate(value);
+  if (!parsedDate) {
+    return 'Not recorded';
+  }
+
+  return parsedDate.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
 function escapeCsvValue(value) {
   const stringValue = String(value ?? '');
   return `"${stringValue.replace(/"/g, '""')}"`;
@@ -181,29 +211,16 @@ function downloadTextFile(content, fileName, mimeType) {
   URL.revokeObjectURL(url);
 }
 
-async function fetchNestedRecords(parentCollectionName, parentIds, subCollectionName) {
-  const uniqueIds = [...new Set(parentIds.filter(Boolean))];
-  const result = {};
-
-  await Promise.all(uniqueIds.map(async (parentId) => {
-    const snapshot = await getDocs(collection(db, parentCollectionName, parentId, subCollectionName));
-    result[parentId] = snapshot.docs.map((docSnap) => ({
-      id: docSnap.id,
-      ...serializeValue(docSnap.data()),
-    }));
-  }));
-
-  return result;
-}
-
 export default function SettingsPage() {
   const { userData, currentUser } = useAuth();
   const { log } = useAuditLog();
   const toast = useToast();
+  const navigate = useNavigate();
+  const { sectionId } = useParams();
 
-  const [activeSection, setActiveSection] = useState('company');
   const [company, setCompany] = useState(DEFAULT_COMPANY);
   const [preferences, setPreferences] = useState(DEFAULT_PREFERENCES);
+  const [maintenance, setMaintenance] = useState(null);
   const [notificationSettings, setNotificationSettings] = useState(DEFAULT_NOTIFICATION_SETTINGS);
   const [profile, setProfile] = useState({
     name: '',
@@ -224,17 +241,28 @@ export default function SettingsPage() {
   });
   const [lastBackup, setLastBackup] = useState(localStorage.getItem('lastBackup') || '');
   const [loading, setLoading] = useState(true);
+  const [maintenanceLoading, setMaintenanceLoading] = useState(true);
   const [auditLoading, setAuditLoading] = useState(true);
   const [saving, setSaving] = useState({
     company: false,
     preferences: false,
+    maintenance: false,
     profile: false,
     password: false,
     notifications: false,
     backup: false,
   });
+  const [maintenanceDialogOpen, setMaintenanceDialogOpen] = useState(false);
+  const [maintenancePasscode, setMaintenancePasscode] = useState('');
+  const [maintenanceVerified, setMaintenanceVerified] = useState(false);
+  const [maintenanceForm, setMaintenanceForm] = useState({
+    date: formatDateForInput(new Date()),
+    notes: '',
+  });
   const [dangerAction, setDangerAction] = useState('');
   const [confirmState, setConfirmState] = useState(INITIAL_CONFIRM_STATE);
+  const availableSections = useMemo(() => settingsSections.map((section) => section.id), []);
+  const activeSection = availableSections.includes(sectionId) ? sectionId : 'company';
 
   useEffect(() => {
     setProfile({
@@ -244,6 +272,12 @@ export default function SettingsPage() {
       whatsapp: userData?.whatsapp || '',
     });
   }, [userData?.email, userData?.name, userData?.phone, userData?.whatsapp]);
+
+  useEffect(() => {
+    if (sectionId && !availableSections.includes(sectionId)) {
+      navigate('/settings', { replace: true });
+    }
+  }, [availableSections, navigate, sectionId]);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -302,6 +336,24 @@ export default function SettingsPage() {
     loadAuditLogs();
   }, [toast]);
 
+  useEffect(() => {
+    const maintenanceRef = doc(db, COLLECTIONS.settings, 'maintenance');
+    const unsubscribe = onSnapshot(
+      maintenanceRef,
+      (snapshot) => {
+        setMaintenance(snapshot.exists() ? snapshot.data() : null);
+        setMaintenanceLoading(false);
+      },
+      (error) => {
+        console.error('Maintenance load failed:', error);
+        toast.error(`Failed to load maintenance status: ${error.message}`);
+        setMaintenanceLoading(false);
+      },
+    );
+
+    return () => unsubscribe();
+  }, [toast]);
+
   const auditActionOptions = useMemo(
     () => [...new Set(auditLogs.map((entry) => entry.action).filter(Boolean))].sort(),
     [auditLogs],
@@ -335,8 +387,31 @@ export default function SettingsPage() {
     return true;
   }), [auditFilters.actionType, auditFilters.endDate, auditFilters.startDate, auditLogs]);
 
+  const maintenanceMetrics = useMemo(() => getMaintenanceMetrics(
+    maintenance?.lastMaintenanceDate?.toDate?.() || maintenance?.lastMaintenanceDate,
+  ), [maintenance]);
+  const maintenanceProgressColor = getMaintenanceColor(maintenanceMetrics.percent);
+
   const updateSavingState = (key, value) => {
     setSaving((current) => ({ ...current, [key]: value }));
+  };
+
+  const resetMaintenanceDialog = () => {
+    setMaintenancePasscode('');
+    setMaintenanceVerified(false);
+    setMaintenanceForm({
+      date: formatDateForInput(new Date()),
+      notes: '',
+    });
+  };
+
+  const openMaintenanceDialog = () => {
+    resetMaintenanceDialog();
+    setMaintenanceDialogOpen(true);
+  };
+
+  const handleSectionChange = (nextSectionId) => {
+    navigate(nextSectionId === 'company' ? '/settings' : `/settings/${nextSectionId}`);
   };
 
   const handleSaveCompany = async () => {
@@ -493,6 +568,65 @@ export default function SettingsPage() {
       }
     } finally {
       updateSavingState('password', false);
+    }
+  };
+
+  const handleVerifyMaintenancePasscode = () => {
+    if (maintenancePasscode !== MAINTENANCE_PASSCODE) {
+      toast.error('Wrong passcode');
+      return;
+    }
+
+    setMaintenanceVerified(true);
+    setMaintenancePasscode('');
+  };
+
+  const handleSaveMaintenance = async () => {
+    if (!maintenanceForm.date) {
+      toast.error('Please choose a maintenance date');
+      return;
+    }
+
+    const selectedDate = new Date(`${maintenanceForm.date}T00:00:00`);
+    if (Number.isNaN(selectedDate.getTime())) {
+      toast.error('Please enter a valid maintenance date');
+      return;
+    }
+
+    updateSavingState('maintenance', true);
+
+    try {
+      const nextDate = addDays(selectedDate, MAINTENANCE_CYCLE_DAYS);
+      const updatedBy = currentUser?.name || currentUser?.email || 'Administrator';
+
+      await setDocument(
+        doc(db, COLLECTIONS.settings, 'maintenance'),
+        {
+          lastMaintenanceDate: selectedDate,
+          nextMaintenanceDate: nextDate,
+          maintenancePercent: 0,
+          updatedBy,
+          updatedAt: serverTimestamp(),
+          notes: maintenanceForm.notes.trim(),
+        },
+        { merge: true },
+        { action: 'update maintenance record', collectionName: COLLECTIONS.settings },
+      );
+
+      await log('maintenance_record_updated', {
+        updatedBy,
+        lastMaintenanceDate: selectedDate.toISOString(),
+        nextMaintenanceDate: nextDate.toISOString(),
+        notes: maintenanceForm.notes.trim(),
+      });
+
+      toast.success(`Maintenance updated! Next due: ${nextDate.toLocaleDateString('en-IN')}`);
+      setMaintenanceDialogOpen(false);
+      resetMaintenanceDialog();
+    } catch (error) {
+      toast.error(`Failed to update maintenance: ${error.message}`);
+    } finally {
+      updateSavingState('maintenance', false);
     }
   };
 
@@ -860,6 +994,110 @@ export default function SettingsPage() {
             <Save className="h-4 w-4" />
             {saving.preferences ? 'Saving...' : 'Save Preferences'}
           </button>
+        </div>
+      );
+    }
+
+    if (activeSection === 'maintenance') {
+      if (maintenanceLoading) {
+        return <SkeletonForm fields={5} />;
+      }
+
+      const lastMaintenanceLabel = formatDateLabel(maintenance?.lastMaintenanceDate);
+      const nextMaintenanceLabel = formatDateLabel(
+        maintenance?.nextMaintenanceDate || maintenanceMetrics.nextMaintenanceDate,
+      );
+      const healthMessage = maintenanceMetrics.isDue
+        ? maintenanceMetrics.overdueDays > 0
+          ? `Maintenance overdue by ${maintenanceMetrics.overdueDays} day${maintenanceMetrics.overdueDays === 1 ? '' : 's'}`
+          : 'Maintenance is due today'
+        : `${maintenanceMetrics.daysUntilDue} day${maintenanceMetrics.daysUntilDue === 1 ? '' : 's'} until maintenance due`;
+
+      return (
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Software Maintenance</h2>
+            <p className="mt-1 text-sm text-[var(--text-muted)]">
+              Keep your software healthy with a 2 month maintenance cycle and overdue alerts.
+            </p>
+          </div>
+
+          <div className="rounded-[28px] border border-teal-200 bg-gradient-to-br from-teal-50 to-cyan-50 p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">Maintenance Status</p>
+
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-white/70 bg-white/80 p-5 shadow-sm">
+                <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                  <Clock3 className="h-4 w-4 text-teal-600" />
+                  Last Maintenance
+                </div>
+                <p className="mt-2 text-base font-semibold text-gray-900">{lastMaintenanceLabel}</p>
+                <p className="mt-1 text-sm text-[var(--text-muted)]">
+                  Updated by {maintenance?.updatedBy || 'System'}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/70 bg-white/80 p-5 shadow-sm">
+                <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                  <Wrench className="h-4 w-4 text-teal-600" />
+                  Next Due
+                </div>
+                <p className="mt-2 text-base font-semibold text-gray-900">{nextMaintenanceLabel}</p>
+                <p className="mt-1 text-sm text-[var(--text-muted)]">
+                  Cycle resets every {MAINTENANCE_CYCLE_DAYS} days
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-3xl border border-white/70 bg-white/80 p-5 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">Health Status</p>
+                  <p className="mt-1 text-sm text-[var(--text-muted)]">{healthMessage}</p>
+                </div>
+                <span
+                  className="rounded-full px-3 py-1 text-sm font-semibold"
+                  style={{
+                    background: `${maintenanceProgressColor}18`,
+                    color: maintenanceProgressColor,
+                  }}
+                >
+                  {maintenanceMetrics.percent}%
+                </span>
+              </div>
+
+              <div className="mt-4 h-3 overflow-hidden rounded-full bg-slate-200">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${maintenanceMetrics.percent}%`,
+                    background: maintenanceProgressColor,
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_auto]">
+              <div className="rounded-2xl border border-white/70 bg-white/80 p-5 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">Latest Notes</p>
+                <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
+                  {maintenance?.notes?.trim() || 'No maintenance notes recorded yet.'}
+                </p>
+                <p className="mt-3 text-xs text-[var(--text-muted)]">
+                  Last updated: {formatDateTime(maintenance?.updatedAt)}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={openMaintenanceDialog}
+                className="inline-flex items-center justify-center gap-2 self-start rounded-2xl bg-teal-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-teal-700"
+              >
+                <Wrench className="h-4 w-4" />
+                Update Maintenance
+              </button>
+            </div>
+          </div>
         </div>
       );
     }
@@ -1263,7 +1501,7 @@ export default function SettingsPage() {
               <button
                 key={section.id}
                 type="button"
-                onClick={() => setActiveSection(section.id)}
+                onClick={() => handleSectionChange(section.id)}
                 className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
                   activeSection === section.id
                     ? 'bg-teal-50 text-teal-700'
@@ -1279,6 +1517,146 @@ export default function SettingsPage() {
 
         <div className="card">{renderSectionContent()}</div>
       </div>
+
+      <Dialog.Root
+        open={maintenanceDialogOpen}
+        onOpenChange={(open) => {
+          setMaintenanceDialogOpen(open);
+          if (!open) {
+            resetMaintenanceDialog();
+          }
+        }}
+      >
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-[80] bg-black/40 modal-overlay" />
+          <Dialog.Content
+            className="fixed left-1/2 top-1/2 z-[90] w-[calc(100%-32px)] max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-3xl border p-6 shadow-2xl modal-content"
+            style={{
+              background: 'var(--bg-modal)',
+              borderColor: 'var(--border-primary)',
+            }}
+          >
+            <Dialog.Close asChild>
+              <button
+                type="button"
+                disabled={saving.maintenance}
+                className="absolute right-4 top-4 rounded-lg p-1 text-[var(--text-muted)] hover:bg-[var(--bg-hover)]"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </Dialog.Close>
+
+            {!maintenanceVerified ? (
+              <div className="space-y-6">
+                <div>
+                  <Dialog.Title className="text-lg font-semibold text-[var(--text-primary)]">
+                    Maintenance Passcode
+                  </Dialog.Title>
+                  <Dialog.Description className="mt-1 text-sm text-[var(--text-muted)]">
+                    Enter the 4 digit passcode to update the maintenance record.
+                  </Dialog.Description>
+                </div>
+
+                <div className="rounded-3xl border p-5" style={{ borderColor: 'var(--border-primary)' }}>
+                  <label className="label text-center">Passcode</label>
+                  <input
+                    className="input-field mx-auto mt-2 max-w-[180px] text-center text-2xl tracking-[0.5em]"
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={4}
+                    placeholder="____"
+                    value={maintenancePasscode}
+                    onChange={(event) => setMaintenancePasscode(event.target.value.replace(/\D/g, '').slice(0, 4))}
+                  />
+                </div>
+
+                <div className="flex justify-end gap-3">
+                  <button type="button" className="btn-secondary" onClick={() => setMaintenanceDialogOpen(false)}>
+                    Cancel
+                  </button>
+                  <button type="button" className="btn-primary" onClick={handleVerifyMaintenancePasscode}>
+                    <Shield className="h-4 w-4" />
+                    Verify
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div>
+                  <Dialog.Title className="text-lg font-semibold text-[var(--text-primary)]">
+                    Update Maintenance Record
+                  </Dialog.Title>
+                  <Dialog.Description className="mt-1 text-sm text-[var(--text-muted)]">
+                    Record the latest maintenance work and reset the next due date.
+                  </Dialog.Description>
+                </div>
+
+                <div className="grid gap-5 md:grid-cols-[220px_1fr]">
+                  <div>
+                    <label className="label">Maintenance Date</label>
+                    <input
+                      className="input-field"
+                      type="date"
+                      value={maintenanceForm.date}
+                      disabled={saving.maintenance}
+                      onChange={(event) => setMaintenanceForm((current) => ({
+                        ...current,
+                        date: event.target.value,
+                      }))}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="label">Notes</label>
+                    <textarea
+                      className="input-field min-h-[140px] resize-y"
+                      placeholder="What was maintained or updated?"
+                      value={maintenanceForm.notes}
+                      disabled={saving.maintenance}
+                      onChange={(event) => setMaintenanceForm((current) => ({
+                        ...current,
+                        notes: event.target.value,
+                      }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border p-4" style={{ borderColor: 'var(--border-primary)' }}>
+                  <p className="text-sm font-medium text-[var(--text-primary)]">
+                    Next due date:
+                    <span className="ml-2 font-semibold text-teal-700">
+                      {maintenanceForm.date
+                        ? addDays(new Date(`${maintenanceForm.date}T00:00:00`), MAINTENANCE_CYCLE_DAYS).toLocaleDateString('en-IN')
+                        : '-'}
+                    </span>
+                  </p>
+                </div>
+
+                <div className="flex justify-end gap-3">
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    disabled={saving.maintenance}
+                    onClick={() => setMaintenanceDialogOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    disabled={saving.maintenance}
+                    onClick={handleSaveMaintenance}
+                  >
+                    {saving.maintenance ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    {saving.maintenance ? 'Saving...' : 'Confirm Maintenance Done'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
 
       <DeleteConfirmDialog
         isOpen={confirmState.open}

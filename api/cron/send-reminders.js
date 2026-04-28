@@ -15,6 +15,7 @@ import {
   sendDailyReminder,
   sendGeneralMessage,
 } from '../../server/whatsapp/msg91.js';
+import { assertWhatsAppBalance, recordSuccessfulWhatsAppSend } from '../../server/whatsapp/balance.js';
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -127,6 +128,35 @@ export default async function handler(req, res) {
         continue;
       }
 
+      let availableBalanceForSend;
+      try {
+        availableBalanceForSend = await assertWhatsAppBalance(db, 1);
+      } catch (error) {
+        if (error.statusCode === 402) {
+          await db.collection('whatsapp_logs').add({
+            to: user.whatsapp || '',
+            memberName: user.name || 'Unknown',
+            memberUid: userDoc.id,
+            messageType: slot,
+            template: 'daily_reminder',
+            status: 'failed',
+            error: error.message,
+            sentAt: Timestamp.now(),
+          }).catch(() => {});
+
+          memberResults.push({
+            memberName: user.name || 'Unknown',
+            memberUid: userDoc.id,
+            phone: user.whatsapp || '',
+            status: 'failed',
+            error: error.message,
+          });
+          continue;
+        }
+
+        throw error;
+      }
+
       try {
         // Count tasks for this member
         const tasksSnap = await db.collection('tasks')
@@ -164,6 +194,17 @@ export default async function handler(req, res) {
           overdueTasks,
           sentAt: Timestamp.now(),
         });
+
+        if (status === 'sent') {
+          await recordSuccessfulWhatsAppSend(db, {
+            actor: 'Automation Cron',
+            balanceBefore: availableBalanceForSend,
+            messageType: slot,
+            phone: sendResult.to,
+            recipientName: user.name || 'Unknown',
+            source: 'api/cron/send-reminders',
+          });
+        }
 
         memberResults.push({
           memberName: user.name || 'Unknown',
@@ -212,7 +253,9 @@ export default async function handler(req, res) {
         `Total overdue tasks: ${totalOverdue}`;
 
       for (const adminNumber of (settings.adminNumbers || []).filter(Boolean)) {
+        let availableBalanceForAdmin;
         try {
+          availableBalanceForAdmin = await assertWhatsAppBalance(db, 1);
           const sendResult = await sendGeneralMessage(adminNumber, 'Admin', adminSummaryText);
           const status = sendResult.sent ? 'sent' : 'failed';
 
@@ -226,8 +269,28 @@ export default async function handler(req, res) {
             sentAt: Timestamp.now(),
           }).catch(() => {});
 
+          if (status === 'sent') {
+            await recordSuccessfulWhatsAppSend(db, {
+              actor: 'Automation Cron',
+              balanceBefore: availableBalanceForAdmin,
+              messageType: 'admin_summary',
+              phone: sendResult.to,
+              recipientName: 'Admin Summary',
+              source: 'api/cron/send-reminders',
+            });
+          }
+
           adminResults.push({ phone: sendResult.to, status });
         } catch (error) {
+          await db.collection('whatsapp_logs').add({
+            to: adminNumber,
+            memberName: 'Admin Summary',
+            messageType: 'admin_summary',
+            template: 'general_message',
+            status: 'failed',
+            error: error.message,
+            sentAt: Timestamp.now(),
+          }).catch(() => {});
           adminResults.push({ phone: adminNumber, status: 'failed', error: error.message });
         }
 

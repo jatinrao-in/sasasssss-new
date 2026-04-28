@@ -3,6 +3,7 @@ import { requireAdmin, verifyFirebaseRequest } from '../../server/auth.js';
 import { handleCors } from '../../server/cors.js';
 import { getAdminServices } from '../../server/firebaseAdmin.js';
 import { handleConfigError } from '../../server/config.js';
+import { assertWhatsAppBalance, recordSuccessfulWhatsAppSend } from '../../server/whatsapp/balance.js';
 import { sendGeneralMessage } from '../../server/whatsapp/msg91.js';
 
 function sleep(ms) {
@@ -36,6 +37,7 @@ export default async function handler(req, res) {
 
     const sanitizedRecipients = sanitizeRecipients(recipients);
     const trimmedMessage = String(message || '').trim();
+    const requestedBy = authContext.decodedToken.uid;
 
     if (!sanitizedRecipients.length) {
       return res.status(400).json({ error: 'At least one recipient is required' });
@@ -49,6 +51,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'message must be 1000 characters or fewer' });
     }
 
+    let remainingBalance = await assertWhatsAppBalance(db, sanitizedRecipients.length);
     const results = [];
 
     for (const recipient of sanitizedRecipients) {
@@ -80,9 +83,21 @@ export default async function handler(req, res) {
           status,
           template: 'general_message',
           msg91Response: sendResult.result,
-          requestedBy: authContext.decodedToken.uid,
+          requestedBy,
           sentAt: Timestamp.now(),
         });
+
+        if (status === 'sent') {
+          await recordSuccessfulWhatsAppSend(db, {
+            actor: requestedBy,
+            balanceBefore: remainingBalance,
+            messageType: type,
+            phone: sendResult.to,
+            recipientName: recipient.name || 'Unknown',
+            source: 'api/whatsapp/send-custom',
+          });
+          remainingBalance -= 1;
+        }
 
         results.push({
           memberName: recipient.name || 'Unknown',
@@ -104,7 +119,7 @@ export default async function handler(req, res) {
             template: 'general_message',
             msg91Response: providerResponse || { error: error.message },
             error: error.message,
-            requestedBy: authContext.decodedToken.uid,
+            requestedBy,
             sentAt: Timestamp.now(),
           });
         } catch {
@@ -143,6 +158,7 @@ export default async function handler(req, res) {
 
     return res.status(statusCode).json({
       error: statusCode === 401 ? 'Unauthorized' : error.message,
+      ...(statusCode === 402 ? { balance: error.balance ?? 0 } : {}),
     });
   }
 }

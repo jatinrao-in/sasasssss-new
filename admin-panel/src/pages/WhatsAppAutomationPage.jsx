@@ -7,19 +7,28 @@ import {
   ChevronRight,
   Download,
   Eye,
+  History,
+  IndianRupee,
   LoaderCircle,
+  MessageCircleMore,
+  Plus,
   Save,
   Send,
+  ShieldCheck,
+  TriangleAlert,
+  Wallet,
   X,
 } from 'lucide-react';
 import {
   collection,
   doc,
+  getDoc,
   limit,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
+  setDoc,
 } from 'firebase/firestore';
 import DeleteButton from '../components/DeleteButton';
 import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
@@ -31,8 +40,20 @@ import { useToast } from '../hooks/useToast';
 import { sendWhatsAppCustom } from '../lib/api';
 import { clearCollection } from '../lib/deleteActions';
 import { db } from '../lib/firebase';
-import { COLLECTIONS, setDocument, timestampToDate } from '../lib/firestore-helpers';
+import {
+  COLLECTIONS,
+  addDocumentToCollection,
+  setDocument,
+  timestampToDate,
+} from '../lib/firestore-helpers';
 import { exportCSV } from '../lib/exportUtils';
+import {
+  BALANCE_PASSCODE,
+  WHATSAPP_COST_PER_MESSAGE,
+  WHATSAPP_PAYMENT_PHONE,
+  WHATSAPP_PAYMENT_UPI,
+  getWhatsAppBalanceColor,
+} from '../lib/systemConfig';
 
 const DEFAULT_SETTINGS = {
   morningEnabled: true,
@@ -104,6 +125,14 @@ const TEMPLATE_PREVIEW_DATA = {
 };
 
 const LOG_PAGE_SIZE = 25;
+const BALANCE_HISTORY_PAGE_SIZE = 20;
+const DEFAULT_BALANCE = {
+  balance: 0,
+  totalSpent: 0,
+  totalMessages: 0,
+  lastUpdated: null,
+  lastUpdatedBy: 'System',
+};
 
 function Toggle({ checked, onChange, disabled = false }) {
   return (
@@ -243,6 +272,37 @@ function previewMessage(value, maxLength = 50) {
   return `${normalized.slice(0, maxLength)}...`;
 }
 
+function mergeBalanceData(data = {}) {
+  return {
+    ...DEFAULT_BALANCE,
+    ...data,
+    balance: Number(data?.balance || 0),
+    totalSpent: Number(data?.totalSpent || 0),
+    totalMessages: Number(data?.totalMessages || 0),
+    lastUpdatedBy: data?.lastUpdatedBy || 'System',
+  };
+}
+
+function formatCurrency(value) {
+  const amount = Number(value || 0);
+  return amount.toLocaleString('en-IN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function getBalanceHistoryTitle(entry) {
+  if (entry.type === 'manual_update') {
+    return 'Manual balance update';
+  }
+
+  if (entry.type === 'deduction') {
+    return `${String(entry.messageType || 'whatsapp').replace(/_/g, ' ')} message sent`;
+  }
+
+  return 'Balance activity';
+}
+
 function filterLogs(logs, filters) {
   return logs.filter((log) => {
     const sentAt = timestampToDate(log.sentAt);
@@ -287,6 +347,9 @@ export default function WhatsAppAutomationPage() {
 
   const [settings, setSettings] = useState(mergeSettings());
   const [settingsLoading, setSettingsLoading] = useState(true);
+  const [balanceData, setBalanceData] = useState(DEFAULT_BALANCE);
+  const [balanceLoading, setBalanceLoading] = useState(true);
+  const [balanceHistory, setBalanceHistory] = useState([]);
   const [logs, setLogs] = useState([]);
   const [logsLoading, setLogsLoading] = useState(true);
   const [activeTemplateTab, setActiveTemplateTab] = useState('morning');
@@ -301,10 +364,17 @@ export default function WhatsAppAutomationPage() {
   const [templateSelection, setTemplateSelection] = useState('morning');
   const [previewOpen, setPreviewOpen] = useState(false);
   const [resultsOpen, setResultsOpen] = useState(false);
+  const [balanceSheetOpen, setBalanceSheetOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState(null);
   const [sendResults, setSendResults] = useState([]);
   const [sendSummary, setSendSummary] = useState({ sent: 0, failed: 0, total: 0 });
   const [sending, setSending] = useState(false);
+  const [balanceStep, setBalanceStep] = useState('request');
+  const [topUpAmount, setTopUpAmount] = useState('');
+  const [balancePasscode, setBalancePasscode] = useState('');
+  const [manualBalanceAmount, setManualBalanceAmount] = useState('');
+  const [updatingBalance, setUpdatingBalance] = useState(false);
   const [logFilters, setLogFilters] = useState({
     startDate: '',
     endDate: '',
@@ -318,6 +388,30 @@ export default function WhatsAppAutomationPage() {
     () => members.filter((member) => member.status === 'active' && member.role === 'member'),
     [members],
   );
+
+  useEffect(() => {
+    const initBalance = async () => {
+      try {
+        const balanceRef = doc(db, COLLECTIONS.settings, 'whatsapp_balance');
+        const balanceDoc = await getDoc(balanceRef);
+
+        if (!balanceDoc.exists()) {
+          await setDoc(balanceRef, {
+            balance: 0,
+            totalSpent: 0,
+            totalMessages: 0,
+            lastUpdated: serverTimestamp(),
+            lastUpdatedBy: 'System',
+          });
+        }
+      } catch (error) {
+        console.error('WhatsApp balance init failed:', error);
+        toast.error(`Failed to initialize WhatsApp balance: ${error.message}`);
+      }
+    };
+
+    initBalance();
+  }, [toast]);
 
   useEffect(() => {
     const settingsRef = doc(db, COLLECTIONS.settings, 'whatsapp_automation');
@@ -337,6 +431,44 @@ export default function WhatsAppAutomationPage() {
 
     return () => unsubscribe();
   }, [toast]);
+
+  useEffect(() => {
+    const balanceRef = doc(db, COLLECTIONS.settings, 'whatsapp_balance');
+    const unsubscribe = onSnapshot(
+      balanceRef,
+      (snapshot) => {
+        setBalanceData(mergeBalanceData(snapshot.exists() ? snapshot.data() : {}));
+        setBalanceLoading(false);
+      },
+      (error) => {
+        console.error('WhatsApp balance listener failed:', error);
+        toast.error(`Failed to load WhatsApp balance: ${error.message}`);
+        setBalanceLoading(false);
+      },
+    );
+
+    return () => unsubscribe();
+  }, [toast]);
+
+  useEffect(() => {
+    const historyQuery = query(
+      collection(db, COLLECTIONS.settings, 'whatsapp_balance', 'history'),
+      orderBy('createdAt', 'desc'),
+      limit(BALANCE_HISTORY_PAGE_SIZE),
+    );
+
+    const unsubscribe = onSnapshot(
+      historyQuery,
+      (snapshot) => {
+        setBalanceHistory(snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() })));
+      },
+      (error) => {
+        console.warn('WhatsApp balance history listener failed:', error);
+      },
+    );
+
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const logsQuery = query(
@@ -411,6 +543,13 @@ export default function WhatsAppAutomationPage() {
     }
   }, [page, totalPages]);
 
+  const balance = Number(balanceData.balance || 0);
+  const balanceColor = getWhatsAppBalanceColor(balance);
+  const requiredMessageCount = selectedRecipients.length;
+  const hasEnoughBalanceForSelection = requiredMessageCount === 0 || balance >= requiredMessageCount;
+  const isBalanceDepleted = balance <= 0;
+  const canSendNow = !sending && !balanceLoading && !isBalanceDepleted && hasEnoughBalanceForSelection;
+
   const canPreview = selectedRecipients.length > 0
     && (composeMode === 'write' ? customMessage.trim().length > 0 : Boolean(templateSelection));
 
@@ -467,7 +606,111 @@ export default function WhatsAppAutomationPage() {
     ));
   };
 
+  const resetBalanceModal = () => {
+    setBalanceStep('request');
+    setTopUpAmount('');
+    setBalancePasscode('');
+    setManualBalanceAmount('');
+  };
+
+  const openBalanceModal = () => {
+    resetBalanceModal();
+    setManualBalanceAmount(String(balance));
+    setBalanceSheetOpen(true);
+  };
+
+  const handlePayViaWhatsApp = () => {
+    const amount = Number(topUpAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error('Please enter a valid amount');
+      return;
+    }
+
+    const message = `Hello! I want to add Rs.${amount} to my Saya Industrial WhatsApp balance. Please find payment screenshot attached.`;
+    const whatsappUrl = `https://wa.me/${WHATSAPP_PAYMENT_PHONE}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleUnlockBalanceEditor = () => {
+    if (balancePasscode !== BALANCE_PASSCODE) {
+      toast.error('Wrong passcode');
+      return;
+    }
+
+    setBalancePasscode('');
+    setBalanceStep('editor');
+  };
+
+  const handleSaveManualBalance = async () => {
+    const newAmount = Number(manualBalanceAmount);
+    if (!Number.isFinite(newAmount) || newAmount < 0) {
+      toast.error('Please enter a valid balance amount');
+      return;
+    }
+
+    setUpdatingBalance(true);
+
+    try {
+      const updatedBy = currentUser?.name || currentUser?.email || 'Administrator';
+      const previousBalance = Number(balanceData.balance || 0);
+      const historyCollectionRef = collection(db, COLLECTIONS.settings, 'whatsapp_balance', 'history');
+
+      await Promise.all([
+        setDocument(
+          doc(db, COLLECTIONS.settings, 'whatsapp_balance'),
+          {
+            balance: newAmount,
+            lastUpdated: serverTimestamp(),
+            lastUpdatedBy: updatedBy,
+          },
+          { merge: true },
+          { action: 'update whatsapp balance', collectionName: COLLECTIONS.settings },
+        ),
+        addDocumentToCollection(
+          historyCollectionRef,
+          {
+            type: 'manual_update',
+            delta: newAmount - previousBalance,
+            previousBalance,
+            newBalance: newAmount,
+            requestedAmount: Number(topUpAmount || 0),
+            createdAt: serverTimestamp(),
+            createdBy: updatedBy,
+            note: topUpAmount
+              ? `Requested top-up: Rs.${topUpAmount}`
+              : 'Balance updated manually',
+          },
+          { action: 'save whatsapp balance history', collectionName: COLLECTIONS.settings },
+        ),
+      ]);
+
+      await log('whatsapp_balance_updated', {
+        previousBalance,
+        newBalance: newAmount,
+        updatedBy,
+      });
+
+      toast.success(`Balance updated to Rs.${newAmount}`);
+      setBalanceSheetOpen(false);
+      resetBalanceModal();
+    } catch (error) {
+      toast.error(`Failed to update balance: ${error.message}`);
+    } finally {
+      setUpdatingBalance(false);
+    }
+  };
+
   const handleSendCustom = async () => {
+    if (isBalanceDepleted) {
+      toast.error('WhatsApp messages paused. Balance is Rs.0. Add balance to continue.');
+      return;
+    }
+
+    if (!hasEnoughBalanceForSelection) {
+      toast.error(`Balance Rs.${balance} is not enough for ${selectedRecipients.length} messages`);
+      return;
+    }
+
     if (!customMessage.trim()) {
       toast.error('Please write a message');
       return;
@@ -560,6 +803,98 @@ export default function WhatsAppAutomationPage() {
           Manage automated reminders, reusable templates, instant sends, and delivery history.
         </p>
       </div>
+
+      <section className="card space-y-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">WhatsApp Balance</p>
+            <h2 className="mt-1 text-xl font-semibold text-[var(--text-primary)]">Live message wallet</h2>
+          </div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-sm font-semibold text-teal-700">
+            <Wallet className="h-4 w-4" />
+            Rs. {formatCurrency(WHATSAPP_COST_PER_MESSAGE)} / message
+          </div>
+        </div>
+
+        {isBalanceDepleted ? (
+          <div className="alert-banner alert-banner-red">
+            <TriangleAlert className="h-5 w-5 flex-shrink-0" />
+            <div>
+              <p className="font-semibold">WhatsApp messages paused.</p>
+              <p>Balance is Rs.0. Add balance to continue.</p>
+            </div>
+          </div>
+        ) : null}
+
+        {!isBalanceDepleted && requiredMessageCount > 0 && !hasEnoughBalanceForSelection ? (
+          <div className="alert-banner alert-banner-orange">
+            <TriangleAlert className="h-5 w-5 flex-shrink-0" />
+            <div>
+              <p className="font-semibold">Selected recipients exceed current balance.</p>
+              <p>
+                Balance Rs.{balance} is not enough for {requiredMessageCount} message{requiredMessageCount === 1 ? '' : 's'}.
+              </p>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="grid gap-4 md:grid-cols-[1.2fr_1fr]">
+          <div className="rounded-3xl border p-5" style={{ borderColor: 'var(--border-primary)' }}>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-2xl border p-4" style={{ borderColor: 'var(--border-primary)', background: 'var(--bg-secondary)' }}>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Current Balance</p>
+                <div className="mt-3 flex items-end gap-2">
+                  <IndianRupee className="h-5 w-5" style={{ color: balanceColor }} />
+                  <span className="tabular-nums text-3xl font-bold" style={{ color: balanceColor }}>
+                    {balanceLoading ? '...' : formatCurrency(balance)}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm" style={{ color: balanceColor }}>
+                  {balance < 10 ? 'Low balance warning' : balance > 50 ? 'Healthy balance' : 'Refill soon'}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border p-4" style={{ borderColor: 'var(--border-primary)', background: 'var(--bg-secondary)' }}>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Per Message Cost</p>
+                <p className="mt-3 text-3xl font-bold text-[var(--text-primary)]">Rs. {formatCurrency(WHATSAPP_COST_PER_MESSAGE)}</p>
+                <p className="mt-2 text-sm text-[var(--text-muted)]">Deducted only after successful MSG91 send.</p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-2xl border p-4" style={{ borderColor: 'var(--border-primary)', background: 'var(--bg-secondary)' }}>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm font-semibold text-[var(--text-primary)]">
+                  Total Sent: <span className="tabular-nums">{balanceData.totalMessages}</span>
+                </p>
+                <p className="text-sm font-semibold text-[var(--text-primary)]">
+                  Total Spent: <span className="tabular-nums">Rs.{formatCurrency(balanceData.totalSpent)}</span>
+                </p>
+              </div>
+              <p className="mt-2 text-xs text-[var(--text-muted)]">
+                Last updated by {balanceData.lastUpdatedBy || 'System'} on {formatDateTime(balanceData.lastUpdated)}
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-3xl border p-5" style={{ borderColor: 'var(--border-primary)', background: 'var(--bg-secondary)' }}>
+            <p className="text-sm font-semibold text-[var(--text-primary)]">Quick Actions</p>
+            <p className="mt-1 text-sm text-[var(--text-muted)]">
+              Add funds, request payment confirmation, or review recent balance activity.
+            </p>
+
+            <div className="mt-5 flex flex-col gap-3">
+              <button type="button" className="btn-primary justify-center" onClick={openBalanceModal}>
+                <Plus className="h-4 w-4" />
+                Add Balance
+              </button>
+              <button type="button" className="btn-secondary justify-center" onClick={() => setHistoryOpen(true)}>
+                <History className="h-4 w-4" />
+                Payment History
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <div className="grid gap-6">
         <section className="card space-y-5">
@@ -870,6 +1205,10 @@ export default function WhatsAppAutomationPage() {
 
           <div className="space-y-3">
             <p className="text-sm font-semibold text-gray-800">Step 3 - Preview &amp; Send</p>
+            <div className="rounded-2xl border border-dashed border-teal-200 bg-teal-50/70 px-4 py-3 text-sm text-teal-800">
+              This send needs {requiredMessageCount} balance unit{requiredMessageCount === 1 ? '' : 's'}.
+              Current balance: Rs.{formatCurrency(balance)}.
+            </div>
             <button type="button" className="btn-primary" disabled={!canPreview} onClick={() => setPreviewOpen(true)}>
               <Eye className="h-4 w-4" />
               Preview Message
@@ -1036,11 +1375,198 @@ export default function WhatsAppAutomationPage() {
 
           <div className="flex justify-end gap-3">
             <button type="button" className="btn-secondary" onClick={() => setPreviewOpen(false)}>Cancel</button>
-            <button type="button" className="btn-primary" disabled={sending} onClick={handleSendCustom}>
+            <button type="button" className="btn-primary" disabled={!canSendNow} onClick={handleSendCustom}>
               {sending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              {sending ? 'Sending...' : 'Send Now'}
+              {sending ? 'Sending...' : isBalanceDepleted ? 'Balance Empty' : !hasEnoughBalanceForSelection ? 'Insufficient Balance' : 'Send Now'}
             </button>
           </div>
+        </div>
+      </ModalShell>
+
+      <ModalShell
+        open={balanceSheetOpen}
+        onOpenChange={(open) => {
+          setBalanceSheetOpen(open);
+          if (!open) {
+            resetBalanceModal();
+          }
+        }}
+        title="Add Balance"
+        description="Add wallet balance for WhatsApp sends or update the amount manually with the passcode."
+      >
+        {balanceStep === 'request' ? (
+          <div className="space-y-5">
+            <div>
+              <label className="label">Enter Amount</label>
+              <div className="relative">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-[var(--text-muted)]">Rs.</span>
+                <input
+                  className="input-field pl-11"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={topUpAmount}
+                  onChange={(event) => setTopUpAmount(event.target.value)}
+                  placeholder="0"
+                />
+              </div>
+            </div>
+
+            <div className="rounded-3xl border p-5" style={{ borderColor: 'var(--border-primary)', background: 'var(--bg-secondary)' }}>
+              <p className="text-sm font-semibold text-[var(--text-primary)]">UPI Payment</p>
+              <p className="mt-2 text-sm text-[var(--text-secondary)]">Pay to: {WHATSAPP_PAYMENT_UPI}</p>
+              <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
+                After payment, send screenshot on WhatsApp to confirm.
+              </p>
+            </div>
+
+            <button type="button" className="btn-primary w-full justify-center" onClick={handlePayViaWhatsApp}>
+              <MessageCircleMore className="h-4 w-4" />
+              Pay via WhatsApp
+            </button>
+
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-[var(--border-primary)]" />
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">OR</span>
+              <div className="h-px flex-1 bg-[var(--border-primary)]" />
+            </div>
+
+            <button
+              type="button"
+              className="btn-secondary w-full justify-center"
+              onClick={() => {
+                setManualBalanceAmount(topUpAmount || String(balance));
+                setBalanceStep('passcode');
+              }}
+            >
+              <ShieldCheck className="h-4 w-4" />
+              Update Balance Manually
+            </button>
+          </div>
+        ) : null}
+
+        {balanceStep === 'passcode' ? (
+          <div className="space-y-5">
+            <div className="rounded-3xl border p-5 text-center" style={{ borderColor: 'var(--border-primary)' }}>
+              <p className="text-sm font-semibold text-[var(--text-primary)]">Enter Passcode</p>
+              <input
+                className="input-field mx-auto mt-4 max-w-[180px] text-center text-2xl tracking-[0.5em]"
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                value={balancePasscode}
+                onChange={(event) => setBalancePasscode(event.target.value.replace(/\D/g, '').slice(0, 4))}
+                placeholder="____"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button type="button" className="btn-secondary" onClick={() => setBalanceStep('request')}>
+                Back
+              </button>
+              <button type="button" className="btn-primary" onClick={handleUnlockBalanceEditor}>
+                Confirm
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {balanceStep === 'editor' ? (
+          <div className="space-y-5">
+            <div className="rounded-3xl border p-5" style={{ borderColor: 'var(--border-primary)', background: 'var(--bg-secondary)' }}>
+              <p className="text-sm font-semibold text-[var(--text-primary)]">Update Balance</p>
+              <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                Current Balance: <span className="font-semibold text-[var(--text-primary)]">Rs.{formatCurrency(balance)}</span>
+              </p>
+            </div>
+
+            <div>
+              <label className="label">New Balance Amount</label>
+              <div className="relative">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-[var(--text-muted)]">Rs.</span>
+                <input
+                  className="input-field pl-11"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={manualBalanceAmount}
+                  onChange={(event) => setManualBalanceAmount(event.target.value)}
+                  placeholder="0"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button type="button" className="btn-secondary" disabled={updatingBalance} onClick={() => setBalanceStep('request')}>
+                Back
+              </button>
+              <button type="button" className="btn-primary" disabled={updatingBalance} onClick={handleSaveManualBalance}>
+                {updatingBalance ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {updatingBalance ? 'Saving...' : 'Save Balance'}
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </ModalShell>
+
+      <ModalShell
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        title="Payment History"
+        description="Recent manual balance updates and message deductions."
+      >
+        <div className="space-y-3">
+          {balanceHistory.length === 0 ? (
+            <div className="rounded-3xl border border-dashed p-8 text-center" style={{ borderColor: 'var(--border-primary)' }}>
+              <p className="text-sm font-semibold text-[var(--text-primary)]">No balance activity yet</p>
+              <p className="mt-1 text-sm text-[var(--text-muted)]">
+                Manual updates and message deductions will appear here in real time.
+              </p>
+            </div>
+          ) : balanceHistory.map((entry) => {
+            const delta = Number(entry.delta || 0);
+            const isPositive = delta > 0;
+
+            return (
+              <div
+                key={entry.id}
+                className="rounded-3xl border p-4"
+                style={{
+                  borderColor: 'var(--border-primary)',
+                  background: 'var(--bg-secondary)',
+                }}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">{getBalanceHistoryTitle(entry)}</p>
+                    <p className="mt-1 text-xs text-[var(--text-muted)]">
+                      {entry.createdBy || 'System'} • {formatDateTime(entry.createdAt)}
+                    </p>
+                  </div>
+                  <span
+                    className="rounded-full px-3 py-1 text-sm font-semibold"
+                    style={{
+                      background: isPositive ? '#DCFCE7' : '#FEE2E2',
+                      color: isPositive ? '#15803D' : '#DC2626',
+                    }}
+                  >
+                    {delta > 0 ? '+' : ''}Rs.{formatCurrency(delta)}
+                  </span>
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-4 text-xs text-[var(--text-secondary)]">
+                  {'previousBalance' in entry ? <span>Previous: Rs.{formatCurrency(entry.previousBalance)}</span> : null}
+                  {'newBalance' in entry ? <span>New: Rs.{formatCurrency(entry.newBalance)}</span> : null}
+                  {entry.messageType ? <span>Type: {entry.messageType}</span> : null}
+                  {entry.phone ? <span>To: {formatPhone(entry.phone)}</span> : null}
+                </div>
+
+                {entry.note ? (
+                  <p className="mt-3 text-sm text-[var(--text-secondary)]">{entry.note}</p>
+                ) : null}
+              </div>
+            );
+          })}
         </div>
       </ModalShell>
 

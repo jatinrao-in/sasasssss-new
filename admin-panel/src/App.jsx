@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { RealtimeProvider } from './context/RealtimeContext';
 import { ToastProvider } from './hooks/useToast';
@@ -24,6 +26,9 @@ import NotificationLogsPage from './pages/NotificationLogsPage';
 import SplashScreen from './components/SplashScreen';
 import AIAssistantPanel from './components/ui/AIAssistantPanel';
 import AutoUpdateHandler from './components/AutoUpdateHandler';
+import { db } from './lib/firebase';
+import { COLLECTIONS } from './lib/firestore-helpers';
+import { MAINTENANCE_CYCLE_DAYS, addDays } from './lib/systemConfig';
 
 // Login route — redirect if already logged in
 const LoginRoute = () => {
@@ -39,9 +44,53 @@ const LoginRoute = () => {
 };
 
 function AdminLayout() {
+  const { currentUser, loading } = useAuth();
+  const [maintenanceReady, setMaintenanceReady] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const initMaintenance = async () => {
+      if (loading || !currentUser?.uid) {
+        return;
+      }
+
+      try {
+        const maintenanceRef = doc(db, COLLECTIONS.settings, 'maintenance');
+        const maintenanceSnap = await getDoc(maintenanceRef);
+
+        if (!maintenanceSnap.exists()) {
+          const today = new Date();
+          const nextDate = addDays(today, MAINTENANCE_CYCLE_DAYS);
+
+          await setDoc(maintenanceRef, {
+            lastMaintenanceDate: today,
+            nextMaintenanceDate: nextDate,
+            maintenancePercent: 0,
+            updatedBy: 'System',
+            updatedAt: serverTimestamp(),
+            notes: 'Initial setup',
+          });
+        }
+      } catch (error) {
+        console.error('Maintenance init failed:', error);
+      } finally {
+        if (mounted) {
+          setMaintenanceReady(true);
+        }
+      }
+    };
+
+    initMaintenance();
+
+    return () => {
+      mounted = false;
+    };
+  }, [currentUser?.uid, loading]);
+
   return (
     <ProtectedRoute>
-      <Layout />
+      <Layout maintenanceReady={maintenanceReady} />
       <AIAssistantPanel />
     </ProtectedRoute>
   );
@@ -166,6 +215,14 @@ export default function App() {
                 />
                 <Route
                   path="/settings"
+                  element={(
+                    <AdminRoute pageKey="settings">
+                      <SettingsPage />
+                    </AdminRoute>
+                  )}
+                />
+                <Route
+                  path="/settings/:sectionId"
                   element={(
                     <AdminRoute pageKey="settings">
                       <SettingsPage />

@@ -3,6 +3,7 @@ import { handleConfigError } from '../server/config.js';
 import { handleCors } from '../server/cors.js';
 import { getAdminServices } from '../server/firebaseAdmin.js';
 import { requireNotifyPermission, verifyFirebaseRequest } from '../server/auth.js';
+import { assertWhatsAppBalance, recordSuccessfulWhatsAppSend } from '../server/whatsapp/balance.js';
 import {
   sendGeneralMessage,
   sendTaskAssigned,
@@ -159,6 +160,8 @@ export default async function handler(req, res) {
     ({ db } = getAdminServices());
     const authContext = await verifyFirebaseRequest(req);
     requireNotifyPermission(authContext, eventType);
+    const requestedBy = authContext.decodedToken.uid;
+    const availableBalance = await assertWhatsAppBalance(db, 1);
 
     const sendResult = await dispatchWhatsApp(eventType, context);
     const success = sendResult?.sent === true;
@@ -173,10 +176,21 @@ export default async function handler(req, res) {
       status: success ? 'sent' : 'failed',
       msg91Response: sendResult.result,
       context,
-      requestedBy: authContext.decodedToken.uid,
+      requestedBy,
       requestedByRole: authContext.role,
       sentAt: Timestamp.now(),
     });
+
+    if (success) {
+      await recordSuccessfulWhatsAppSend(db, {
+        actor: requestedBy,
+        balanceBefore: availableBalance,
+        messageType: eventType,
+        phone: sendResult.to,
+        recipientName: context.memberName || '',
+        source: 'api/notify',
+      });
+    }
 
     // Save in-app notification
     if (context.memberUid) {
@@ -226,6 +240,7 @@ export default async function handler(req, res) {
 
     return res.status(statusCode).json({
       error: statusCode === 401 ? 'Unauthorized' : error.message,
+      ...(statusCode === 402 ? { balance: error.balance ?? 0 } : {}),
     });
   }
 }
