@@ -54,7 +54,8 @@ function SalaryCard({ record, month }) {
   const base = record?.baseSalary ?? 0;
   const working = record?.workingDays ?? 26;
   const present = record?.presentDays ?? 26;
-  const calc = calcSalary(base, working, present);
+  const ot = record?.overtimePayment ?? 0;
+  const calc = calcSalary(base, working, present, ot);
   const lop = record?.lopDeduction ?? calc.lopDeduction;
   const net = record?.netSalary ?? calc.netSalary;
 
@@ -96,6 +97,12 @@ function SalaryCard({ record, month }) {
           <div className="flex justify-between text-sm">
             <span className="text-gray-500">LOP Deduction</span>
             <span className="font-medium text-red-500">-{fmt(lop)}</span>
+          </div>
+        )}
+        {ot > 0 && (
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Overtime Payment</span>
+            <span className="font-medium text-green-600">+{fmt(ot)}</span>
           </div>
         )}
         <div className="h-px bg-gray-100" />
