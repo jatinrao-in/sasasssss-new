@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
  Plus, X, Search, Package, Clock, AlertTriangle,
- FileText, BarChart3, Building2, CheckCircle2,
+ FileText, BarChart3, Building2, CheckCircle2, Image as ImageIcon
 } from 'lucide-react';
 import { Timestamp } from 'firebase/firestore';
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from 'recharts';
@@ -18,6 +18,7 @@ import ExportButton from '../components/ui/ExportButton';
 import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
 import DeleteButton from '../components/DeleteButton';
 import BulkDeleteBar from '../components/BulkDeleteBar';
+import { compressImage, uploadToImgbb } from '../lib/imageUtils';
 
 const RGP_TYPES = ['RGP', 'Challan'];
 const RGP_STATUSES = ['open', 'in_transit', 'delivered', 'returned', 'closed'];
@@ -42,8 +43,27 @@ function RgpModal({ onClose, onSubmit, members, editing }) {
  assignedToName: editing?.assignedToName || '',
  docStep: editing?.docStep || 0,
  remarks: editing?.remarks || '',
+ challanImageUrl: editing?.challanImageUrl || '',
  });
  const [saving, setSaving] = useState(false);
+ const [uploadingImage, setUploadingImage] = useState(false);
+
+ const handleImageUpload = async (e) => {
+   const file = e.target.files?.[0];
+   if (!file) return;
+   setUploadingImage(true);
+   try {
+     const compressed = await compressImage(file);
+     const url = await uploadToImgbb(compressed);
+     setForm({ ...form, challanImageUrl: url });
+   } catch (err) {
+     console.error(err);
+     alert('Failed to upload image');
+   } finally {
+     setUploadingImage(false);
+     e.target.value = '';
+   }
+ };
 
  const handleSubmit = async () => {
  if (!form.companyName) return;
@@ -63,6 +83,7 @@ function RgpModal({ onClose, onSubmit, members, editing }) {
  assignedToName: form.assignedToName,
  docStep: form.docStep,
  remarks: form.remarks,
+ challanImageUrl: form.challanImageUrl,
  });
  onClose();
  } catch (err) { console.error(err); }
@@ -122,6 +143,24 @@ function RgpModal({ onClose, onSubmit, members, editing }) {
  <option value="">Select</option>{members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
  </select></div>
  <div><label className="label">Remarks</label><input className="input-field" type="text" value={form.remarks} onChange={e => setForm({...form, remarks: e.target.value})} /></div>
+ </div>
+ <div>
+   <label className="label">Attachment / Photo</label>
+   <div className="flex items-center gap-3 mt-1">
+     {form.challanImageUrl && (
+       <a href={form.challanImageUrl} target="_blank" rel="noreferrer" className="block relative w-16 h-16 rounded-lg overflow-hidden border border-gray-200">
+         <img src={form.challanImageUrl} alt="Attachment" className="w-full h-full object-cover" />
+       </a>
+     )}
+     <label className="cursor-pointer text-sm font-medium text-teal-600 hover:text-teal-700 bg-teal-50 px-3 py-1.5 rounded-lg border border-teal-100 transition-colors">
+       {uploadingImage ? 'Uploading...' : 'Upload Image'}
+       <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" disabled={uploadingImage} />
+     </label>
+     {form.challanImageUrl && (
+       <button onClick={() => setForm({...form, challanImageUrl: ''})} className="text-xs text-red-500 hover:underline">Remove</button>
+     )}
+   </div>
+ </div>
  </div>
  <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
  <button onClick={onClose} className="btn-secondary">Cancel</button>
@@ -399,7 +438,16 @@ export default function RgpChallanPage() {
  </td>
  <td className="table-cell"><span className={`badge ${r.type === 'RGP' ? 'badge-blue' : 'badge-yellow'}`}>{r.type}</span></td>
  <td className="table-cell font-medium text-gray-900">{r.companyName}</td>
- <td className="table-cell text-[var(--text-muted)] text-xs">{r.challanNumber || '-'}</td>
+ <td className="table-cell text-[var(--text-muted)] text-xs">
+   <div className="flex items-center gap-2">
+     {r.challanNumber || '-'}
+     {r.challanImageUrl && (
+       <a href={r.challanImageUrl} target="_blank" rel="noreferrer" title="View Attachment" className="text-teal-500 hover:text-teal-700 bg-teal-50 p-1 rounded">
+         <ImageIcon className="w-3.5 h-3.5" />
+       </a>
+     )}
+   </div>
+ </td>
  <td className="table-cell text-[var(--text-muted)] text-xs max-w-[200px] truncate">{r.description || '-'}</td>
  <td className="table-cell text-[var(--text-muted)] text-xs">
  {formatDate(r.sentDate)}

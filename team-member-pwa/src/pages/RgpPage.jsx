@@ -13,6 +13,7 @@ import { useRgp } from '../hooks/useRgp';
 import { useToast } from '../hooks/useToast';
 import { formatDate } from '../lib/formatters';
 import { logInfo } from '../lib/firestoreDebug';
+import { compressImage, uploadToImgbb } from '../lib/imageUtils';
 
 const FILTERS = [
   { value: 'all', label: 'All' },
@@ -136,7 +137,28 @@ export default function RgpPage() {
   const [statusRemarks, setStatusRemarks] = useState('');
   const [remarkText, setRemarkText] = useState('');
   const [saving, setSaving] = useState(false);
+  const [uploadingItemId, setUploadingItemId] = useState(null);
   const [confirmState, setConfirmState] = useState({ open: false, onConfirm: null });
+
+  const handleImageUpload = async (event, item) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploadingItemId(item.id);
+    try {
+      const compressedBlob = await compressImage(file);
+      const url = await uploadToImgbb(compressedBlob);
+      
+      await updateRgp(item.id, { challanImageUrl: url, updatedAt: serverTimestamp() });
+      toast.success('Photo uploaded successfully!');
+    } catch (error) {
+      console.error(error);
+      toast.error(error.message || 'Failed to upload photo');
+    } finally {
+      setUploadingItemId(null);
+      event.target.value = ''; // reset input
+    }
+  };
 
   const summary = useMemo(() => ({
     openRgp: rgp.filter((item) => item.type === 'rgp' && !item.isClosed).length,
@@ -528,6 +550,24 @@ export default function RgpPage() {
                   </p>
                 </div>
 
+                {/* Uploaded Image Preview */}
+                {item.challanImageUrl && (
+                  <div style={{ marginBottom: '16px' }}>
+                    <p style={{
+                      fontSize: '11px',
+                      color: 'var(--text-muted)',
+                      marginBottom: '4px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}>
+                      Attachment
+                    </p>
+                    <a href={item.challanImageUrl} target="_blank" rel="noreferrer" style={{ display: 'block', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-primary)' }}>
+                      <img src={item.challanImageUrl} alt="Challan" style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', display: 'block' }} />
+                    </a>
+                  </div>
+                )}
+
                 {/* Progress Steps */}
                 <div style={{
                   display: 'flex',
@@ -638,6 +678,32 @@ export default function RgpPage() {
                     gap: '8px',
                     marginTop: '4px'
                   }}>
+                    <label style={{
+                      flex: 1,
+                      padding: '10px',
+                      background: 'var(--bg-secondary)',
+                      color: 'var(--text-primary)',
+                      border: '1px solid var(--border-primary)',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      opacity: uploadingItemId === item.id ? 0.5 : 1
+                    }}>
+                      {uploadingItemId === item.id ? 'Uploading...' : 'Upload Photo'}
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        capture="environment"
+                        onChange={(e) => handleImageUpload(e, item)}
+                        style={{ display: 'none' }}
+                        disabled={uploadingItemId === item.id}
+                      />
+                    </label>
                     <button
                       onClick={() => openStatusSheet(item)}
                       style={{
