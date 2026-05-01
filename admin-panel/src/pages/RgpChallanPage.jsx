@@ -44,18 +44,25 @@ function RgpModal({ onClose, onSubmit, members, editing }) {
  docStep: editing?.docStep || 0,
  remarks: editing?.remarks || '',
  challanImageUrl: editing?.challanImageUrl || '',
+ challanImageUrls: editing?.challanImageUrls || [],
  });
  const [saving, setSaving] = useState(false);
  const [uploadingImage, setUploadingImage] = useState(false);
 
  const handleImageUpload = async (e) => {
-   const file = e.target.files?.[0];
-   if (!file) return;
+   const files = e.target.files;
+   if (!files || files.length === 0) return;
    setUploadingImage(true);
    try {
-     const compressed = await compressImage(file);
-     const url = await uploadToImgbb(compressed);
-     setForm({ ...form, challanImageUrl: url });
+     const uploadedUrls = [];
+     for (let i = 0; i < files.length; i++) {
+       const compressed = await compressImage(files[i]);
+       const url = await uploadToImgbb(compressed);
+       if (url) uploadedUrls.push(url);
+     }
+     const existingUrls = form.challanImageUrls || (form.challanImageUrl ? [form.challanImageUrl] : []);
+     const newUrls = [...existingUrls, ...uploadedUrls];
+     setForm({ ...form, challanImageUrls: newUrls, challanImageUrl: newUrls[0] || '' });
    } catch (err) {
      console.error(err);
      alert('Failed to upload image');
@@ -84,6 +91,7 @@ function RgpModal({ onClose, onSubmit, members, editing }) {
  docStep: form.docStep,
  remarks: form.remarks,
  challanImageUrl: form.challanImageUrl,
+ challanImageUrls: form.challanImageUrls || (form.challanImageUrl ? [form.challanImageUrl] : []),
  });
  onClose();
  } catch (err) { console.error(err); }
@@ -144,20 +152,25 @@ function RgpModal({ onClose, onSubmit, members, editing }) {
  </select></div>
  <div><label className="label">Remarks</label><input className="input-field" type="text" value={form.remarks} onChange={e => setForm({...form, remarks: e.target.value})} /></div>
  <div>
-   <label className="label">Attachment / Photo</label>
-   <div className="flex items-center gap-3 mt-1">
-     {form.challanImageUrl && (
-       <a href={form.challanImageUrl} target="_blank" rel="noreferrer" className="block relative w-16 h-16 rounded-lg overflow-hidden border border-gray-200">
-         <img src={form.challanImageUrl} alt="Attachment" className="w-full h-full object-cover" />
-       </a>
-     )}
+   <label className="label">Attachments / Photos</label>
+   <div className="flex flex-wrap items-center gap-3 mt-1">
+     {(form.challanImageUrls || [form.challanImageUrl]).filter(Boolean).map((url, i) => (
+       <div key={i} className="relative group">
+         <a href={url} target="_blank" rel="noreferrer" className="block relative w-16 h-16 rounded-lg overflow-hidden border border-gray-200">
+           <img src={url} alt={`Attachment ${i + 1}`} className="w-full h-full object-cover" />
+         </a>
+         <button onClick={() => {
+           const newUrls = (form.challanImageUrls || [form.challanImageUrl]).filter((_, idx) => idx !== i);
+           setForm({ ...form, challanImageUrls: newUrls, challanImageUrl: newUrls[0] || '' });
+         }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+           <X className="w-3 h-3" />
+         </button>
+       </div>
+     ))}
      <label className="cursor-pointer text-sm font-medium text-teal-600 hover:text-teal-700 bg-teal-50 px-3 py-1.5 rounded-lg border border-teal-100 transition-colors">
-       {uploadingImage ? 'Uploading...' : 'Upload Image'}
-       <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" disabled={uploadingImage} />
+       {uploadingImage ? 'Uploading...' : 'Upload Images'}
+       <input type="file" accept="image/*" multiple onChange={handleImageUpload} className="hidden" disabled={uploadingImage} />
      </label>
-     {form.challanImageUrl && (
-       <button onClick={() => setForm({...form, challanImageUrl: ''})} className="text-xs text-red-500 hover:underline">Remove</button>
-     )}
    </div>
  </div>
  </div>
@@ -440,9 +453,10 @@ export default function RgpChallanPage() {
  <td className="table-cell text-[var(--text-muted)] text-xs">
    <div className="flex items-center gap-2">
      {r.challanNumber || '-'}
-     {r.challanImageUrl && (
-       <a href={r.challanImageUrl} target="_blank" rel="noreferrer" title="View Attachment" className="text-teal-500 hover:text-teal-700 bg-teal-50 p-1 rounded">
+     {(r.challanImageUrls?.length > 0 || r.challanImageUrl) && (
+       <a href={r.challanImageUrls?.[0] || r.challanImageUrl} target="_blank" rel="noreferrer" title={`View ${r.challanImageUrls?.length > 1 ? 'Attachments' : 'Attachment'}`} className="text-teal-500 hover:text-teal-700 bg-teal-50 p-1 rounded flex items-center gap-1">
          <ImageIcon className="w-3.5 h-3.5" />
+         {r.challanImageUrls?.length > 1 && <span className="text-[10px] font-bold">{r.challanImageUrls.length}</span>}
        </a>
      )}
    </div>

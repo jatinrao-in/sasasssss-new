@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeftRight, FileText, MessageSquarePlus, Save } from 'lucide-react';
+import { ArrowLeftRight, FileText, MessageSquarePlus, Save, Camera, Image as ImageIcon } from 'lucide-react';
 import { serverTimestamp } from 'firebase/firestore';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -141,16 +141,24 @@ export default function RgpPage() {
   const [confirmState, setConfirmState] = useState({ open: false, onConfirm: null });
 
   const handleImageUpload = async (event, item) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
 
     setUploadingItemId(item.id);
     try {
-      const compressedBlob = await compressImage(file);
-      const url = await uploadToImgbb(compressedBlob);
+      toast.success('Compressing and uploading...');
+      const uploadedUrls = [];
+      for (let i = 0; i < files.length; i++) {
+        const compressedBlob = await compressImage(files[i]);
+        const url = await uploadToImgbb(compressedBlob);
+        if (url) uploadedUrls.push(url);
+      }
       
-      await updateRgp(item.id, { challanImageUrl: url, updatedAt: serverTimestamp() });
-      toast.success('Photo uploaded successfully!');
+      const existingUrls = item.challanImageUrls || (item.challanImageUrl ? [item.challanImageUrl] : []);
+      const newUrls = [...existingUrls, ...uploadedUrls];
+
+      await updateRgp(item.id, { challanImageUrls: newUrls, challanImageUrl: newUrls[0] || '', updatedAt: serverTimestamp() });
+      toast.success(`${uploadedUrls.length} photo(s) uploaded successfully!`);
     } catch (error) {
       console.error(error);
       toast.error(error.message || 'Failed to upload photo');
@@ -551,20 +559,24 @@ export default function RgpPage() {
                 </div>
 
                 {/* Uploaded Image Preview */}
-                {item.challanImageUrl && (
+                {(item.challanImageUrls?.length > 0 || item.challanImageUrl) && (
                   <div style={{ marginBottom: '16px' }}>
                     <p style={{
                       fontSize: '11px',
                       color: 'var(--text-muted)',
-                      marginBottom: '4px',
+                      marginBottom: '8px',
                       textTransform: 'uppercase',
                       letterSpacing: '0.5px'
                     }}>
-                      Attachment
+                      Attachments
                     </p>
-                    <a href={item.challanImageUrl} target="_blank" rel="noreferrer" style={{ display: 'block', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-primary)' }}>
-                      <img src={item.challanImageUrl} alt="Challan" style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', display: 'block' }} />
-                    </a>
+                    <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+                      {(item.challanImageUrls || [item.challanImageUrl]).filter(Boolean).map((url, i) => (
+                        <a key={i} href={url} target="_blank" rel="noreferrer" style={{ flexShrink: 0, borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-primary)', width: '80px', height: '80px', display: 'block' }}>
+                          <img src={url} alt={`Attachment ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        </a>
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -675,67 +687,65 @@ export default function RgpPage() {
                 {!item.isClosed && (
                   <div style={{
                     display: 'flex',
+                    flexDirection: 'column',
                     gap: '8px',
                     marginTop: '4px'
                   }}>
-                    <label style={{
-                      flex: 1,
-                      padding: '10px',
-                      background: 'var(--bg-secondary)',
-                      color: 'var(--text-primary)',
-                      border: '1px solid var(--border-primary)',
-                      borderRadius: '8px',
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      textAlign: 'center',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      opacity: uploadingItemId === item.id ? 0.5 : 1
-                    }}>
-                      {uploadingItemId === item.id ? 'Uploading...' : 'Upload Photo'}
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        capture="environment"
-                        onChange={(e) => handleImageUpload(e, item)}
-                        style={{ display: 'none' }}
-                        disabled={uploadingItemId === item.id}
-                      />
-                    </label>
-                    <button
-                      onClick={() => openStatusSheet(item)}
-                      style={{
-                        flex: 1,
-                        padding: '10px',
-                        background: 'var(--accent-primary)',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '8px',
-                        fontSize: '13px',
-                        fontWeight: '600',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Update Status
-                    </button>
-                    <button
-                      onClick={() => openRemarkSheet(item)}
-                      style={{
-                        flex: 1,
-                        padding: '10px',
-                        background: 'var(--bg-secondary)',
-                        color: 'var(--text-primary)',
-                        border: '1px solid var(--border-primary)',
-                        borderRadius: '8px',
-                        fontSize: '13px',
-                        fontWeight: '600',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Add Remark
-                    </button>
+                    {/* Top row: Status and Remark */}
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={() => openStatusSheet(item)}
+                        style={{
+                          flex: 1, padding: '10px', background: 'var(--accent-primary)',
+                          color: 'white', border: 'none', borderRadius: '8px',
+                          fontSize: '13px', fontWeight: '600', cursor: 'pointer'
+                        }}
+                      >
+                        Update Status
+                      </button>
+                      <button
+                        onClick={() => openRemarkSheet(item)}
+                        style={{
+                          flex: 1, padding: '10px', background: 'var(--bg-secondary)',
+                          color: 'var(--text-primary)', border: '1px solid var(--border-primary)',
+                          borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer'
+                        }}
+                      >
+                        Add Remark
+                      </button>
+                    </div>
+
+                    {/* Bottom row: Camera & Gallery */}
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <label style={{
+                        flex: 1, padding: '10px', background: 'var(--bg-card)',
+                        color: 'var(--text-primary)', border: '1px solid var(--border-primary)',
+                        borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                        opacity: uploadingItemId === item.id ? 0.5 : 1
+                      }}>
+                        {uploadingItemId === item.id ? '...' : <><Camera className="w-4 h-4 text-teal-600" /> Camera</>}
+                        <input 
+                          type="file" accept="image/*" capture="environment" multiple
+                          onChange={(e) => handleImageUpload(e, item)}
+                          style={{ display: 'none' }} disabled={uploadingItemId === item.id}
+                        />
+                      </label>
+                      <label style={{
+                        flex: 1, padding: '10px', background: 'var(--bg-card)',
+                        color: 'var(--text-primary)', border: '1px solid var(--border-primary)',
+                        borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                        opacity: uploadingItemId === item.id ? 0.5 : 1
+                      }}>
+                        {uploadingItemId === item.id ? 'Uploading...' : <><ImageIcon className="w-4 h-4 text-teal-600" /> Gallery</>}
+                        <input 
+                          type="file" accept="image/*" multiple
+                          onChange={(e) => handleImageUpload(e, item)}
+                          style={{ display: 'none' }} disabled={uploadingItemId === item.id}
+                        />
+                      </label>
+                    </div>
                   </div>
                 )}
               </div>
