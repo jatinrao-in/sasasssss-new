@@ -143,7 +143,6 @@ function RgpModal({ onClose, onSubmit, members, editing }) {
  <option value="">Select</option>{members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
  </select></div>
  <div><label className="label">Remarks</label><input className="input-field" type="text" value={form.remarks} onChange={e => setForm({...form, remarks: e.target.value})} /></div>
- </div>
  <div>
    <label className="label">Attachment / Photo</label>
    <div className="flex items-center gap-3 mt-1">
