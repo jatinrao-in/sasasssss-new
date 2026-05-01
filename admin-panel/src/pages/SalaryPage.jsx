@@ -69,11 +69,12 @@ function EditModal({ row, month, onClose, onSave }) {
     workingDays: row?.workingDays ?? 26,
     presentDays: row?.presentDays ?? 26,
     baseSalary: row?.baseSalary ?? 0,
+    overtimePayment: row?.overtimePayment ?? 0,
     remarks: row?.remarks ?? '',
   });
   const [saving, setSaving] = useState(false);
 
-  const calc = calcSalary(form.baseSalary, form.workingDays, form.presentDays);
+  const calc = calcSalary(form.baseSalary, form.workingDays, form.presentDays, form.overtimePayment);
   const presentExceedsWorking = Number(form.presentDays) > Number(form.workingDays);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
@@ -138,6 +139,15 @@ function EditModal({ row, month, onClose, onSave }) {
                 onChange={(e) => set('baseSalary', e.target.value)}
               />
             </div>
+            <div>
+              <label className="label">OT Payment (Rs)</label>
+              <input
+                className="input-field"
+                type="number" min="0"
+                value={form.overtimePayment}
+                onChange={(e) => set('overtimePayment', e.target.value)}
+              />
+            </div>
           </div>
 
           {presentExceedsWorking && (
@@ -168,6 +178,14 @@ function EditModal({ row, month, onClose, onSave }) {
                 {calc.lopDeduction > 0 ? `-${formatCurrency(calc.lopDeduction)}` : '-'}
               </span>
             </div>
+            {calc.overtimePayment > 0 && (
+              <div className="flex justify-between">
+                <span className="text-[var(--text-muted)]">Overtime Payment</span>
+                <span className="font-medium text-green-600">
+                  +{formatCurrency(calc.overtimePayment)}
+                </span>
+              </div>
+            )}
             <div className="flex justify-between items-center border-t border-[var(--border-primary)] pt-2.5">
               <span className="font-semibold text-[var(--text-primary)]">Net Salary</span>
               <span className="text-2xl font-bold text-teal-600">{formatCurrency(calc.netSalary)}</span>
@@ -277,7 +295,8 @@ export default function SalaryPage() {
       const base = rec?.baseSalary ?? 0;
       const working = rec?.workingDays ?? 26;
       const present = rec?.presentDays ?? 26;
-      const calc = calcSalary(base, working, present);
+      const ot = rec?.overtimePayment ?? 0;
+      const calc = calcSalary(base, working, present, ot);
       return {
         uid: m.id,
         memberName: m.name || '',
@@ -286,6 +305,7 @@ export default function SalaryPage() {
         workingDays: rec?.workingDays ?? 26,
         presentDays: rec?.presentDays ?? 26,
         baseSalary: base,
+        overtimePayment: ot,
         status: rec?.status ?? 'pending',
         paidDate: rec?.paidDate ?? null,
         remarks: rec?.remarks ?? '',
@@ -541,6 +561,7 @@ export default function SalaryPage() {
                 <th className="table-header text-right">Base Salary</th>
                 <th className="table-header text-right">Per Day</th>
                 <th className="table-header text-right text-red-500">LOP Deduction</th>
+                <th className="table-header text-right text-green-600">OT Payment</th>
                 <th className="table-header text-right text-teal-700">Net Salary</th>
                 <th className="table-header text-center">Status</th>
                 <th className="table-header text-center">Actions</th>
@@ -612,6 +633,10 @@ export default function SalaryPage() {
 
                     <td className="table-cell text-right text-red-500 font-medium">
                       {row.lopDeduction > 0 ? `-${formatCurrency(row.lopDeduction)}` : '-'}
+                    </td>
+
+                    <td className="table-cell text-right text-green-600 font-medium">
+                      {row.overtimePayment > 0 ? `+${formatCurrency(row.overtimePayment)}` : '-'}
                     </td>
 
                     <td className="table-cell text-right font-bold text-teal-700">

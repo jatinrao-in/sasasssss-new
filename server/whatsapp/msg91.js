@@ -155,6 +155,13 @@ export async function sendToolReturn(toNumber, memberName, toolName, issuedDate,
   return sendTemplate(toNumber, 'tool_return', [memberName, toolName, issuedDate, String(days)]);
 }
 
+/**
+ * 9. welcome_message — {{1}} name
+ */
+export async function sendWelcomeMessage(toNumber, memberName) {
+  return sendTemplate(toNumber, 'welcome_message', [memberName]);
+}
+
 // Legacy wrapper — kept for backward compatibility with old callers
 export async function sendViaMsg91(toNumber, message) {
   return sendGeneralMessage(toNumber, '', message);

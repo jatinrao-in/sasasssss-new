@@ -24,7 +24,7 @@ const FILTERS = [
 
 const STATUS_OPTIONS = [
   { value: 'open', label: 'Open' },
-  { value: 'in_progress', label: 'In Progress' },
+  { value: 'acknowledged', label: 'Acknowledged' },
   { value: 'return_initiated', label: 'Return Initiated' },
   { value: 'closed', label: 'Closed' },
 ];
@@ -329,63 +329,351 @@ export default function RgpPage() {
           const documentNumber = item.docNumber || item.challanNumber || item.referenceNumber || item.id;
           const fromCompany = item.fromCompany || item.companyName || 'Not set';
           const toCompany = item.toCompany || item.destinationCompany || item.assignedToName || 'Not set';
+          
+          const entryDate = item.date?.toDate?.() || item.sentDate?.toDate?.() || new Date(item.date || item.sentDate || item.createdAt);
+          let openDays = item.openDays;
+          if (openDays === undefined) {
+             const today = new Date();
+             openDays = Math.floor((today - entryDate) / (1000 * 60 * 60 * 24));
+             if (isNaN(openDays)) openDays = 0;
+          }
+
+          const steps = [
+            'Document Sent',
+            'Acknowledgment Received', 
+            'Return Initiated',
+            'Closed'
+          ];
+
+          const getStepIndex = (status) => {
+            const map = {
+              'open': 0,
+              'acknowledged': 1,
+              'in_progress': 1, // fallback
+              'return_initiated': 2,
+              'closed': 3
+            };
+            return map[status] || 0;
+          };
+
+          const currentStep = getStepIndex(item.status);
 
           return (
-            <Card
-              key={item.id}
-              className={item.openDays > 15 && !item.isClosed ? 'border-l-4 border-l-red-500' : 'border-l-4 border-l-transparent'}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <Badge className="uppercase">
-                    {item.type === 'challan' ? 'Challan' : 'RGP'}
-                  </Badge>
-                  {getStatusBadge(item.status)}
-                </div>
+            <div key={item.id} style={{
+              background: 'var(--bg-card)',
+              borderRadius: '12px',
+              border: '1px solid var(--border-primary)',
+              marginBottom: '12px',
+              overflow: 'hidden',
+              boxShadow: 'var(--shadow-sm)'
+            }}>
+              {/* Header */}
+              <div style={{
+                padding: '12px 16px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                borderBottom: '1px solid var(--border-primary)'
+              }}>
+                <span style={{
+                  background: item.type === 'challan' ? '#F3E8FF' : '#DBEAFE',
+                  color: item.type === 'challan' ? '#7C3AED' : '#1D4ED8',
+                  padding: '4px 10px',
+                  borderRadius: '20px',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  textTransform: 'uppercase'
+                }}>
+                  {item.type === 'challan' ? 'Challan' : 'RGP'}
+                </span>
+                <span style={{
+                  background: item.isClosed ? '#F1F5F9' : '#DCFCE7',
+                  color: item.isClosed ? '#475569' : '#16A34A',
+                  padding: '4px 10px',
+                  borderRadius: '20px',
+                  fontSize: '12px',
+                  fontWeight: '600'
+                }}>
+                  {item.isClosed ? 'Closed' : 'Open'}
+                </span>
+              </div>
 
-                <div className="mt-4 flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-teal-600" />
-                  <p className="text-sm font-semibold text-[var(--text-primary)]">Doc No: {documentNumber}</p>
-                </div>
-
-                <div className="mt-4 rounded-xl bg-gray-50 p-3 text-sm text-[var(--text-primary)]">
-                  <p><span className="font-medium">Date:</span> {formatDate(item.referenceDate)}</p>
-                  <p className="mt-2"><span className="font-medium">From:</span> {fromCompany}</p>
-                  <p className="mt-2"><span className="font-medium">To:</span> {toCompany}</p>
-                </div>
-
-                <div className="mt-4 text-xs text-[var(--text-secondary)]">
-                  {!item.isClosed ? (
-                    <p className={item.openDays > 15 ? 'font-semibold text-red-600' : 'font-medium text-[var(--text-primary)]'}>
-                      Open Since: {item.openDays} day{item.openDays === 1 ? '' : 's'}
-                      {item.openDays > 15 ? ' - Action needed' : ''}
+              {/* Body */}
+              <div style={{ padding: '16px' }}>
+                
+                {/* Doc Number + Date */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginBottom: '12px'
+                }}>
+                  <div>
+                    <p style={{
+                      fontSize: '11px',
+                      color: 'var(--text-muted)',
+                      marginBottom: '2px'
+                    }}>
+                      Document No.
                     </p>
-                  ) : (
-                    <p className="font-medium text-[var(--text-primary)]">Closed</p>
-                  )}
+                    <p style={{
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: 'var(--text-primary)'
+                    }}>
+                      {documentNumber || 'N/A'}
+                    </p>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <p style={{
+                      fontSize: '11px',
+                      color: 'var(--text-muted)',
+                      marginBottom: '2px'
+                    }}>
+                      Date
+                    </p>
+                    <p style={{
+                      fontSize: '14px',
+                      color: 'var(--text-primary)'
+                    }}>
+                      {entryDate instanceof Date && !isNaN(entryDate) ? entryDate.toLocaleDateString(
+                        'en-IN', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric'
+                        }
+                      ) : 'N/A'}
+                    </p>
+                  </div>
                 </div>
 
-                <div className="mt-4 rounded-xl bg-gray-50 p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-400">Remarks</p>
-                  <p className="mt-2 text-sm leading-6 text-[var(--text-primary)]">
-                    {item.remarks || 'No remarks added yet.'}
+                {/* From → To */}
+                <div style={{
+                  background: 'var(--bg-secondary)',
+                  borderRadius: '8px',
+                  padding: '10px 12px',
+                  marginBottom: '12px'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <p style={{
+                        fontSize: '11px',
+                        color: 'var(--text-muted)'
+                      }}>
+                        From
+                      </p>
+                      <p style={{
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        color: 'var(--text-primary)'
+                      }}>
+                        {fromCompany}
+                      </p>
+                    </div>
+                    <span style={{
+                      color: 'var(--accent-primary)',
+                      fontSize: '18px',
+                      fontWeight: 'bold'
+                    }}>
+                      →
+                    </span>
+                    <div style={{ 
+                      flex: 1, 
+                      textAlign: 'right' 
+                    }}>
+                      <p style={{
+                        fontSize: '11px',
+                        color: 'var(--text-muted)'
+                      }}>
+                        To
+                      </p>
+                      <p style={{
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        color: 'var(--text-primary)'
+                      }}>
+                        {toCompany}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div style={{
+                  marginBottom: '12px'
+                }}>
+                  <p style={{
+                    fontSize: '11px',
+                    color: 'var(--text-muted)',
+                    marginBottom: '4px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>
+                    Description
+                  </p>
+                  <p style={{
+                    fontSize: '14px',
+                    color: item.description ? 'var(--text-primary)' : 'var(--text-muted)',
+                    lineHeight: '1.5',
+                    background: 'var(--bg-secondary)',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    borderLeft: item.description ? '3px solid var(--accent-primary)' : '3px solid var(--border-primary)',
+                    fontStyle: item.description ? 'normal' : 'italic'
+                  }}>
+                    {item.description || 'No description added'}
                   </p>
                 </div>
 
-                <ProgressSteps currentStep={item.docStep || 0} />
-
-                <div className="mt-4 flex gap-2">
-                  <Button type="button" variant="secondary" className="h-11 flex-1" onClick={() => openStatusSheet(item)}>
-                    <Save className="mr-2 h-4 w-4" />
-                    Update Status
-                  </Button>
-                  <Button type="button" variant="outline" className="h-11 flex-1" onClick={() => openRemarkSheet(item)}>
-                    <MessageSquarePlus className="mr-2 h-4 w-4" />
-                    Add Remark
-                  </Button>
+                {/* Progress Steps */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  marginBottom: '16px',
+                  overflowX: 'auto'
+                }}>
+                  {steps.map((step, index) => (
+                    <div key={index} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      flex: index < steps.length - 1 ? 1 : 0
+                    }}>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '50%',
+                          background: index <= currentStep
+                            ? 'var(--accent-primary)'
+                            : 'var(--bg-secondary)',
+                          border: '2px solid',
+                          borderColor: index <= currentStep
+                            ? 'var(--accent-primary)'
+                            : 'var(--border-primary)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          margin: '0 auto 4px',
+                          fontSize: '12px',
+                          color: index <= currentStep
+                            ? 'white'
+                            : 'var(--text-muted)'
+                        }}>
+                          {index < currentStep ? '✓' : index + 1}
+                        </div>
+                        <p style={{
+                          fontSize: '9px',
+                          color: index <= currentStep
+                            ? 'var(--accent-primary)'
+                            : 'var(--text-muted)',
+                          width: '60px',
+                          textAlign: 'center',
+                          fontWeight: index === currentStep
+                            ? '600' : '400'
+                        }}>
+                          {step}
+                        </p>
+                      </div>
+                      {index < steps.length - 1 && (
+                        <div style={{
+                          flex: 1,
+                          height: '2px',
+                          background: index < currentStep
+                            ? 'var(--accent-primary)'
+                            : 'var(--border-primary)',
+                          marginBottom: '20px'
+                        }} />
+                      )}
+                    </div>
+                  ))}
                 </div>
-              </CardContent>
-            </Card>
+
+                {/* Open Since */}
+                {!item.isClosed && (
+                  <div style={{
+                    marginBottom: '12px'
+                  }}>
+                    <p style={{
+                      fontSize: '13px',
+                      color: openDays > 15 
+                        ? '#DC2626' : 'var(--text-secondary)',
+                      fontWeight: openDays > 15 
+                        ? '600' : '400'
+                    }}>
+                      Open since: {openDays} days
+                      {openDays > 15 && ' - Action Required!'}
+                    </p>
+                  </div>
+                )}
+
+                {/* Remarks */}
+                {item.remarks && (
+                  <div style={{
+                    marginBottom: '12px'
+                  }}>
+                    <p style={{
+                      fontSize: '11px',
+                      color: 'var(--text-muted)',
+                      marginBottom: '4px'
+                    }}>
+                      Remarks
+                    </p>
+                    <p style={{
+                      fontSize: '13px',
+                      color: 'var(--text-secondary)',
+                      fontStyle: 'italic'
+                    }}>
+                      {item.remarks}
+                    </p>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                {!item.isClosed && (
+                  <div style={{
+                    display: 'flex',
+                    gap: '8px',
+                    marginTop: '4px'
+                  }}>
+                    <button
+                      onClick={() => openStatusSheet(item)}
+                      style={{
+                        flex: 1,
+                        padding: '10px',
+                        background: 'var(--accent-primary)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Update Status
+                    </button>
+                    <button
+                      onClick={() => openRemarkSheet(item)}
+                      style={{
+                        flex: 1,
+                        padding: '10px',
+                        background: 'var(--bg-secondary)',
+                        color: 'var(--text-primary)',
+                        border: '1px solid var(--border-primary)',
+                        borderRadius: '8px',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Add Remark
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
           );
         })}
       </div>

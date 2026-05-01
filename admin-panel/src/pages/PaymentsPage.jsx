@@ -10,6 +10,8 @@ import { useTeam } from '../hooks/useTeam';
 import { useToast } from '../hooks/useToast';
 import useDelete from '../hooks/useDelete';
 import { formatDate, formatCurrency } from '../lib/formatters';
+import { notifyPaymentAssigned } from '../lib/notify';
+
 import { exportCSV, exportExcel, flattenForExport } from '../lib/exportUtils';
 import { SkeletonTable, SkeletonStatCards } from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
@@ -261,7 +263,16 @@ export default function PaymentsPage() {
  }));
 
  const handleAdd = async (data) => {
- try { await addPayment(data); toast.success('Payment added!'); }
+ try { 
+    await addPayment(data); 
+    if (data.assignedTo) {
+      const member = members.find(m => m.id === data.assignedTo);
+      if (member?.whatsapp) {
+        try { await notifyPaymentAssigned(member, data); } catch (e) { console.error('Notify error:', e); }
+      }
+    }
+    toast.success('Payments added!'); 
+  }
  catch (err) { toast.error('Failed: ' + err.message); throw err; }
  };
 

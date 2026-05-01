@@ -1,4 +1,4 @@
-﻿import { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
  Plus, X, Search, Package, Clock, AlertTriangle,
  FileText, BarChart3, Building2, CheckCircle2,
@@ -10,6 +10,7 @@ import { useTeam } from '../hooks/useTeam';
 import { useToast } from '../hooks/useToast';
 import useDelete from '../hooks/useDelete';
 import { formatDate, formatCurrency } from '../lib/formatters';
+import { notifyRgpAssigned } from '../lib/notify';
 import { SkeletonTable } from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
 import CountUpNumber from '../components/ui/CountUpNumber';
@@ -91,7 +92,7 @@ function RgpModal({ onClose, onSubmit, members, editing }) {
  {RGP_STATUSES.map(s => <option key={s} value={s}>{s.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>)}
  </select></div>
  </div>
- <div><label className="label">Description</label><input className="input-field" value={form.description} onChange={e => setForm({...form, description: e.target.value})} /></div>
+ <div><label className="label">Description</label><textarea className="input-field resize-none" rows={3} placeholder="What needs to be done, purpose of RGP/Challan..." value={form.description} onChange={e => setForm({...form, description: e.target.value})} /></div>
  <div className="grid grid-cols-2 gap-3">
  <div><label className="label">Quantity</label><input className="input-field" type="number" value={form.quantity} onChange={e => setForm({...form, quantity: e.target.value})} /></div>
  <div><label className="label">Value (Rs)</label><input className="input-field" type="number" value={form.value} onChange={e => setForm({...form, value: e.target.value})} /></div>
@@ -120,7 +121,7 @@ function RgpModal({ onClose, onSubmit, members, editing }) {
  onChange={e => { const m = members.find(m => m.id === e.target.value); setForm({...form, assignedTo: e.target.value, assignedToName: m?.name || ''}); }}>
  <option value="">Select</option>{members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
  </select></div>
- <div><label className="label">Remarks</label><textarea className="input-field resize-none" rows={2} value={form.remarks} onChange={e => setForm({...form, remarks: e.target.value})} /></div>
+ <div><label className="label">Remarks</label><input className="input-field" type="text" value={form.remarks} onChange={e => setForm({...form, remarks: e.target.value})} /></div>
  </div>
  <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
  <button onClick={onClose} className="btn-secondary">Cancel</button>
@@ -208,8 +209,25 @@ export default function RgpChallanPage() {
  }, [rgpChallans]);
 
  const handleAdd = async (data) => {
- try { await addRgpChallan(data); toast.success('Record added!'); }
- catch (err) { toast.error('Failed: ' + err.message); throw err; }
+  try {
+   await addRgpChallan(data);
+   
+   if (data.assignedTo) {
+     const member = members.find(m => m.id === data.assignedTo);
+     if (member?.whatsapp) {
+       try {
+         await notifyRgpAssigned(member, data);
+       } catch (e) {
+         console.error('Notify error:', e);
+       }
+     }
+   }
+   
+   toast.success('Record added!');
+  } catch (err) {
+   toast.error('Failed: ' + err.message);
+   throw err;
+  }
  };
  const handleEdit = async (data) => {
  try { await updateRgpChallan(editing.id, data); toast.success('Updated!'); }

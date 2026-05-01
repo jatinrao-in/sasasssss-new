@@ -25,9 +25,14 @@ const getTitle = (eventType) => {
     salary_paid: 'Salary Credited',
     enquiry_assigned: 'New Enquiry',
     followup_due: 'Follow-up Due',
+    followup_assigned: 'Follow-up Assigned',
     payment_due: 'Payment Reminder',
+    payment_assigned: 'Payment Assigned',
+    outgoing_payment_assigned: 'Outgoing Payment Assigned',
     rgp_overdue: 'RGP Reminder',
+    rgp_assigned: 'RGP Assigned',
     tool_not_returned: 'Tool Return',
+    tool_assigned: 'Tool Assigned',
     custom_message: 'New Message',
   };
   return titles[eventType] || 'Notification';
@@ -47,6 +52,12 @@ const getBody = (eventType, context) => {
     rgp_overdue: `RGP ${context.docNumber} needs action`,
     tool_not_returned: `Return ${context.toolName}`,
     custom_message: String(context.message || '').substring(0, 60),
+    enquiry_assigned: `Enquiry: ${context.companyName || context.enquiryType}`,
+    followup_assigned: `Follow-up: ${context.companyName || context.followupType}`,
+    payment_assigned: `Payment: ${context.customerName}`,
+    outgoing_payment_assigned: `Outgoing Payment: ${context.vendorName}`,
+    rgp_assigned: `RGP: ${context.docNumber}`,
+    tool_assigned: `Tool: ${context.toolName}`
   };
   return bodies[eventType] || '';
 };
@@ -121,6 +132,62 @@ async function dispatchWhatsApp(eventType, context) {
         context.memberName,
         context.message || '',
       );
+
+    case 'enquiry_assigned':
+      return sendTaskAssigned(
+        to,
+        context.memberName,
+        `${context.enquiryType || 'Enquiry'} - ${context.companyName || ''}`,
+        'Enquiry Department',
+        context.targetDate || 'Not set'
+      );
+
+    case 'followup_assigned':
+      return sendTaskAssigned(
+        to,
+        context.memberName,
+        `${context.followupType || 'Follow-up'} - ${context.companyName || ''}`,
+        'Follow-up Department',
+        context.nextFollowupDate || 'Not set'
+      );
+
+    case 'payment_assigned':
+      return sendPaymentReminder(
+        to,
+        context.memberName,
+        context.customerName || '',
+        context.invoiceNo || '',
+        context.amount || '0'
+      );
+
+    case 'outgoing_payment_assigned':
+      return sendPaymentReminder(
+        to,
+        context.memberName,
+        context.vendorName || '',
+        context.invoiceNo || '',
+        context.amount || '0'
+      );
+
+    case 'rgp_assigned':
+      return sendRgpReminder(
+        to,
+        context.memberName,
+        context.docNumber || '',
+        context.fromCompany || '',
+        context.toCompany || '',
+        '0'
+      );
+
+    case 'tool_assigned':
+      return sendToolReturn(
+        to,
+        context.memberName,
+        context.toolName || '',
+        context.issuedDate || '',
+        context.days || '0'
+      );
+
 
     // Generic daily reminder (triggered via cron, not UI typically)
     case 'daily_reminder':

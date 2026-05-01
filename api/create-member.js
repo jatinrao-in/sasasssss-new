@@ -9,6 +9,7 @@ import {
   normalizeStatus,
   sanitizePermissions,
 } from '../server/accessControl.js';
+import { sendWelcomeMessage } from '../server/whatsapp/msg91.js';
 
 export default async function handler(req, res) {
   if (handleCors(req, res)) {
@@ -70,6 +71,14 @@ export default async function handler(req, res) {
       updatedAt: Timestamp.now(),
       createdBy: authContext.decodedToken.uid,
     });
+
+    if (whatsapp) {
+      try {
+        await sendWelcomeMessage(whatsapp, name.trim());
+      } catch (err) {
+        console.error('Welcome message failed:', err);
+      }
+    }
 
     return res.status(200).json({
       success: true,

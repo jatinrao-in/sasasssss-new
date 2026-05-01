@@ -11,6 +11,7 @@ import { useTeam } from '../hooks/useTeam';
 import { useToast } from '../hooks/useToast';
 import useDelete from '../hooks/useDelete';
 import { formatDate } from '../lib/formatters';
+import { notifyFollowupAssigned } from '../lib/notify';
 import { SkeletonTable, SkeletonCalendar } from '../components/ui/Skeleton';
 import CalendarView from '../components/ui/CalendarView';
 import EmptyState from '../components/ui/EmptyState';
@@ -242,7 +243,16 @@ export default function FollowupPage() {
  }, [followups]);
 
  const handleAdd = async (data) => {
- try { await addFollowup(data); toast.success('Follow-up added!'); }
+ try { 
+    await addFollowup(data); 
+    if (data.assignedTo) {
+      const member = members.find(m => m.id === data.assignedTo);
+      if (member?.whatsapp) {
+        try { await notifyFollowupAssigned(member, data); } catch (e) { console.error('Notify error:', e); }
+      }
+    }
+    toast.success('Followup added!'); 
+  }
  catch (err) { toast.error('Failed: ' + err.message); throw err; }
  };
 

@@ -216,3 +216,66 @@ export const notifyToolNotReturned = async (member, tool) => {
     days,
   });
 };
+
+export const notifyEnquiryAssigned = async (member, enquiry) => {
+  if (!member?.whatsapp) return;
+  await notify('enquiry_assigned', {
+    memberUid: member.id || member.uid,
+    whatsappNumber: member.whatsapp,
+    memberName: member.name,
+    enquiryType: enquiry.taskType || 'Enquiry',
+    companyName: enquiry.companyName || 'Company',
+    targetDate: enquiry.targetDate ? formatDate(enquiry.targetDate) : 'Not set'
+  });
+};
+
+export const notifyFollowupAssigned = async (member, followup) => {
+  if (!member?.whatsapp) return;
+  await notify('followup_assigned', {
+    memberUid: member.id || member.uid,
+    whatsappNumber: member.whatsapp,
+    memberName: member.name,
+    followupType: followup.taskType || 'Follow-up',
+    companyName: followup.companyName || 'Company',
+    nextFollowupDate: followup.nextFollowupDate ? formatDate(followup.nextFollowupDate) : 'Not set'
+  });
+};
+
+export const notifyToolAssigned = async (member, tool) => {
+  if (!member?.whatsapp) return;
+  await notify('tool_assigned', {
+    memberUid: member.id || member.uid,
+    whatsappNumber: member.whatsapp,
+    memberName: member.name,
+    toolName: tool.toolName,
+    issuedDate: formatDate(tool.handedOverDate || new Date()),
+    days: '0'
+  });
+};
+
+export const notifyRgpAssigned = async (member, rgp) => {
+  if (!member?.whatsapp) return;
+  await notify('rgp_assigned', {
+    memberUid: member.id || member.uid,
+    whatsappNumber: member.whatsapp,
+    memberName: member.name,
+    type: rgp.type || 'RGP',
+    docNumber: rgp.docNumber || 'N/A',
+    fromCompany: rgp.fromCompany || 'N/A',
+    toCompany: rgp.toCompany || 'N/A',
+    date: formatDate(new Date())
+  });
+};
+
+export const notifyPaymentAssigned = async (member, payment) => {
+  if (!member?.whatsapp) return;
+  if (!payment?.customerName) return;
+  await notify('payment_assigned', {
+    memberUid: member.id || member.uid,
+    whatsappNumber: member.whatsapp,
+    memberName: member.name,
+    customerName: payment.customerName,
+    invoiceNo: payment.invoiceNumber || 'N/A',
+    amount: `Rs.${Number(payment.amount || 0).toLocaleString('en-IN')}`
+  });
+};

@@ -10,6 +10,7 @@ import { useTeam } from '../hooks/useTeam';
 import { useToast } from '../hooks/useToast';
 import useDelete from '../hooks/useDelete';
 import { formatDate, formatCurrency } from '../lib/formatters';
+import { notifyEnquiryAssigned } from '../lib/notify';
 import { SkeletonTable, SkeletonKanban } from '../components/ui/Skeleton';
 import KanbanBoard from '../components/ui/KanbanBoard';
 import EmptyState from '../components/ui/EmptyState';
@@ -277,6 +278,18 @@ export default function EnquiryPage() {
  const handleAdd = async (data) => {
   try {
    await addEnquiry(data);
+   
+   if (data.assignedTo) {
+     const member = members.find(m => m.id === data.assignedTo);
+     if (member?.whatsapp) {
+       try {
+         await notifyEnquiryAssigned(member, data);
+       } catch (e) {
+         console.error('Notify error:', e);
+       }
+     }
+   }
+   
    toast.success('Enquiry added!');
   } catch (err) {
    toast.error('Failed: ' + err.message);

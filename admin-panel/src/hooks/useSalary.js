@@ -16,19 +16,21 @@ import {
 } from '../lib/firestore-helpers';
 
 // Calculation logic
-export function calcSalary(baseSalary, workingDays, presentDays) {
+export function calcSalary(baseSalary, workingDays, presentDays, overtimePayment) {
   const base = Number(baseSalary) || 0;
   const working = Number(workingDays) || 0;
   const present = Math.min(Number(presentDays) || 0, working);
+  const ot = Number(overtimePayment) || 0;
   const perDayRate = working > 0 ? base / working : 0;
   const lopDays = Math.max(0, working - present);
   const lopDeduction = Math.round(perDayRate * lopDays);
-  const netSalary = Math.max(0, Math.round(base - lopDeduction));
+  const netSalary = Math.max(0, Math.round(base - lopDeduction) + ot);
   return {
     perDayRate: Math.round(perDayRate),
     lopDays,
     lopDeduction,
     netSalary,
+    overtimePayment: ot,
   };
 }
 
@@ -126,7 +128,7 @@ export function useSalaryActions() {
   const { log } = useAuditLog();
 
   const saveSalary = useCallback(async (uid, month, data) => {
-    const calc = calcSalary(data.baseSalary, data.workingDays, data.presentDays);
+    const calc = calcSalary(data.baseSalary, data.workingDays, data.presentDays, data.overtimePayment);
     const ref = getSalaryMonthDoc(db, uid, month);
 
     await setDocument(
@@ -138,6 +140,7 @@ export function useSalaryActions() {
         designation: data.designation || '',
         workingDays: Number(data.workingDays) || 26,
         presentDays: Number(data.presentDays) || 0,
+        overtimePayment: calc.overtimePayment,
         lopDays: calc.lopDays,
         baseSalary: Number(data.baseSalary) || 0,
         perDayRate: calc.perDayRate,
@@ -223,6 +226,7 @@ export function useSalaryActions() {
             designation: member.designation || '',
             workingDays: 26,
             presentDays: 26,
+            overtimePayment: 0,
             lopDays: 0,
             baseSalary: 0,
             perDayRate: 0,

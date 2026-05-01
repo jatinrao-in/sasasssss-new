@@ -6,6 +6,7 @@ import { useTeam } from '../hooks/useTeam';
 import { useToast } from '../hooks/useToast';
 import useDelete from '../hooks/useDelete';
 import { formatDate } from '../lib/formatters';
+import { notifyToolAssigned } from '../lib/notify';
 import { Timestamp } from 'firebase/firestore';
 import { SkeletonTable } from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
@@ -151,9 +152,17 @@ export default function ToolAssignPage() {
 
  const pendingReturn = tools.filter(t => t.returnStatus === 'pending').length;
 
- const handleAssign = async (data) => {
+  const handleAssign = async (data) => {
  try {
  await assignTool(data);
+ if (data.assignedTo) {
+   const member = members.find(m => m.id === data.assignedTo);
+   if (member?.whatsapp) {
+     try {
+       await notifyToolAssigned(member, data);
+     } catch (e) {}
+   }
+ }
  toast.success('Tool assigned!');
  } catch (err) { toast.error('Failed: ' + err.message); throw err; }
  };
