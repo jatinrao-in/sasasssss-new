@@ -57,8 +57,9 @@ export default defineConfig({
     host: true,
     proxy: {
       '/api': {
-        target: 'https://saya-backend.vercel.app',
+        target: 'https://sasasssss.vercel.app',
         changeOrigin: true,
+        secure: true,
       }
     }
   },

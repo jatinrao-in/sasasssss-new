@@ -56,10 +56,6 @@
   ],
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/$1.js"
-    },
-    {
       "source": "/admin/(.*\\..*)",
       "destination": "/admin-panel/$1"
     },
