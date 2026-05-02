@@ -15,4 +15,8 @@ export async function updateTeamMember(memberData) {
   return { success: true, uid };
 }
 
-export default { createTeamMember, updateTeamMember };
+export async function deleteTeamMember(uid) {
+  return securePost('/api/delete-member', { uid });
+}
+
+export default { createTeamMember, updateTeamMember, deleteTeamMember };

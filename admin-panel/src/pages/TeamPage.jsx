@@ -28,6 +28,7 @@ import { db } from '../lib/firebase';
 import {
   createTeamMember as createMemberApi,
   updateTeamMember as updateMemberApi,
+  deleteTeamMember as deleteMemberApi,
 } from '../lib/backendApi';
 import useAuditLog from '../hooks/useAuditLog';
 import { useTeam } from '../hooks/useTeam';
@@ -528,64 +529,31 @@ export default function TeamPage() {
       return;
     }
 
-    try {
-      // Get fresh token
-      const { auth } = await import('../lib/firebase');
-      const user = auth.currentUser;
-      if (!user) {
-        toast.error('Please login again');
-        return;
-      }
-      
-      // Force refresh token
-      const token = await user.getIdToken(true);
-      
-      const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL || 'https://sasasssss.vercel.app'}/api/create-member`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            name: form.name.trim(),
-            email: form.email.trim(),
-            password: form.password.trim(),
-            phone: form.phone.toString().trim(),
-            whatsapp: form.whatsapp.toString().trim(),
-            designation: form.designation.trim(),
-            role: form.role,
-            permissions: form.permissions,
-            status: form.status,
-          })
-        }
-      );
+    await createMemberApi({
+      name: form.name.trim(),
+      email: form.email.trim(),
+      password: form.password.trim(),
+      phone: form.phone.toString().trim(),
+      whatsapp: form.whatsapp.toString().trim(),
+      designation: form.designation.trim(),
+      role: form.role,
+      permissions: form.permissions,
+      status: form.status,
+    });
 
-      const result = await response.json();
+    await log('member_created', {
+      memberEmail: form.email,
+      memberName: form.name,
+      designation: form.designation || '',
+      role: form.role,
+      permissions: form.permissions || [],
+    });
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to create member');
-      }
-
-      await log('member_created', {
-        memberEmail: form.email,
-        memberName: form.name,
-        designation: form.designation || '',
-        role: form.role,
-        permissions: form.permissions || [],
-      });
-
-      toast.success(
-        form.role === 'admin'
-          ? `${form.name} can now log in to the admin panel.`
-          : `${form.name} can now log in to the Team Member PWA.`,
-      );
-    } catch (error) {
-      console.error('Create error:', error);
-      toast.error(error.message);
-      throw error;
-    }
+    toast.success(
+      form.role === 'admin'
+        ? `${form.name} can now log in to the admin panel.`
+        : `${form.name} can now log in to the Team Member PWA.`,
+    );
   };
 
   const handleToggleStatus = async (member) => {
@@ -615,27 +583,28 @@ export default function TeamPage() {
 
     confirmDelete({
       title: `Delete ${normalizeRole(member.role) === 'admin' ? 'Admin Account' : 'Team Member'}`,
-      description: `Delete "${member.name}" permanently? Assigned tasks will become unassigned. This cannot be undone.`,
+      description: `Delete "${member.name}" permanently? This removes them from Firebase Auth AND Firestore. Their assigned tasks will become unassigned. This cannot be undone.`,
       onConfirm: async () => {
+        // Unassign all tasks first
         const taskSnapshot = await getDocs(
           query(collection(db, COLLECTIONS.tasks), where('assignedTo', '==', member.id)),
         );
 
         await Promise.all(taskSnapshot.docs.map((taskDoc) => updateDocumentRef(
           taskDoc.ref,
-          {
-            assignedTo: '',
-            assignedToName: '',
-          },
+          { assignedTo: '', assignedToName: '' },
           { action: 'unassign member tasks', collectionName: COLLECTIONS.tasks },
         )));
 
-        await deleteMember(member.id);
-        await log('member_unassigned_from_tasks', {
+        // Delete from Firebase Auth + Firestore via backend API
+        await deleteMemberApi(member.id);
+
+        await log('member_deleted', {
           memberUid: member.id,
+          memberName: member.name,
           reassignedTaskCount: taskSnapshot.docs.length,
         });
-        toast.success(`${member.name} removed from team.`);
+        toast.success(`${member.name} deleted permanently.`);
       },
     });
   };
