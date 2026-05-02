@@ -69,21 +69,43 @@ export default async function handler(req, res) {
       ? permissions
       : defaultPermissions;
 
-    // Save to Firestore
-    await db.doc(`users/${newUser.uid}`).set({
-      name: name.trim(),
-      email: email.trim().toLowerCase(),
-      phone: phone?.trim() || '',
-      whatsapp: whatsapp?.trim() || '',
-      designation: designation?.trim() || '',
-      role: normalizedRole,
-      permissions: finalPermissions,
-      status: status === 'inactive' ? 'inactive' : 'active',
-      fcmToken: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      createdBy: authContext.decodedToken.uid,
-    });
+    // Save to Firestore — rollback Auth user if this fails
+    try {
+      await db.doc(`users/${newUser.uid}`).set({
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        phone: phone?.trim() || '',
+        whatsapp: whatsapp?.trim() || '',
+        designation: designation?.trim() || '',
+        role: normalizedRole,
+        permissions: finalPermissions,
+        status: status === 'inactive' ? 'inactive' : 'active',
+        fcmToken: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: authContext.decodedToken.uid,
+      });
+    } catch (firestoreErr) {
+      // ROLLBACK: remove the Auth account we just created so the two stores stay in sync
+      console.error('Firestore write failed — rolling back Auth user:', newUser.uid, firestoreErr.message);
+      try {
+        await auth.deleteUser(newUser.uid);
+        console.log('Auth rollback succeeded for', newUser.uid);
+      } catch (rollbackErr) {
+        console.error('Auth rollback also failed:', rollbackErr.message);
+      }
+      throw firestoreErr;
+    }
+
+    // Verify both sides now exist
+    const [verifyAuth, verifyFirestore] = await Promise.all([
+      auth.getUser(newUser.uid),
+      db.doc(`users/${newUser.uid}`).get(),
+    ]);
+
+    if (!verifyAuth || !verifyFirestore.exists) {
+      throw new Error('Post-creation verification failed — please retry.');
+    }
 
     // Send welcome WhatsApp if number present
     if (whatsapp?.trim()) {
@@ -98,12 +120,13 @@ export default async function handler(req, res) {
       }
     }
 
-    console.log(`Member created: ${newUser.uid} (${normalizedRole}) by ${authContext.decodedToken.uid}`);
+    console.log(`Member created & verified: ${newUser.uid} (${normalizedRole}) by ${authContext.decodedToken.uid}`);
 
     return res.status(200).json({
       success: true,
       uid: newUser.uid,
       message: `${name.trim()} created successfully`,
+      verified: true,
     });
   } catch (error) {
     console.error('Create member error:', error);

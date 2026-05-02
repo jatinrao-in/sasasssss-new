@@ -263,6 +263,7 @@ export default function SettingsPage() {
     notes: '',
   });
   const [dangerAction, setDangerAction] = useState('');
+  const [syncing, setSyncing] = useState(false);
   const [confirmState, setConfirmState] = useState(INITIAL_CONFIRM_STATE);
   const availableSections = useMemo(() => settingsSections.map((section) => section.id), []);
   const activeSection = availableSections.includes(sectionId) ? sectionId : 'company';
@@ -841,6 +842,37 @@ export default function SettingsPage() {
     setCompany(DEFAULT_COMPANY);
     setPreferences(DEFAULT_PREFERENCES);
     setNotificationSettings(DEFAULT_NOTIFICATION_SETTINGS);
+  };
+
+  const handleSyncUsers = async () => {
+    if (!window.confirm(
+      'This will permanently delete all Firestore /users documents that do NOT have a matching Firebase Auth account.\n\nThis cannot be undone. Continue?'
+    )) {
+      return;
+    }
+
+    setSyncing(true);
+    try {
+      const { securePost } = await import('../lib/secureApi');
+      const result = await securePost('/api/admin/cleanup-users', {});
+
+      if (result.success) {
+        const { validDocsKept, orphanDocsDeleted, authUsersCount } = result.summary;
+        toast.success(
+          `Sync complete! Auth: ${authUsersCount} users · Kept: ${validDocsKept} · Removed: ${orphanDocsDeleted} orphan${orphanDocsDeleted !== 1 ? 's' : ''}`
+        );
+        if (orphanDocsDeleted > 0) {
+          console.log('[Sync Users] Deleted orphans:', result.deletedUsers);
+        }
+        await log('user_sync_cleanup', result.summary);
+      } else {
+        toast.error(result.error || 'Sync failed');
+      }
+    } catch (error) {
+      toast.error('Sync failed: ' + error.message);
+    } finally {
+      setSyncing(false);
+    }
   };
 
   const renderSectionContent = () => {
@@ -1535,6 +1567,33 @@ export default function SettingsPage() {
               >
                 <RotateCcw className="h-4 w-4" />
                 Reset Settings
+              </button>
+            </div>
+          </div>
+
+          {/* Sync Auth & Firestore Users */}
+          <div className="space-y-4 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+            <div>
+              <h3 className="text-sm font-semibold text-amber-900">Sync Auth &amp; Firestore Users</h3>
+              <p className="mt-1 text-sm text-amber-700">
+                Removes <code className="rounded bg-amber-100 px-1 font-mono text-xs">/users</code> documents that have no matching Firebase Auth account. Safe to run any time.
+              </p>
+            </div>
+            <div className="flex items-center justify-between gap-4 rounded-xl border border-amber-100 bg-white px-4 py-4">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Remove Orphan User Documents</p>
+                <p className="mt-1 text-sm text-gray-600">
+                  Keeps only Auth-verified users. Also deletes their notifications and salary records.
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={syncing || Boolean(dangerAction)}
+                className="btn-secondary border border-amber-300 bg-amber-100 text-amber-800 hover:bg-amber-200 disabled:opacity-60"
+                onClick={handleSyncUsers}
+              >
+                <RotateCcw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+                {syncing ? 'Syncing...' : 'Sync Users'}
               </button>
             </div>
           </div>

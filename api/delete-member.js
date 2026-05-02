@@ -26,45 +26,77 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Cannot delete your own account' });
     }
 
+    const deleteLog = {
+      uid,
+      authDeleted: false,
+      firestoreDeleted: false,
+      notificationsDeleted: 0,
+      salaryDeleted: 0,
+      tasksUnassigned: 0,
+    };
+
     // 1. Delete from Firebase Auth
     try {
       await auth.deleteUser(uid);
+      deleteLog.authDeleted = true;
     } catch (authErr) {
-      // User may not exist in Auth (Firestore-only record), continue
+      // User may not exist in Auth (orphan Firestore record) — continue anyway
       console.warn('Auth deleteUser skipped:', authErr.message);
     }
 
     // 2. Delete Firestore user document
-    await db.doc(`users/${uid}`).delete();
+    try {
+      await db.doc(`users/${uid}`).delete();
+      deleteLog.firestoreDeleted = true;
+    } catch (fsErr) {
+      console.error('Firestore user delete error:', fsErr.message);
+    }
 
     // 3. Delete notification subcollection items
-    const notifsSnap = await db
-      .collection('notifications')
-      .doc(uid)
-      .collection('items')
-      .get();
-    if (!notifsSnap.empty) {
-      await Promise.all(notifsSnap.docs.map((d) => d.ref.delete()));
-      // Delete the parent notification doc too
-      await db.collection('notifications').doc(uid).delete().catch(() => {});
+    try {
+      const notifsSnap = await db.collection('notifications').doc(uid).collection('items').get();
+      if (!notifsSnap.empty) {
+        await Promise.all(notifsSnap.docs.map((d) => d.ref.delete()));
+        await db.collection('notifications').doc(uid).delete().catch(() => {});
+        deleteLog.notificationsDeleted = notifsSnap.size;
+      }
+    } catch (e) {
+      console.warn('Notification cleanup error:', e.message);
     }
 
     // 4. Delete salary subcollection
-    const salarySnap = await db
-      .collection('salary')
-      .doc(uid)
-      .collection('months')
-      .get();
-    if (!salarySnap.empty) {
-      await Promise.all(salarySnap.docs.map((d) => d.ref.delete()));
-      await db.collection('salary').doc(uid).delete().catch(() => {});
+    try {
+      const salarySnap = await db.collection('salary').doc(uid).collection('months').get();
+      if (!salarySnap.empty) {
+        await Promise.all(salarySnap.docs.map((d) => d.ref.delete()));
+        await db.collection('salary').doc(uid).delete().catch(() => {});
+        deleteLog.salaryDeleted = salarySnap.size;
+      }
+    } catch (e) {
+      console.warn('Salary cleanup error:', e.message);
     }
 
-    console.log(`Member ${uid} fully deleted by ${authContext.decodedToken.uid}`);
+    // 5. Unassign tasks (don't delete — keep task history)
+    try {
+      const tasksSnap = await db.collection('tasks').where('assignedTo', '==', uid).get();
+      if (!tasksSnap.empty) {
+        await Promise.all(tasksSnap.docs.map((d) => d.ref.update({
+          assignedTo: '',
+          assignedToName: 'Unassigned',
+          updatedAt: new Date(),
+        })));
+        deleteLog.tasksUnassigned = tasksSnap.size;
+      }
+    } catch (e) {
+      console.warn('Task unassign error:', e.message);
+    }
+
+    console.log(`Member ${uid} fully deleted by ${authContext.decodedToken.uid}`, deleteLog);
 
     return res.status(200).json({
       success: true,
-      message: 'Member deleted from Auth and Firestore',
+      message: 'Member permanently deleted from Auth and Firestore',
+      deleteLog,
     });
   } catch (error) {
     console.error('Delete member error:', error);
