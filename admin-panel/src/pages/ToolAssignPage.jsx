@@ -1,4 +1,4 @@
-﻿import { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, Wrench, X, Search, RotateCcw, Edit3, Package, Clock, CheckCircle2, AlertTriangle, BarChart3 } from 'lucide-react';
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
 import { useTools } from '../hooks/useTools';
@@ -7,7 +7,8 @@ import { useToast } from '../hooks/useToast';
 import useDelete from '../hooks/useDelete';
 import { formatDate } from '../lib/formatters';
 import { notifyToolAssigned } from '../lib/notify';
-import { Timestamp } from 'firebase/firestore';
+import { Timestamp, doc, getDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { SkeletonTable } from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
 import CountUpNumber from '../components/ui/CountUpNumber';
@@ -152,20 +153,61 @@ export default function ToolAssignPage() {
 
  const pendingReturn = tools.filter(t => t.returnStatus === 'pending').length;
 
-  const handleAssign = async (data) => {
- try {
- await assignTool(data);
- if (data.assignedTo) {
-   const member = members.find(m => m.id === data.assignedTo);
-   if (member?.whatsapp) {
-     try {
-       await notifyToolAssigned(member, data);
-     } catch (e) {}
-   }
- }
- toast.success('Tool assigned!');
- } catch (err) { toast.error('Failed: ' + err.message); throw err; }
- };
+  const handleAssign = async (formData) => {
+    if (!formData.toolName?.trim()) {
+      toast.error('Tool name required');
+      return;
+    }
+    if (!formData.assignedTo) {
+      toast.error('Select a team member');
+      return;
+    }
+
+    try {
+      // Get member data
+      const memberDoc = await getDoc(
+        doc(db, 'users', formData.assignedTo)
+      );
+      const member = memberDoc.data();
+
+      // Save tool
+      await addDoc(collection(db, 'tools'), {
+        toolName: formData.toolName.trim(),
+        assignedTo: formData.assignedTo,
+        assignedToName: member?.name || '',
+        handedOverDate: formData.handedOverDate
+          ? Timestamp.fromDate(
+              new Date(formData.handedOverDate)
+            )
+          : Timestamp.now(),
+        returnStatus: 'pending',
+        returnDate: null,
+        condition: formData.condition || 'Good',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+
+      // Send WhatsApp notification
+      if (member?.whatsapp) {
+        await notifyToolAssigned(
+          { 
+            id: formData.assignedTo,
+            ...member 
+          },
+          {
+            toolName: formData.toolName,
+            handedOverDate: new Date()
+          }
+        );
+      }
+
+      toast.success('Tool assigned successfully!');
+    } catch (error) {
+      console.error('Tool assign error:', error);
+      toast.error('Failed: ' + error.message);
+      throw error;
+    }
+  };
 
  const handleEdit = async (data) => {
  try {

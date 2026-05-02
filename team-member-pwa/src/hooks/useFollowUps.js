@@ -1,3 +1,4 @@
+import { useAuth } from './useAuth';
 import { useEffect, useMemo, useState } from 'react';
 import {
   collection,
@@ -66,7 +67,8 @@ function normalizeFollowUp(followUp) {
   return normalized;
 }
 
-export function useFollowUps(filterByUser = null) {
+export function useFollowUps() {
+  const { currentUser } = useAuth();
   const realtime = useRealtime();
   const [followUps, setFollowUps] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -77,12 +79,12 @@ export function useFollowUps(filterByUser = null) {
       return null;
     }
 
-    const source = filterByUser
-      ? realtime.followUps.filter((item) => item.assignedTo === filterByUser)
+    const source = currentUser?.uid
+      ? realtime.followUps.filter((item) => item.assignedTo === currentUser?.uid)
       : realtime.followUps;
 
     return source.map(normalizeFollowUp);
-  }, [realtime, filterByUser]);
+  }, [realtime, currentUser?.uid]);
 
   useEffect(() => {
     if (realtimeFollowUps) {
@@ -93,7 +95,7 @@ export function useFollowUps(filterByUser = null) {
       return undefined;
     }
 
-    if (!filterByUser) {
+    if (!currentUser?.uid) {
       logSkip('useFollowUps');
       setFollowUps([]);
       setLoading(false);
@@ -101,11 +103,11 @@ export function useFollowUps(filterByUser = null) {
       return undefined;
     }
 
-    logFetch('useFollowUps', filterByUser);
+    logFetch('useFollowUps', currentUser?.uid);
 
     const followupQuery = query(
       collection(db, COLLECTIONS.followups),
-      where('assignedTo', '==', filterByUser),
+      where('assignedTo', '==', currentUser?.uid),
       orderBy('createdAt', 'desc'),
     );
 
@@ -130,7 +132,7 @@ export function useFollowUps(filterByUser = null) {
     );
 
     return () => unsubscribe();
-  }, [filterByUser, realtimeFollowUps, realtime?.loading?.followUps]);
+  }, [currentUser?.uid, realtimeFollowUps, realtime?.loading?.followUps]);
 
   const addFollowUp = async (followupData) => addDocument(db, COLLECTIONS.followups, {
     ...followupData,

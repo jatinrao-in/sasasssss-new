@@ -1,3 +1,4 @@
+import { useAuth } from './useAuth';
 import { useEffect, useState } from 'react';
 import {
   collection,
@@ -16,15 +17,16 @@ import {
 } from '../lib/firestoreDebug';
 import { COLLECTIONS } from '../lib/firestore-helpers';
 
-export function useTools(filterByUser = null) {
+export function useTools() {
+  const { currentUser } = useAuth();
   const realtime = useRealtime();
   const [tools, setTools] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (realtime) {
-      const source = filterByUser
-        ? realtime.tools.filter((item) => item.assignedTo === filterByUser)
+      const source = currentUser?.uid
+        ? realtime.tools.filter((item) => item.assignedTo === currentUser?.uid)
         : realtime.tools;
       logInfo('useTools', 'Using realtime tools:', source.length);
       setTools(source);
@@ -32,18 +34,18 @@ export function useTools(filterByUser = null) {
       return undefined;
     }
 
-    if (!filterByUser) {
+    if (!currentUser?.uid) {
       logSkip('useTools');
       setTools([]);
       setLoading(false);
       return undefined;
     }
 
-    logFetch('useTools', filterByUser);
+    logFetch('useTools', currentUser?.uid);
 
     const ref = query(
       collection(db, COLLECTIONS.tools),
-      where('assignedTo', '==', filterByUser),
+      where('assignedTo', '==', currentUser?.uid),
       where('returnStatus', '==', 'pending'),
     );
 
@@ -61,7 +63,7 @@ export function useTools(filterByUser = null) {
     );
 
     return () => unsubscribe();
-  }, [filterByUser, realtime]);
+  }, [currentUser?.uid, realtime]);
 
   return { tools, loading };
 }

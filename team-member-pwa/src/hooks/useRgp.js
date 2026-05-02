@@ -1,3 +1,4 @@
+import { useAuth } from './useAuth';
 import { useEffect, useState } from 'react';
 import {
   collection,
@@ -63,7 +64,8 @@ function normalizeRgpEntry(entry) {
   return normalized;
 }
 
-export function useRgp(filterByUser = null) {
+export function useRgp() {
+  const { currentUser } = useAuth();
   const realtime = useRealtime();
   const [rgp, setRgp] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -71,8 +73,8 @@ export function useRgp(filterByUser = null) {
 
   useEffect(() => {
     if (realtime) {
-      const source = filterByUser
-        ? realtime.rgp.filter((item) => item.assignedTo === filterByUser)
+      const source = currentUser?.uid
+        ? realtime.rgp.filter((item) => item.assignedTo === currentUser?.uid)
         : realtime.rgp;
       logInfo('useRgp', 'Using realtime RGP items:', source.length);
       setRgp(source.map(normalizeRgpEntry));
@@ -81,7 +83,7 @@ export function useRgp(filterByUser = null) {
       return undefined;
     }
 
-    if (!filterByUser) {
+    if (!currentUser?.uid) {
       logSkip('useRgp');
       setRgp([]);
       setLoading(false);
@@ -91,11 +93,11 @@ export function useRgp(filterByUser = null) {
 
     const ref = query(
       collection(db, COLLECTIONS.rgp),
-      where('assignedTo', '==', filterByUser),
+      where('assignedTo', '==', currentUser?.uid),
       orderBy('createdAt', 'desc'),
     );
 
-    logFetch('useRgp', filterByUser);
+    logFetch('useRgp', currentUser?.uid);
 
     const unsubscribe = onSnapshot(
       ref,
@@ -116,7 +118,7 @@ export function useRgp(filterByUser = null) {
     );
 
     return () => unsubscribe();
-  }, [filterByUser, realtime]);
+  }, [currentUser?.uid, realtime]);
 
   const updateRgp = async (id, updates) => updateDocument(
     db,

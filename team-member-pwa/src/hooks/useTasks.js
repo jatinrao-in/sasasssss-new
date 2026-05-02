@@ -1,3 +1,4 @@
+import { useAuth } from './useAuth';
 import { useEffect, useMemo, useState } from 'react';
 import {
   collection,
@@ -27,7 +28,8 @@ import {
   updateDocumentRef,
 } from '../lib/firestore-helpers';
 
-export function useTasks(filterByUser = null) {
+export function useTasks() {
+  const { currentUser } = useAuth();
   const realtime = useRealtime();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -38,8 +40,8 @@ export function useTasks(filterByUser = null) {
     }
 
     const source = Array.isArray(realtime.tasks) ? realtime.tasks : [];
-    const filtered = filterByUser
-      ? source.filter((task) => task.assignedTo === filterByUser)
+    const filtered = currentUser?.uid
+      ? source.filter((task) => task.assignedTo === currentUser?.uid)
       : source;
 
     return filtered.map((task) => {
@@ -50,7 +52,7 @@ export function useTasks(filterByUser = null) {
       normalizedTask.status = deriveTaskStatus(normalizedTask);
       return normalizedTask;
     });
-  }, [realtime, filterByUser]);
+  }, [realtime, currentUser?.uid]);
 
   useEffect(() => {
     if (realtimeTasks) {
@@ -60,18 +62,18 @@ export function useTasks(filterByUser = null) {
       return undefined;
     }
 
-    if (!filterByUser) {
+    if (!currentUser?.uid) {
       logSkip('useTasks');
       setTasks([]);
       setLoading(false);
       return undefined;
     }
 
-    logFetch('useTasks', filterByUser);
+    logFetch('useTasks', currentUser?.uid);
 
     const taskQuery = query(
       collection(db, COLLECTIONS.tasks),
-      where('assignedTo', '==', filterByUser),
+      where('assignedTo', '==', currentUser?.uid),
       orderBy('createdAt', 'desc'),
     );
 
@@ -96,7 +98,7 @@ export function useTasks(filterByUser = null) {
     );
 
     return () => unsubscribe();
-  }, [filterByUser, realtimeTasks, realtime?.loading?.tasks]);
+  }, [currentUser?.uid, realtimeTasks, realtime?.loading?.tasks]);
 
   const addTask = async (taskData) => addDocument(db, COLLECTIONS.tasks, {
     ...taskData,

@@ -26,7 +26,7 @@ import NotificationLogsPage from './pages/NotificationLogsPage';
 import SplashScreen from './components/SplashScreen';
 import AIAssistantPanel from './components/ui/AIAssistantPanel';
 import AutoUpdateHandler from './components/AutoUpdateHandler';
-import { db } from './lib/firebase';
+import { db, auth } from './lib/firebase';
 import { COLLECTIONS } from './lib/firestore-helpers';
 import { MAINTENANCE_CYCLE_DAYS, addDays } from './lib/systemConfig';
 
@@ -97,6 +97,38 @@ function AdminLayout() {
 }
 
 export default function App() {
+  useEffect(() => {
+    const debug = async () => {
+      console.log('=== DEBUG CHECK ===');
+      console.log('Firebase config:', {
+        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+        hasApiKey: !!import.meta.env.VITE_FIREBASE_API_KEY,
+        apiBase: import.meta.env.VITE_API_BASE_URL
+      });
+      
+      const user = auth.currentUser;
+      console.log('Current user:', user?.email);
+      console.log('User uid:', user?.uid);
+      
+      if (user) {
+        try {
+          const token = await user.getIdToken();
+          console.log('Has token:', !!token);
+          
+          // Test API
+          const pingRes = await fetch(
+            `${import.meta.env.VITE_API_BASE_URL || 'https://sasasssss.vercel.app'}/api/ping`
+          );
+          const ping = await pingRes.json();
+          console.log('API ping:', ping);
+        } catch(e) {
+          console.error('Debug ping error:', e);
+        }
+      }
+    };
+    debug();
+  }, []);
+
   return (
     <BrowserRouter basename="/admin">
       <AutoUpdateHandler />

@@ -1,3 +1,4 @@
+import { useAuth } from './useAuth';
 import { useEffect, useMemo, useState } from 'react';
 import {
   collection,
@@ -47,7 +48,8 @@ function normalizePayment(payment) {
   return normalized;
 }
 
-export function usePayments(filterByUser = null) {
+export function usePayments() {
+  const { currentUser } = useAuth();
   const realtime = useRealtime();
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -57,12 +59,12 @@ export function usePayments(filterByUser = null) {
       return null;
     }
 
-    const source = filterByUser
-      ? realtime.payments.filter((item) => item.assignedTo === filterByUser)
+    const source = currentUser?.uid
+      ? realtime.payments.filter((item) => item.assignedTo === currentUser?.uid)
       : realtime.payments;
 
     return source.map(normalizePayment);
-  }, [realtime, filterByUser]);
+  }, [realtime, currentUser?.uid]);
 
   useEffect(() => {
     if (realtimePayments) {
@@ -72,18 +74,18 @@ export function usePayments(filterByUser = null) {
       return undefined;
     }
 
-    if (!filterByUser) {
+    if (!currentUser?.uid) {
       logSkip('usePayments');
       setPayments([]);
       setLoading(false);
       return undefined;
     }
 
-    logFetch('usePayments', filterByUser);
+    logFetch('usePayments', currentUser?.uid);
 
     const paymentQuery = query(
       collection(db, COLLECTIONS.payments),
-      where('assignedTo', '==', filterByUser),
+      where('assignedTo', '==', currentUser?.uid),
       orderBy('createdAt', 'desc'),
     );
 
@@ -106,7 +108,7 @@ export function usePayments(filterByUser = null) {
     );
 
     return () => unsubscribe();
-  }, [filterByUser, realtimePayments, realtime?.loading?.payments]);
+  }, [currentUser?.uid, realtimePayments, realtime?.loading?.payments]);
 
   const addPayment = async (paymentData) => addDocument(db, COLLECTIONS.payments, {
     ...paymentData,

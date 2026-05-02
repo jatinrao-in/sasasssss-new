@@ -1,105 +1,159 @@
-import { Timestamp } from 'firebase-admin/firestore';
-import { handleConfigError } from '../server/config.js';
-import { handleCors } from '../server/cors.js';
-import { getAdminServices } from '../server/firebaseAdmin.js';
-import { requireAdmin, verifyFirebaseRequest } from '../server/auth.js';
-import {
-  ensureMainAdminUid,
-  normalizeRole,
-  normalizeStatus,
-  sanitizePermissions,
-} from '../server/accessControl.js';
-import { sendWelcomeMessage } from '../server/whatsapp/msg91.js';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
+
+// Initialize Firebase Admin
+let adminApp;
+const getAdminApp = () => {
+  if (getApps().length > 0) {
+    return getApps()[0];
+  }
+  return initializeApp({
+    credential: cert({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
+    })
+  });
+};
 
 export default async function handler(req, res) {
-  if (handleCors(req, res)) {
-    return;
+  // CORS headers first
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({
+      error: 'Method not allowed'
+    });
   }
 
-  const {
-    name,
-    email,
-    password,
-    phone,
-    whatsapp,
-    designation,
-    role,
-    permissions,
-    status,
-  } = req.body || {};
-
-  if (!name || !email || !password || !phone || !whatsapp || !designation) {
-    return res.status(400).json({ error: 'name, email, password, phone, whatsapp, and designation are required' });
+  // Verify Firebase Auth token
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(403).json({
+      error: 'No authorization token'
+    });
   }
 
-  if (String(password).length < 8) {
-    return res.status(400).json({ error: 'Password must be at least 8 characters' });
-  }
-
-  const normalizedRole = normalizeRole(role);
-  const normalizedStatus = normalizeStatus(status);
-  const normalizedPermissions = sanitizePermissions(normalizedRole, permissions);
-
+  const token = authHeader.split(' ')[1];
+  
   try {
-    const authContext = await verifyFirebaseRequest(req);
-    requireAdmin(authContext);
+    const adminInstance = getAdminApp();
+    const auth = getAuth(adminInstance);
+    const db = getFirestore(adminInstance);
 
-    const { auth, db } = getAdminServices();
-    await ensureMainAdminUid(db, authContext.decodedToken.uid);
+    // Verify token
+    let decodedToken;
+    try {
+      decodedToken = await auth.verifyIdToken(token);
+    } catch (tokenError) {
+      console.error('Token error:', tokenError.message);
+      return res.status(403).json({
+        error: 'Invalid or expired token. Please logout and login again.'
+      });
+    }
 
-    const userRecord = await auth.createUser({
-      email: email.trim(),
-      password,
-      displayName: name.trim(),
-    });
+    // Check caller is admin
+    const callerDoc = await db.doc(`users/${decodedToken.uid}`).get();
+    
+    if (!callerDoc.exists || callerDoc.data()?.role !== 'admin') {
+      return res.status(403).json({
+        error: 'Only admins can create members'
+      });
+    }
 
-    await db.collection('users').doc(userRecord.uid).set({
+    // Get new member data
+    const {
+      name, email, password,
+      phone, whatsapp, designation,
+      role, permissions, status
+    } = req.body;
+
+    // Validate required fields
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        error: 'name, email, password required'
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        error: 'Password must be 6+ characters'
+      });
+    }
+
+    // Create Firebase Auth user
+    let newUser;
+    try {
+      newUser = await auth.createUser({
+        email: email.trim(),
+        password: password,
+        displayName: name.trim()
+      });
+    } catch (authError) {
+      if (authError.code === 'auth/email-already-exists') {
+        return res.status(400).json({
+          error: 'Email already exists'
+        });
+      }
+      throw authError;
+    }
+
+    // Default permissions based on role
+    const defaultPermissions = role === 'admin' 
+      ? ['dashboard', 'projects', 'enquiry', 'followups', 'payments', 'outgoing_payments', 'rgp', 'salary', 'tools', 'team', 'settings', 'whatsapp']
+      : ['dashboard', 'tasks', 'enquiry', 'followups', 'payments', 'rgp', 'profile'];
+
+    // Save to Firestore
+    await db.doc(`users/${newUser.uid}`).set({
       name: name.trim(),
-      email: email.trim(),
-      phone: String(phone).trim(),
-      whatsapp: String(whatsapp).trim(),
-      designation: designation.trim(),
-      role: normalizedRole,
-      permissions: normalizedPermissions,
-      status: normalizedStatus,
+      email: email.trim().toLowerCase(),
+      phone: phone || '',
+      whatsapp: whatsapp || '',
+      designation: designation || '',
+      role: role || 'member',
+      permissions: permissions || defaultPermissions,
+      status: status || 'active',
       fcmToken: null,
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
-      createdBy: authContext.decodedToken.uid,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      createdBy: decodedToken.uid
     });
 
+    // Send welcome WhatsApp if number exists
     if (whatsapp) {
       try {
-        await sendWelcomeMessage(whatsapp, name.trim());
-      } catch (err) {
-        console.error('Welcome message failed:', err);
+        const { sendWelcomeMessage } = await import('../lib/msg91.js');
+        await sendWelcomeMessage(
+          whatsapp,
+          name,
+          email,
+          password,
+          'https://sasasssss.vercel.app'
+        );
+      } catch (msgError) {
+        console.error('Welcome WhatsApp error:', msgError.message);
+        // Don't fail member creation if WhatsApp fails
       }
     }
 
     return res.status(200).json({
       success: true,
-      uid: userRecord.uid,
-      message: `${normalizedRole === 'admin' ? 'Admin' : 'Member'} ${name.trim()} created successfully`,
+      uid: newUser.uid,
+      message: `Member ${name} created successfully`
     });
+
   } catch (error) {
-    console.error('Critical:', error.message);
-
-    if (handleConfigError(res, error)) {
-      return;
-    }
-
-    const statusCode = error.statusCode
-      || (error.code === 'auth/email-already-exists' ? 409 : 0)
-      || (String(error.code || '').startsWith('auth/') ? 401 : 0)
-      || 500;
-    const message = error.code === 'auth/email-already-exists'
-      ? 'This email is already registered'
-      : error.message;
-
-    return res.status(statusCode).json({ error: message });
+    console.error('Create member error:', error);
+    return res.status(500).json({
+      error: error.message
+    });
   }
 }

@@ -93,12 +93,22 @@ function AccountModal({ editing, mainAdminUid, onClose, onSave }) {
       return;
     }
 
-    const nextPermissions = sanitizePermissions(nextRole, form.permissions, { fallbackToAll: false });
-
     setForm((prev) => ({
       ...prev,
       role: nextRole,
-      permissions: nextPermissions.length > 0 ? nextPermissions : getAllPageKeys(nextRole),
+      permissions: nextRole === 'admin'
+        ? [
+            'dashboard', 'projects', 
+            'enquiry', 'followups',
+            'payments', 'outgoing_payments',
+            'rgp', 'salary', 'tools',
+            'team', 'settings', 'whatsapp'
+          ]
+        : [
+            'dashboard', 'tasks',
+            'enquiry', 'followups',
+            'payments', 'rgp', 'profile'
+          ],
       status: nextRole === 'admin' && prev.status !== 'inactive' ? 'active' : prev.status,
     }));
   };
@@ -518,31 +528,64 @@ export default function TeamPage() {
       return;
     }
 
-    await createMemberApi({
-      name: form.name.trim(),
-      email: form.email.trim(),
-      password: form.password.trim(),
-      phone: form.phone.toString().trim(),
-      whatsapp: form.whatsapp.toString().trim(),
-      designation: form.designation.trim(),
-      role: form.role,
-      permissions: form.permissions,
-      status: form.status,
-    });
+    try {
+      // Get fresh token
+      const { auth } = await import('../lib/firebase');
+      const user = auth.currentUser;
+      if (!user) {
+        toast.error('Please login again');
+        return;
+      }
+      
+      // Force refresh token
+      const token = await user.getIdToken(true);
+      
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL || 'https://sasasssss.vercel.app'}/api/create-member`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            name: form.name.trim(),
+            email: form.email.trim(),
+            password: form.password.trim(),
+            phone: form.phone.toString().trim(),
+            whatsapp: form.whatsapp.toString().trim(),
+            designation: form.designation.trim(),
+            role: form.role,
+            permissions: form.permissions,
+            status: form.status,
+          })
+        }
+      );
 
-    await log('member_created', {
-      memberEmail: form.email,
-      memberName: form.name,
-      designation: form.designation || '',
-      role: form.role,
-      permissions: form.permissions || [],
-    });
+      const result = await response.json();
 
-    toast.success(
-      form.role === 'admin'
-        ? `${form.name} can now log in to the admin panel.`
-        : `${form.name} can now log in to the Team Member PWA.`,
-    );
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create member');
+      }
+
+      await log('member_created', {
+        memberEmail: form.email,
+        memberName: form.name,
+        designation: form.designation || '',
+        role: form.role,
+        permissions: form.permissions || [],
+      });
+
+      toast.success(
+        form.role === 'admin'
+          ? `${form.name} can now log in to the admin panel.`
+          : `${form.name} can now log in to the Team Member PWA.`,
+      );
+    } catch (error) {
+      console.error('Create error:', error);
+      toast.error(error.message);
+      throw error;
+    }
   };
 
   const handleToggleStatus = async (member) => {

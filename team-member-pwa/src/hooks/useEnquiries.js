@@ -1,3 +1,4 @@
+import { useAuth } from './useAuth';
 import { useEffect, useMemo, useState } from 'react';
 import {
   collection,
@@ -49,7 +50,8 @@ function normalizeEnquiry(enquiry) {
   return normalized;
 }
 
-export function useEnquiries(filterByUser = null) {
+export function useEnquiries() {
+  const { currentUser } = useAuth();
   const realtime = useRealtime();
   const [enquiries, setEnquiries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,12 +62,12 @@ export function useEnquiries(filterByUser = null) {
       return null;
     }
 
-    const source = filterByUser
-      ? realtime.enquiries.filter((item) => item.assignedTo === filterByUser)
+    const source = currentUser?.uid
+      ? realtime.enquiries.filter((item) => item.assignedTo === currentUser?.uid)
       : realtime.enquiries;
 
     return source.map(normalizeEnquiry);
-  }, [realtime, filterByUser]);
+  }, [realtime, currentUser?.uid]);
 
   useEffect(() => {
     if (realtimeEnquiries) {
@@ -76,7 +78,7 @@ export function useEnquiries(filterByUser = null) {
       return undefined;
     }
 
-    if (!filterByUser) {
+    if (!currentUser?.uid) {
       logSkip('useEnquiries');
       setEnquiries([]);
       setLoading(false);
@@ -84,11 +86,11 @@ export function useEnquiries(filterByUser = null) {
       return undefined;
     }
 
-    logFetch('useEnquiries', filterByUser);
+    logFetch('useEnquiries', currentUser?.uid);
 
     const enquiryQuery = query(
       collection(db, COLLECTIONS.enquiries),
-      where('assignedTo', '==', filterByUser),
+      where('assignedTo', '==', currentUser?.uid),
       orderBy('createdAt', 'desc'),
     );
 
@@ -113,7 +115,7 @@ export function useEnquiries(filterByUser = null) {
     );
 
     return () => unsubscribe();
-  }, [filterByUser, realtimeEnquiries, realtime?.loading?.enquiries]);
+  }, [currentUser?.uid, realtimeEnquiries, realtime?.loading?.enquiries]);
 
   const addEnquiry = async (enquiryData) => addDocument(db, COLLECTIONS.enquiries, {
     ...enquiryData,

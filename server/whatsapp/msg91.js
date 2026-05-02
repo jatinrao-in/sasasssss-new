@@ -22,6 +22,9 @@ export function normalizeIndianWhatsAppNumber(toNumber) {
 // ─── Success detection ──────────────────────────────────────────────────────
 
 export function isMsg91Success(result) {
+  // MSG91 v5 API returns { status: 'success', hasError: false, data: {...} }
+  if (result?.status === 'success' || result?.hasError === false) return true;
+  // Legacy fallback: { type: 'success' } or { message: '...success...' }
   const type = String(result?.type || '').toLowerCase();
   const message = String(result?.message || '').toLowerCase();
   return type === 'success' || message.includes('success');
@@ -153,6 +156,13 @@ export async function sendRgpReminder(toNumber, memberName, docNumber, fromCompa
  */
 export async function sendToolReturn(toNumber, memberName, toolName, issuedDate, days) {
   return sendTemplate(toNumber, 'tool_return', [memberName, toolName, issuedDate, String(days)]);
+}
+
+/**
+ * 10. tool_assigned — reuses task_assigned template: {{1}} name, {{2}} toolName, {{3}} 'Tool Department', {{4}} issuedDate
+ */
+export async function sendToolAssigned(toNumber, memberName, toolName, issuedDate) {
+  return sendTemplate(toNumber, 'task_assigned', [memberName, toolName, 'Tool Department', issuedDate]);
 }
 
 /**

@@ -12,6 +12,7 @@ import {
   sendPaymentReminder,
   sendRgpReminder,
   sendToolReturn,
+  sendToolAssigned,
   sendDailyReminder,
 } from '../server/whatsapp/msg91.js';
 
@@ -180,12 +181,11 @@ async function dispatchWhatsApp(eventType, context) {
       );
 
     case 'tool_assigned':
-      return sendToolReturn(
+      return sendToolAssigned(
         to,
         context.memberName,
         context.toolName || '',
-        context.issuedDate || '',
-        context.days || '0'
+        context.issuedDate || new Date().toLocaleDateString('en-IN'),
       );
 
 
@@ -242,6 +242,7 @@ export default async function handler(req, res) {
       template: sendResult.template,
       status: success ? 'sent' : 'failed',
       msg91Response: sendResult.result,
+      providerResponse: JSON.stringify(sendResult.result || {}),
       context,
       requestedBy,
       requestedByRole: authContext.role,

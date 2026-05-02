@@ -1,3 +1,4 @@
+import { useAuth } from './useAuth';
 import { useEffect, useState } from 'react';
 import {
   limit,
@@ -22,7 +23,9 @@ import {
   updateDocumentRef,
 } from '../lib/firestore-helpers';
 
-export function useNotifications(userId) {
+export function useNotifications() {
+  const { currentUser } = useAuth();
+  const userId = currentUser?.uid;
   const realtime = useRealtime();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
