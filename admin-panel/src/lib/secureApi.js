@@ -1,9 +1,7 @@
 import { auth } from './firebase';
 
-// In production: VITE_API_BASE_URL is set to https://sasasssss.vercel.app
-// In development: leave empty so Vite proxy forwards /api/* to Vercel (no CORS)
-const API_BASE =
-  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') || '';
+// Always call the Vercel API directly — CORS is handled server-side
+const API_BASE = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') || 'https://sasasssss.vercel.app';
 
 const getAuthToken = async () => {
   return new Promise((resolve, reject) => {

@@ -19,21 +19,67 @@
   "routes": [
     {
       "src": "/api/(.*)",
+      "methods": ["OPTIONS"],
       "headers": {
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization, x-cron-secret"
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, x-cron-secret",
+        "Access-Control-Max-Age": "86400"
       },
-      "continue": true
+      "status": 204,
+      "continue": false
     },
     {
-      "src": "/api/(.*)",
-      "methods": ["OPTIONS"],
-      "dest": "/api/$1"
+      "src": "/api/admin/cleanup-users",
+      "dest": "/api/admin/cleanup-users.js"
     },
     {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
+      "src": "/api/ai/business-summary",
+      "dest": "/api/ai/business-summary.js"
+    },
+    {
+      "src": "/api/ai/suggest-deadline",
+      "dest": "/api/ai/suggest-deadline.js"
+    },
+    {
+      "src": "/api/ai/suggest-task",
+      "dest": "/api/ai/suggest-task.js"
+    },
+    {
+      "src": "/api/cron/daily-tasks",
+      "dest": "/api/cron/daily-tasks.js"
+    },
+    {
+      "src": "/api/cron/send-reminders",
+      "dest": "/api/cron/send-reminders.js"
+    },
+    {
+      "src": "/api/whatsapp/send-custom",
+      "dest": "/api/whatsapp/send-custom.js"
+    },
+    {
+      "src": "/api/whatsapp/send-text",
+      "dest": "/api/whatsapp/send-text.js"
+    },
+    {
+      "src": "/api/create-member",
+      "dest": "/api/create-member.js"
+    },
+    {
+      "src": "/api/delete-member",
+      "dest": "/api/delete-member.js"
+    },
+    {
+      "src": "/api/update-member",
+      "dest": "/api/update-member.js"
+    },
+    {
+      "src": "/api/notify",
+      "dest": "/api/notify.js"
+    },
+    {
+      "src": "/api/health",
+      "dest": "/api/health.js"
     },
     {
       "src": "/admin",
