@@ -6,6 +6,29 @@ import { useNotifications } from '../../hooks/useNotifications';
 import { getAccessiblePages } from '../../lib/accessControl';
 import UserAvatar from '../UserAvatar';
 
+const NotificationBell = () => {
+  const { unreadCount } = useNotifications();
+  const navigate = useNavigate();
+
+  return (
+    <div
+      onClick={() => navigate('/notifications')}
+      style={{ position: 'relative', cursor: 'pointer', padding: '8px' }}
+    >
+      <Bell size={22} color="var(--text-secondary)" />
+      {unreadCount > 0 && (
+        <span style={{
+          position: 'absolute', top: '2px', right: '2px', background: '#DC2626', color: 'white', borderRadius: '50%',
+          minWidth: '18px', height: '18px', fontSize: '11px', fontWeight: '700', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', padding: '0 3px'
+        }}>
+          {unreadCount > 9 ? '9+' : unreadCount}
+        </span>
+      )}
+    </div>
+  );
+};
+
 const bottomNavItems = [
   {
     key: 'dashboard',
@@ -37,7 +60,7 @@ export default function MobileLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { currentUser, userData } = useAuth();
-  const { unreadCount } = useNotifications(userData?.uid);
+
 
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
@@ -96,17 +119,7 @@ export default function MobileLayout() {
         </div>
 
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/notifications')}
-            className="relative flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-gray-100 active:bg-gray-200"
-          >
-            <Bell className="h-5 w-5 text-gray-600" />
-            {unreadCount > 0 && (
-              <span className="absolute right-1 top-1 flex h-4 min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            )}
-          </button>
+          <NotificationBell />
 
           <UserAvatar
             user={currentUser || userData}

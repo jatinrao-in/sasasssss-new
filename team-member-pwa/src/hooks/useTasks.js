@@ -3,11 +3,13 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   collection,
   doc,
+  getDocs,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
   where,
+  addDoc,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useRealtime } from '../context/RealtimeContext';
@@ -116,7 +118,7 @@ export function useTasks() {
     'update task',
   );
 
-  const updateCompletion = async (taskId, percent) => {
+  const updateCompletion = async (taskId, percent, taskTitle = 'Task') => {
     const taskRef = doc(db, COLLECTIONS.tasks, taskId);
 
     await updateDocumentRef(taskRef, {
@@ -124,6 +126,25 @@ export function useTasks() {
       status: percent >= 100 ? 'completed' : 'open',
       updatedAt: serverTimestamp(),
     }, { action: 'update task completion', collectionName: COLLECTIONS.tasks });
+
+    if (percent >= 100 && currentUser?.uid) {
+      try {
+        const usersSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'admin')));
+        const adminIds = usersSnap.docs.map(d => d.id);
+        const userName = currentUser?.displayName || currentUser?.name || 'A member';
+        await Promise.all(adminIds.map(adminId => 
+          addDoc(collection(db, 'notifications', adminId, 'items'), {
+            title: 'Task Completed',
+            body: `${userName} completed ${taskTitle}`,
+            type: 'task',
+            read: false,
+            createdAt: serverTimestamp()
+          })
+        ));
+      } catch (err) {
+        console.error("Failed to notify admins of task completion:", err);
+      }
+    }
   };
 
   const deleteTask = async (taskId) => deleteDocumentRef(

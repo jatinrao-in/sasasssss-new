@@ -1,99 +1,140 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '../components/ui/button';
-import { ClipboardList, CreditCard, RefreshCw, Bell, BellOff, CheckCheck, ChevronLeft } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
 import { useNotifications } from '../hooks/useNotifications';
-import { logInfo } from '../lib/firestoreDebug';
+
+const SkeletonList = () => (
+  <div style={{ padding: '16px' }}>
+    {[1, 2, 3].map(i => (
+      <div key={i} style={{ height: '80px', background: '#f3f4f6', borderRadius: '12px', marginBottom: '10px', animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' }} />
+    ))}
+  </div>
+);
 
 export default function NotificationsPage() {
- const navigate = useNavigate();
- const { userData } = useAuth();
- const { notifications, loading, markAsRead, markAllRead } = useNotifications(userData?.uid);
- const unreadCount = notifications.filter(n => !n.read).length;
+  const {
+    notifications, loading,
+    markRead, markAllRead, deleteNotif,
+    unreadCount
+  } = useNotifications();
 
- useEffect(() => {
-  logInfo('NotificationsPage', 'Render state:', {
-   uid: userData?.uid || null,
-   notifications: notifications.length,
-   unreadCount,
-   loading,
-  });
- }, [loading, notifications.length, unreadCount, userData?.uid]);
+  const navigate = useNavigate();
 
- const getIcon = (type) => {
- const icons = {
- task: <ClipboardList className="h-4 w-4 text-teal-600" />,
- payment: <CreditCard className="h-4 w-4 text-blue-600" />,
- followup: <RefreshCw className="h-4 w-4 text-amber-600" />,
- enquiry: <RefreshCw className="h-4 w-4 text-purple-600" />,
- rgp: <Bell className="h-4 w-4 text-indigo-600" />,
- };
- return icons[type] || <Bell className="h-4 w-4 text-gray-500" />;
- };
+  const getIcon = (type) => {
+    const icons = {
+      task: '📋',
+      payment: '💰',
+      followup: '🔔',
+      enquiry: '📩',
+      salary: '💳',
+      rgp: '📦',
+      tool: '🔧',
+      general: '📢'
+    };
+    return icons[type] || '🔔';
+  };
 
- const getIconBg = (type) => {
- const bgs = {
- task: 'bg-teal-50',
- payment: 'bg-blue-50',
- followup: 'bg-amber-50',
- enquiry: 'bg-purple-50',
- rgp: 'bg-indigo-50',
- };
- return bgs[type] || 'bg-gray-50';
- };
+  const timeAgo = (date) => {
+    const diff = Date.now() - date.getTime();
+    const mins = Math.floor(diff / 60000);
+    const hrs = Math.floor(mins / 60);
+    const days = Math.floor(hrs / 24);
+    if (days > 0) return `${days}d ago`;
+    if (hrs > 0) return `${hrs}h ago`;
+    if (mins > 0) return `${mins}m ago`;
+    return 'Just now';
+  };
 
- const formatTime = (ts) => {
- if (!ts) return 'Just now';
- const date = ts.toDate ? ts.toDate() : new Date(ts);
- const diff = Date.now() - date.getTime();
- const mins = Math.floor(diff / 60000);
- if (mins < 60) return `${mins}m ago`;
- const hours = Math.floor(mins / 60);
- if (hours < 24) return `${hours}h ago`;
- const days = Math.floor(hours / 24);
- return `${days}d ago`;
- };
+  if (loading) return <SkeletonList />;
 
- return (
- <div className="pb-4">
- <div className="px-4 pt-4 pb-3 flex items-center justify-between">
- <div className="flex items-center gap-3">
-   <button onClick={() => navigate(-1)} className="h-10 w-10 flex items-center justify-center -ml-2 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors">
-     <ChevronLeft className="h-6 w-6 text-[var(--text-primary)]" />
-   </button>
-   <div>
-     <h1 className="text-lg font-bold text-gray-900">Notifications</h1>
-     {unreadCount > 0 && <p className="text-xs text-[var(--text-muted)] mt-0.5">{unreadCount} unread</p>}
-   </div>
- </div>
- {unreadCount > 0 && (
- <Button variant="ghost" size="sm" onClick={markAllRead} className="text-teal-600"><CheckCheck className="h-4 w-4 mr-1" />Mark all read</Button>
- )}
- </div>
+  return (
+    <div style={{ padding: '16px', paddingBottom: '80px' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', padding: '0 8px 0 0' }}>←</button>
+          <h2 style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)', margin: 0 }}>
+            Notifications
+            {unreadCount > 0 && (
+              <span style={{ marginLeft: '8px', background: '#DC2626', color: 'white', borderRadius: '12px', padding: '2px 8px', fontSize: '12px' }}>
+                {unreadCount} new
+              </span>
+            )}
+          </h2>
+        </div>
+        {unreadCount > 0 && (
+          <button
+            onClick={markAllRead}
+            style={{ background: 'transparent', border: 'none', color: 'var(--accent-primary)', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
+          >
+            Mark all read
+          </button>
+        )}
+      </div>
 
- {loading ? (
- <div className="py-12 text-center text-gray-400"><div className="w-6 h-6 border-2 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />Loading...</div>
- ) : notifications.length === 0 ? (
- <div className="flex flex-col items-center justify-center py-20">
- <div className="h-20 w-20 rounded-full bg-gray-100 flex items-center justify-center mb-4"><BellOff className="h-8 w-8 text-gray-300" /></div>
- <p className="text-gray-400 font-medium">No notifications yet.</p>
- <p className="text-xs text-gray-300 mt-1">You're all caught up!</p>
- </div>
- ) : (
- <div className="divide-y divide-gray-50">
- {notifications.map(notif => (
- <div key={notif.id} onClick={() => markAsRead(notif.id)} className={`flex items-start gap-3 px-4 py-3.5 transition-colors cursor-pointer ${!notif.read ? 'bg-teal-50/50' : ''}`}>
- <div className={`h-9 w-9 rounded-full ${getIconBg(notif.type)} flex items-center justify-center flex-shrink-0 mt-0.5`}>{getIcon(notif.type)}</div>
- <div className="flex-1 min-w-0">
- <p className={`text-sm ${!notif.read ? 'text-gray-900 font-medium' : 'text-gray-600'}`}>{notif.message}</p>
- <p className="text-xs text-gray-400 mt-1">{formatTime(notif.createdAt)}</p>
- </div>
- {!notif.read && <div className="h-2 w-2 rounded-full bg-teal-500 flex-shrink-0 mt-2" />}
- </div>
- ))}
- </div>
- )}
- </div>
- );
+      {/* Empty State */}
+      {notifications.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+          <div style={{ fontSize: '48px' }}>🔔</div>
+          <p style={{ color: 'var(--text-secondary)', marginTop: '12px', fontSize: '15px' }}>
+            No notifications yet
+          </p>
+        </div>
+      )}
+
+      {/* Notification List */}
+      {notifications.map(notif => (
+        <div
+          key={notif.id}
+          onClick={() => markRead(notif.id)}
+          style={{
+            background: notif.read ? 'var(--bg-card)' : 'var(--accent-light)',
+            border: '1px solid',
+            borderColor: notif.read ? 'var(--border-primary)' : 'var(--accent-primary)',
+            borderRadius: '12px',
+            padding: '14px',
+            marginBottom: '10px',
+            cursor: 'pointer',
+            display: 'flex',
+            gap: '12px',
+            alignItems: 'flex-start',
+            position: 'relative'
+          }}
+        >
+          {/* Icon */}
+          <div style={{ fontSize: '24px', flexShrink: 0 }}>
+            {getIcon(notif.type)}
+          </div>
+
+          {/* Content */}
+          <div style={{ flex: 1, paddingRight: '20px' }}>
+            <p style={{ fontWeight: notif.read ? '400' : '600', color: 'var(--text-primary)', fontSize: '14px', marginBottom: '4px', margin: 0 }}>
+              {notif.title}
+            </p>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '13px', lineHeight: '1.4', margin: 0 }}>
+              {notif.body}
+            </p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '11px', marginTop: '6px', margin: 0 }}>
+              {timeAgo(notif.createdAt)}
+            </p>
+          </div>
+
+          {/* Unread dot */}
+          {!notif.read && (
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-primary)', flexShrink: 0, marginTop: '4px' }} />
+          )}
+
+          {/* Delete button */}
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              deleteNotif(notif.id);
+            }} 
+            style={{ position: 'absolute', right: '12px', top: '12px', background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '14px', padding: '4px' }}
+          >
+            ✕
+          </button>
+        </div>
+      ))}
+    </div>
+  );
 }

@@ -1,125 +1,85 @@
-import { useAuth } from './useAuth';
 import { useEffect, useState } from 'react';
+import { useAuth } from './useAuth';
 import {
+  collection,
+  deleteDoc,
+  doc,
   limit,
   onSnapshot,
   orderBy,
   query,
+  updateDoc
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { useRealtime } from '../context/RealtimeContext';
-import {
-  logError,
-  logFetch,
-  logInfo,
-  logSkip,
-  logSnapshot,
-} from '../lib/firestoreDebug';
-import {
-  addDocumentToCollection,
-  buildNotificationPayload,
-  getNotificationItemDoc,
-  getNotificationItemsCollection,
-  updateDocumentRef,
-} from '../lib/firestore-helpers';
 
-export function useNotifications() {
+export const useNotifications = () => {
   const { currentUser } = useAuth();
-  const userId = currentUser?.uid;
-  const realtime = useRealtime();
   const [notifications, setNotifications] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (realtime && userId) {
-      logInfo('useNotifications', 'Using realtime notifications:', realtime.notifications?.length || 0);
-      setNotifications(realtime.notifications || []);
-      setUnreadCount(realtime.unreadCount || 0);
-      setLoading(Boolean(realtime.loading?.notifications));
-      return undefined;
-    }
-
-    if (!userId) {
-      logSkip('useNotifications');
-      setNotifications([]);
-      setUnreadCount(0);
+    if (!currentUser?.uid) {
       setLoading(false);
-      return undefined;
+      return;
     }
 
-    logFetch('useNotifications', userId);
-
-    const notificationQuery = query(
-      getNotificationItemsCollection(db, userId),
+    const q = query(
+      collection(db, 'notifications', currentUser.uid, 'items'),
       orderBy('createdAt', 'desc'),
-      limit(50),
+      limit(50)
     );
 
-    const unsubscribe = onSnapshot(
-      notificationQuery,
-      (snapshot) => {
-        logSnapshot('useNotifications', snapshot);
-        const nextNotifications = snapshot.docs.map((notificationDoc) => ({
-          id: notificationDoc.id,
-          ...notificationDoc.data(),
+    const unsub = onSnapshot(q,
+      (snap) => {
+        const list = snap.docs.map(d => ({
+          id: d.id,
+          ...d.data(),
+          createdAt: d.data().createdAt?.toDate?.() || new Date()
         }));
-
-        setNotifications(nextNotifications);
-        setUnreadCount(nextNotifications.filter((notification) => !notification.read).length);
+        setNotifications(list);
+        setUnreadCount(list.filter(n => !n.read).length);
         setLoading(false);
       },
       (error) => {
-        logError('useNotifications', error);
+        console.error('Notif:', error);
         setLoading(false);
-      },
+      }
     );
 
-    return () => unsubscribe();
-  }, [realtime, userId]);
+    return unsub;
+  }, [currentUser?.uid]);
 
-  const markAsRead = async (notificationId) => {
-    if (!userId) {
-      return;
-    }
-
-    try {
-      return await updateDocumentRef(
-        getNotificationItemDoc(db, userId, notificationId),
-        { read: true },
-        { action: 'mark notification read', collectionName: 'notification_items' },
-      );
-    } catch (error) {
-      console.error('Notif update:', error);
-      return undefined;
-    }
+  const markRead = async (notifId) => {
+    if (!currentUser?.uid) return;
+    await updateDoc(
+      doc(db, 'notifications', currentUser.uid, 'items', notifId),
+      { read: true }
+    );
   };
 
   const markAllRead = async () => {
-    if (!userId) {
-      return;
-    }
-
-    try {
-      await Promise.all(
-        notifications
-          .filter((notification) => !notification.read)
-          .map((notification) => updateDocumentRef(
-            getNotificationItemDoc(db, userId, notification.id),
-            { read: true },
-            { action: 'mark notification read', collectionName: 'notification_items' },
-          )),
-      );
-    } catch (error) {
-      console.error('Notif update:', error);
-    }
+    if (!currentUser?.uid) return;
+    const unread = notifications.filter(n => !n.read);
+    await Promise.all(
+      unread.map(n => updateDoc(
+        doc(db, 'notifications', currentUser.uid, 'items', n.id),
+        { read: true }
+      ))
+    );
   };
 
-  const addNotification = async (targetUserId, notification) => addDocumentToCollection(
-    getNotificationItemsCollection(db, targetUserId),
-    buildNotificationPayload(notification),
-    { action: 'save notification', collectionName: 'notification_items' },
-  );
+  const deleteNotif = async (notifId) => {
+    if (!currentUser?.uid) return;
+    await deleteDoc(doc(db, 'notifications', currentUser.uid, 'items', notifId));
+  };
 
-  return { notifications, loading, unreadCount, markAsRead, markAllRead, addNotification };
-}
+  return {
+    notifications,
+    unreadCount,
+    loading,
+    markRead,
+    markAllRead,
+    deleteNotif
+  };
+};

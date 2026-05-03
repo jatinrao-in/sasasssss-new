@@ -1,4 +1,19 @@
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { db } from './firebase';
 import { securePost } from './secureApi';
+
+export const saveAppNotification = async (uid, payload) => {
+  if (!uid) return;
+  try {
+    await addDoc(collection(db, 'notifications', uid, 'items'), {
+      ...payload,
+      read: false,
+      createdAt: serverTimestamp()
+    });
+  } catch (err) {
+    console.error('Failed to save app notification:', err);
+  }
+};
 
 const formatDate = (date) => {
   if (!date) return 'Not set';
@@ -43,6 +58,12 @@ export const notifyTaskAssigned = async (member, task, project) => {
     return;
   }
 
+  await saveAppNotification(member.id || member.uid, {
+    title: 'New Task Assigned',
+    body: `${task.title} - Due ${formatDate(task.targetDate)}`,
+    type: 'task'
+  });
+
   await notify('task_assigned', {
     memberUid: member.id,
     whatsappNumber: member.whatsapp,
@@ -70,6 +91,12 @@ export const notifySalaryPaid = async (member, salary, month) => {
     console.log('Skip: salary not marked paid');
     return;
   }
+
+  await saveAppNotification(member.id || member.uid, {
+    title: 'Salary Paid',
+    body: `Salary of ${formatNumber(salary.netSalary)} paid for ${month}`,
+    type: 'salary'
+  });
 
   await notify('salary_paid', {
     memberUid: member.id,
@@ -109,6 +136,12 @@ export const notifyPaymentDue = async (member, payment) => {
     return;
   }
 
+  await saveAppNotification(member.id || member.uid, {
+    title: 'Payment Due',
+    body: `Payment due for ${payment.customerName} - Rs.${formatNumber(pendingAmount)}`,
+    type: 'payment'
+  });
+
   await notify('payment_due', {
     memberUid: member.id,
     whatsappNumber: member.whatsapp,
@@ -144,6 +177,12 @@ export const notifyTaskOverdue = async (member, task, project) => {
 
   const overdueDays = Math.max(0, Math.floor((Date.now() - target.getTime()) / 86400000));
 
+  await saveAppNotification(member.id || member.uid, {
+    title: 'Task Overdue',
+    body: `Task ${task.title} is overdue by ${overdueDays} days`,
+    type: 'task'
+  });
+
   await notify('task_overdue', {
     memberUid: member.id,
     whatsappNumber: member.whatsapp,
@@ -174,6 +213,12 @@ export const notifyRgpOverdue = async (member, rgp) => {
   }
 
   const openDays = Math.max(0, Math.floor((Date.now() - created.getTime()) / 86400000));
+
+  await saveAppNotification(member.id || member.uid, {
+    title: 'RGP Overdue',
+    body: `RGP ${rgp.docNumber} is overdue by ${openDays} days`,
+    type: 'rgp'
+  });
 
   await notify('rgp_overdue', {
     memberUid: member.id,
@@ -207,6 +252,12 @@ export const notifyToolNotReturned = async (member, tool) => {
 
   const days = Math.max(0, Math.floor((Date.now() - issued.getTime()) / 86400000));
 
+  await saveAppNotification(member.id || member.uid, {
+    title: 'Tool Not Returned',
+    body: `Tool ${tool.name} not returned for ${days} days`,
+    type: 'tool'
+  });
+
   await notify('tool_not_returned', {
     memberUid: member.id,
     whatsappNumber: member.whatsapp,
@@ -219,6 +270,13 @@ export const notifyToolNotReturned = async (member, tool) => {
 
 export const notifyEnquiryAssigned = async (member, enquiry) => {
   if (!member?.whatsapp) return;
+  
+  await saveAppNotification(member.id || member.uid, {
+    title: 'New Enquiry Assigned',
+    body: `${enquiry.companyName} - Due ${enquiry.targetDate ? formatDate(enquiry.targetDate) : 'Not set'}`,
+    type: 'enquiry'
+  });
+
   await notify('enquiry_assigned', {
     memberUid: member.id || member.uid,
     whatsappNumber: member.whatsapp,
@@ -231,6 +289,13 @@ export const notifyEnquiryAssigned = async (member, enquiry) => {
 
 export const notifyFollowupAssigned = async (member, followup) => {
   if (!member?.whatsapp) return;
+
+  await saveAppNotification(member.id || member.uid, {
+    title: 'New Followup Assigned',
+    body: `${followup.companyName} - Due ${followup.nextFollowupDate ? formatDate(followup.nextFollowupDate) : 'Not set'}`,
+    type: 'followup'
+  });
+
   await notify('followup_assigned', {
     memberUid: member.id || member.uid,
     whatsappNumber: member.whatsapp,
@@ -243,6 +308,13 @@ export const notifyFollowupAssigned = async (member, followup) => {
 
 export const notifyToolAssigned = async (member, tool) => {
   if (!member?.whatsapp) return;
+
+  await saveAppNotification(member.id || member.uid, {
+    title: 'New Tool Assigned',
+    body: `Tool ${tool.toolName} assigned`,
+    type: 'tool'
+  });
+
   await notify('tool_assigned', {
     memberUid: member.id || member.uid,
     whatsappNumber: member.whatsapp,
@@ -255,6 +327,13 @@ export const notifyToolAssigned = async (member, tool) => {
 
 export const notifyRgpAssigned = async (member, rgp) => {
   if (!member?.whatsapp) return;
+
+  await saveAppNotification(member.id || member.uid, {
+    title: 'New RGP Assigned',
+    body: `RGP ${rgp.docNumber} assigned`,
+    type: 'rgp'
+  });
+
   await notify('rgp_assigned', {
     memberUid: member.id || member.uid,
     whatsappNumber: member.whatsapp,
@@ -270,6 +349,13 @@ export const notifyRgpAssigned = async (member, rgp) => {
 export const notifyPaymentAssigned = async (member, payment) => {
   if (!member?.whatsapp) return;
   if (!payment?.customerName) return;
+
+  await saveAppNotification(member.id || member.uid, {
+    title: 'New Payment Assigned',
+    body: `Payment assigned for ${payment.customerName} - Rs.${Number(payment.amount || 0).toLocaleString('en-IN')}`,
+    type: 'payment'
+  });
+
   await notify('payment_assigned', {
     memberUid: member.id || member.uid,
     whatsappNumber: member.whatsapp,
