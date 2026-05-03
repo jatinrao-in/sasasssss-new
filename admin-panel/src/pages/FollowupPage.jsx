@@ -150,9 +150,63 @@ function FollowupModal({ onClose, onSubmit, members, editing }) {
  </div>
  </div>
  </div>
- );
+  );
 }
 
+function FollowupDetailPanel({ followup, onClose }) {
+ if (!followup) return null;
+ const statusColors = { open: 'badge-blue', overdue: 'badge-red', closed: 'badge-green' };
+ 
+ return (
+ <div className="fixed inset-0 z-50 flex items-end justify-end">
+ <div className="absolute inset-0 bg-black/20" onClick={onClose} />
+ <div className="relative bg-[var(--bg-card)] w-full max-w-md h-full shadow-2xl overflow-y-auto border-l border-gray-100" style={{ animation: 'slideInRight 0.3s ease-out' }}>
+ <div className="sticky top-0 bg-[var(--bg-card)] z-10 flex items-center justify-between px-6 py-4 border-b border-gray-100">
+ <h2 className="text-lg font-semibold text-gray-900">Follow-Up Details</h2>
+ <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100"><X className="w-4 h-4" /></button>
+ </div>
+ <div className="px-6 py-5 space-y-4">
+ <div className="flex items-center gap-3">
+ <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+ <Calendar className="w-5 h-5 text-blue-600" />
+ </div>
+ <div>
+ <p className="font-semibold text-gray-900">{followup.companyName || followup.customerName}</p>
+ <p className="text-xs text-gray-400">{followup.contactPerson ? `${followup.contactPerson} | ` : ''}{followup.contactPhone || followup.phone || 'No phone'}</p>
+ </div>
+ </div>
+ <div className="bg-gray-50 rounded-lg p-3">
+ <p className="text-[10px] text-gray-400 mb-1">Activity / Description</p>
+ <p className="text-sm font-semibold whitespace-pre-wrap">{followup.description || '-'}</p>
+ </div>
+ <div className="grid grid-cols-2 gap-3">
+ <div className="bg-gray-50 rounded-lg p-3"><p className="text-[10px] text-gray-400 mb-1">Type</p><p className="text-sm font-semibold">{followup.taskType || '-'}</p></div>
+ <div className="bg-gray-50 rounded-lg p-3"><p className="text-[10px] text-gray-400 mb-1">Status</p><p className="text-sm font-semibold"><span className={`badge ${statusColors[followup.status] || 'badge-gray'}`}>{followup.status}</span></p></div>
+ <div className="bg-gray-50 rounded-lg p-3"><p className="text-[10px] text-gray-400 mb-1">Assigned To</p><p className="text-sm font-semibold">{followup.assignedToName || '-'}</p></div>
+ <div className="bg-gray-50 rounded-lg p-3"><p className="text-[10px] text-gray-400 mb-1">Target Date</p><p className="text-sm font-semibold">{formatDate(followup.targetDate)}</p></div>
+ <div className="bg-gray-50 rounded-lg p-3"><p className="text-[10px] text-gray-400 mb-1">Next Followup Date</p><p className="text-sm font-semibold text-blue-600">{formatDate(followup.nextFollowupDate || followup.targetDate)}</p></div>
+ <div className="bg-gray-50 rounded-lg p-3"><p className="text-[10px] text-gray-400 mb-1">Reschedule Count</p><p className="text-sm font-semibold text-amber-600">{followup.rescheduleCount || 0}</p></div>
+ </div>
+ {followup.rescheduleReason && (
+ <div className="bg-amber-50 rounded-lg p-3 border border-amber-100"><p className="text-[10px] text-amber-600 mb-1">Last Reschedule Reason</p><p className="text-sm text-amber-900">{followup.rescheduleReason}</p></div>
+ )}
+ {followup.remarks && (
+ <div className="bg-teal-50 rounded-lg p-3 border border-teal-100">
+ <div className="flex justify-between items-center mb-1">
+   <p className="text-[10px] text-teal-600">Last Note</p>
+   <p className="text-[10px] text-teal-600">{followup.lastNoteBy || 'Member'} • {formatDate(followup.lastNoteDate)}</p>
+ </div>
+ <p className="text-sm text-teal-900 whitespace-pre-wrap">{followup.remarks}</p>
+ </div>
+ )}
+ {followup.notes && (
+ <div className="bg-gray-50 rounded-lg p-3"><p className="text-[10px] text-gray-400 mb-1">Admin Notes</p><p className="text-sm text-gray-600 whitespace-pre-wrap">{followup.notes}</p></div>
+ )}
+ </div>
+ </div>
+ </div>
+ );
+}
 
 export default function FollowupPage() {
  const toast = useToast();
@@ -165,6 +219,9 @@ export default function FollowupPage() {
  const [search, setSearch] = useState('');
  const [filterStatus, setFilterStatus] = useState('All');
  const [filterType, setFilterType] = useState('All');
+ const [filterMember, setFilterMember] = useState('All');
+ const [dateRange, setDateRange] = useState({ start: '', end: '' });
+ const [selectedFollowup, setSelectedFollowup] = useState(null);
  const [selectedFollowupIds, setSelectedFollowupIds] = useState([]);
   const [rescheduleItem, setRescheduleItem] = useState(null);
   const [newRescheduleDate, setNewRescheduleDate] = useState('');
@@ -182,9 +239,28 @@ export default function FollowupPage() {
  (f.taskType || '').toLowerCase().includes(search.toLowerCase());
  const matchStatus = filterStatus === 'All' || f.statusCategory === filterStatus;
  const matchType = filterType === 'All' || f.taskType === filterType;
- return matchSearch && matchStatus && matchType;
+ const matchMember = filterMember === 'All' || f.assignedTo === filterMember;
+
+ let matchDate = true;
+ if (dateRange.start || dateRange.end) {
+   const rawDate = f.nextFollowupDate || f.targetDate;
+   if (!rawDate) {
+     matchDate = false;
+   } else {
+     const target = typeof rawDate.toDate === 'function' ? rawDate.toDate() : new Date(rawDate);
+     if (!Number.isNaN(target.getTime())) {
+       const t = target.getTime();
+       if (dateRange.start && t < new Date(dateRange.start).getTime()) matchDate = false;
+       if (dateRange.end && t > new Date(dateRange.end).getTime() + 86400000) matchDate = false;
+     } else {
+       matchDate = false;
+     }
+   }
+ }
+
+ return matchSearch && matchStatus && matchType && matchMember && matchDate;
  });
- }, [followups, search, filterStatus, filterType]);
+ }, [followups, search, filterStatus, filterType, filterMember, dateRange]);
 
  const selectedFollowupSet = useMemo(() => new Set(selectedFollowupIds), [selectedFollowupIds]);
  const visibleFollowupIds = useMemo(() => filtered.map((followup) => followup.id), [filtered]);
@@ -404,10 +480,11 @@ export default function FollowupPage() {
 
  {/* Filters + View Toggle */}
  <div className="card py-3 px-4">
+ <div className="flex flex-col gap-3">
  <div className="flex items-center gap-3 flex-wrap">
- <div className="relative flex-1 max-w-xs">
+ <div className="relative flex-1 min-w-[200px] max-w-xs">
  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
- <input type="text" placeholder="Search company, contact, phone..." className="input-field pl-9 w-full"
+ <input type="text" placeholder="Search company, contact..." className="input-field pl-9 w-full"
  value={search} onChange={e => setSearch(e.target.value)} />
  </div>
  <select className="input-field w-32" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
@@ -418,6 +495,15 @@ export default function FollowupPage() {
  <option value="All">All Types</option>
  {FOLLOWUP_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
  </select>
+ <select className="input-field w-36" value={filterMember} onChange={e => setFilterMember(e.target.value)}>
+ <option value="All">All Members</option>
+ {activeMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+ </select>
+ <div className="flex items-center gap-2">
+ <input type="date" className="input-field w-32" value={dateRange.start} onChange={e => setDateRange({...dateRange, start: e.target.value})} title="Next Followup Start Date" />
+ <span className="text-gray-400">-</span>
+ <input type="date" className="input-field w-32" value={dateRange.end} onChange={e => setDateRange({...dateRange, end: e.target.value})} title="Next Followup End Date" />
+ </div>
  <span className="text-xs text-gray-400 ml-auto">{filtered.length} results</span>
  <div className="view-toggle">
  <button onClick={() => setView('table')} className={`view-toggle-btn ${view === 'table' ? 'active' : ''}`}>
@@ -426,6 +512,7 @@ export default function FollowupPage() {
  <button onClick={() => setView('calendar')} className={`view-toggle-btn ${view === 'calendar' ? 'active' : ''}`}>
  <Calendar className="w-3.5 h-3.5" /> Calendar
  </button>
+ </div>
  </div>
  </div>
  </div>
@@ -464,10 +551,16 @@ export default function FollowupPage() {
  title="Select all follow-ups"
  />
  </th>
- <th className="table-header">Company</th><th className="table-header">Task Type</th>
- <th className="table-header">Assigned</th><th className="table-header">Next Followup</th>
- <th className="table-header">Reschedules</th><th className="table-header">Outcome</th>
- <th className="table-header">Status</th><th className="table-header">Actions</th>
+ <th className="table-header">Company</th>
+ <th className="table-header">Task Type</th>
+ <th className="table-header">Assigned</th>
+ <th className="table-header">Target Date</th>
+ <th className="table-header">Next Followup</th>
+ <th className="table-header">Reschedules</th>
+ <th className="table-header">Last Note</th>
+ <th className="table-header">Outcome</th>
+ <th className="table-header">Status</th>
+ <th className="table-header">Actions</th>
  </tr></thead>
  <tbody>
  {filtered.map(f => (
@@ -538,17 +631,18 @@ export default function FollowupPage() {
   </div>
   </div>
   )}
- <DeleteConfirmDialog
- isOpen={deleteState.isOpen}
- onClose={handleClose}
- onConfirm={handleConfirm}
- title={deleteState.title}
- description={deleteState.description}
- isDeleting={deleteState.isDeleting}
- />
- </div>
- );
-}
+  <FollowupDetailPanel followup={selectedFollowup} onClose={() => setSelectedFollowup(null)} />
+  <DeleteConfirmDialog
+  isOpen={deleteState.isOpen}
+  onClose={handleClose}
+  onConfirm={handleConfirm}
+  title={deleteState.title}
+  description={deleteState.description}
+  isDeleting={deleteState.isDeleting}
+  />
+  </div>
+  );
+ }
 
 
 

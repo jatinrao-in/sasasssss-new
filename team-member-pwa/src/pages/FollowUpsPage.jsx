@@ -310,6 +310,7 @@ export default function FollowUpsPage() {
       await updateFollowUp(selectedFollowUp.id, {
         remarks: noteText.trim(),
         lastNoteDate: serverTimestamp(),
+        lastNoteBy: userData?.name || 'Unknown',
         updatedAt: serverTimestamp(),
       });
       toast.success('Note added successfully');

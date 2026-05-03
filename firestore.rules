@@ -40,6 +40,19 @@ service cloud.firestore {
       );
     }
 
+    match /followups/{followupId} {
+      allow read: if isAdmin() || request.auth.uid == resource.data.assignedTo;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        request.auth.uid == resource.data.assignedTo &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'outcome', 'closingNote', 'closedAt',
+          'nextFollowupDate', 'rescheduleCount', 'rescheduleReason',
+          'remarks', 'lastNoteDate', 'lastNoteBy', 'updatedAt'
+        ])
+      );
+    }
+
     match /{document=**} {
       allow read: if request.auth != null;
       allow write: if isAdmin(); // Default fallback: admins can write anything, others only read
