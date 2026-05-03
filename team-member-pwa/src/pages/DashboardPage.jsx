@@ -87,7 +87,7 @@ export default function DashboardPage() {
 
  <div className="px-4 mb-5">
  <div className="horizontal-scroll">
- {loading ? Array(4).fill(0).map((_, i) => (
+ {(tasksLoading || fuLoading || payLoading) ? Array(4).fill(0).map((_, i) => (
  <Card key={i} className="min-w-[140px]"><CardContent className="p-3.5"><div className="h-9 w-9 bg-gray-200 rounded-lg animate-pulse mb-2.5" /><div className="h-6 w-10 bg-gray-200 rounded animate-pulse mb-1" /><div className="h-3 w-16 bg-gray-100 rounded animate-pulse" /></CardContent></Card>
  )) : summaryCards.map((card, idx) => {
  const Icon = card.icon;
@@ -152,7 +152,7 @@ export default function DashboardPage() {
  <h2 className="text-base font-semibold text-[var(--text-primary)] flex items-center gap-2 mb-3"><Activity className="h-4 w-4 text-teal-600" />Recent Tasks</h2>
  <Card>
  <CardContent className="p-0 divide-y divide-gray-50">
- {myTasks.length === 0 ? (
+ {tasksLoading ? (<p className="text-center py-6 text-gray-400 text-sm">Loading tasks...</p>) : myTasks.length === 0 ? (
  <p className="text-center py-6 text-gray-400 text-sm">No tasks assigned yet</p>
  ) : myTasks.slice(0, 5).map(task => (
  <div key={task.id} className="flex items-start gap-3 px-3.5 py-3">
@@ -170,7 +170,7 @@ export default function DashboardPage() {
  <section className="px-4 mb-5">
  <h2 className="text-base font-semibold text-[var(--text-primary)] flex items-center gap-2 mb-3"><Folder className="h-4 w-4 text-teal-600" />My Projects</h2>
  <div className="horizontal-scroll pb-2">
- {loading ? Array(2).fill(0).map((_, i) => (
+ {projLoading ? Array(2).fill(0).map((_, i) => (
  <Card key={i} className="min-w-[240px] max-w-[280px]">
  <CardContent className="p-4">
  <div className="h-5 w-32 bg-gray-200 rounded animate-pulse mb-3" />
@@ -230,7 +230,7 @@ export default function DashboardPage() {
   {myPendingTools.length > 0 && <span className="text-xs bg-orange-100 text-orange-700 font-semibold px-2.5 py-1 rounded-full">{myPendingTools.length} Pending</span>}
   </div>
   <div className="space-y-2.5">
-  {loading ? Array(2).fill(0).map((_, i) => (
+  {toolsLoading ? Array(2).fill(0).map((_, i) => (
   <Card key={i}><CardContent className="p-3.5"><div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-2" /><div className="h-3 w-32 bg-gray-100 rounded animate-pulse" /></CardContent></Card>
   )) : myAllTools.length === 0 ? (
   <p className="text-center py-6 text-gray-400 text-sm">No tools assigned</p>
