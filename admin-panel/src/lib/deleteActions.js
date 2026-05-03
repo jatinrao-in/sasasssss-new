@@ -3,6 +3,8 @@ import {
   getDocs,
   query,
   where,
+  writeBatch,
+  doc,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import {
@@ -18,29 +20,31 @@ export async function deleteDocsByIds(collectionName, ids) {
 }
 
 export async function deleteProjectCascade(projectId) {
-  const tasksSnap = await getDocs(
-    query(collection(db, COLLECTIONS.tasks), where('projectId', '==', projectId)),
-  );
-  const expensesSnap = await getDocs(
-    query(collection(db, COLLECTIONS.expenses), where('projectId', '==', projectId)),
-  );
+  const batch = writeBatch(db);
 
-  await Promise.all([
-    ...tasksSnap.docs.map((taskDoc) => deleteDocumentRef(taskDoc.ref, { action: 'delete project task', collectionName: COLLECTIONS.tasks })),
-    ...expensesSnap.docs.map((expenseDoc) => deleteDocumentRef(expenseDoc.ref, { action: 'delete project expense', collectionName: COLLECTIONS.expenses })),
-    deleteDocument(db, COLLECTIONS.projects, projectId, 'delete project'),
+  const [tasksSnap, expensesSnap] = await Promise.all([
+    getDocs(query(collection(db, COLLECTIONS.tasks), where('projectId', '==', projectId))),
+    getDocs(query(collection(db, COLLECTIONS.expenses), where('projectId', '==', projectId)))
   ]);
+
+  tasksSnap.docs.forEach((taskDoc) => batch.delete(taskDoc.ref));
+  expensesSnap.docs.forEach((expenseDoc) => batch.delete(expenseDoc.ref));
+  batch.delete(doc(db, COLLECTIONS.projects, projectId));
+
+  await batch.commit();
 }
 
 export async function deleteTaskCascade(taskId, projectId = null) {
+  const batch = writeBatch(db);
+
   const expensesSnap = await getDocs(
     query(collection(db, COLLECTIONS.expenses), where('taskId', '==', taskId)),
   );
 
-  await Promise.all([
-    ...expensesSnap.docs.map((expenseDoc) => deleteDocumentRef(expenseDoc.ref, { action: 'delete task expense', collectionName: COLLECTIONS.expenses })),
-    deleteDocument(db, COLLECTIONS.tasks, taskId, 'delete task'),
-  ]);
+  expensesSnap.docs.forEach((expenseDoc) => batch.delete(expenseDoc.ref));
+  batch.delete(doc(db, COLLECTIONS.tasks, taskId));
+
+  await batch.commit();
 
   if (projectId) {
     await Promise.all([
