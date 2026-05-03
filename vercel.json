@@ -17,7 +17,7 @@
     }
   ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/api/(.*)", "dest": "/api/$1.js" },
     { "src": "/admin", "headers": { "Location": "/admin/" }, "status": 308 },
     { "src": "/admin/assets/(.*)", "dest": "/admin-panel/assets/$1" },
     { "src": "/admin/(.*\\..*)", "dest": "/admin-panel/$1" },
