@@ -583,7 +583,7 @@ export default function TeamPage() {
 
     confirmDelete({
       title: `Delete ${normalizeRole(member.role) === 'admin' ? 'Admin Account' : 'Team Member'}`,
-      description: `Delete "${member.name}" permanently? This removes them from Firebase Auth AND Firestore. Their assigned tasks will become unassigned. This cannot be undone.`,
+      description: `Permanently delete "${member.name}"? Their email cannot be reused. This removes them from Firebase Auth AND Firestore. Their assigned tasks will become unassigned. This cannot be undone.`,
       onConfirm: async () => {
         // Unassign all tasks first
         const taskSnapshot = await getDocs(

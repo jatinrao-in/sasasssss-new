@@ -87,6 +87,13 @@ export default async function handler(req, res) {
       authUpdates.password = password;
     }
 
+    if (status) {
+      const parsedStatus = normalizeStatus(status);
+      if (parsedStatus !== normalizeStatus(existingUser.status)) {
+        authUpdates.disabled = parsedStatus === 'inactive';
+      }
+    }
+
     if (Object.keys(authUpdates).length > 0) {
       await auth.updateUser(uid, authUpdates);
     }

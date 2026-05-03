@@ -44,6 +44,13 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
     }
 
+    // Check Blacklist
+    const emailToUse = email.trim().toLowerCase();
+    const blacklistDoc = await db.doc(`blacklisted_emails/${emailToUse}`).get();
+    if (blacklistDoc.exists) {
+      return res.status(400).json({ error: 'This email was previously deleted and cannot be reused. Use a different email address.' });
+    }
+
     // Create Firebase Auth user
     let newUser;
     try {

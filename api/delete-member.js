@@ -26,6 +26,16 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Cannot delete your own account' });
     }
 
+    // 1. Get user data to find the email
+    const userRef = db.doc(`users/${uid}`);
+    const userSnap = await userRef.get();
+    
+    if (!userSnap.exists) {
+      return res.status(404).json({ error: 'User not found in Firestore' });
+    }
+    const userData = userSnap.data();
+    const emailToBlacklist = userData.email;
+
     const deleteLog = {
       uid,
       authDeleted: false,
@@ -33,9 +43,26 @@ export default async function handler(req, res) {
       notificationsDeleted: 0,
       salaryDeleted: 0,
       tasksUnassigned: 0,
+      emailBlacklisted: false,
     };
 
-    // 1. Delete from Firebase Auth
+    // 2. Add email to blacklist
+    if (emailToBlacklist) {
+      try {
+        await db.doc(`blacklisted_emails/${emailToBlacklist}`).set({
+          email: emailToBlacklist,
+          deletedAt: new Date(),
+          deletedBy: authContext.decodedToken.uid,
+          uid: uid
+        });
+        deleteLog.emailBlacklisted = true;
+      } catch (blacklistErr) {
+        console.error('Blacklist error:', blacklistErr.message);
+        throw new Error('Failed to blacklist email. Aborting deletion to prevent re-registration.');
+      }
+    }
+
+    // 3. Delete from Firebase Auth
     try {
       await auth.deleteUser(uid);
       deleteLog.authDeleted = true;
@@ -44,9 +71,9 @@ export default async function handler(req, res) {
       console.warn('Auth deleteUser skipped:', authErr.message);
     }
 
-    // 2. Delete Firestore user document
+    // 4. Delete Firestore user document
     try {
-      await db.doc(`users/${uid}`).delete();
+      await userRef.delete();
       deleteLog.firestoreDeleted = true;
     } catch (fsErr) {
       console.error('Firestore user delete error:', fsErr.message);
