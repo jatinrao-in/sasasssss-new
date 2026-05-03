@@ -207,6 +207,8 @@ export default function EnquiryPage() {
  const [search, setSearch] = useState('');
  const [filterStatus, setFilterStatus] = useState('All');
  const [filterType, setFilterType] = useState('All');
+ const [filterMember, setFilterMember] = useState('All');
+ const [dateRange, setDateRange] = useState({ start: '', end: '' });
  const [selectedEnquiry, setSelectedEnquiry] = useState(null);
  const [selectedEnquiryIds, setSelectedEnquiryIds] = useState([]);
  const [showAnalytics, setShowAnalytics] = useState(false);
@@ -223,9 +225,27 @@ export default function EnquiryPage() {
  (e.contactPhone || '').includes(search);
  const matchStatus = filterStatus === 'All' || e.statusCategory === filterStatus;
  const matchType = filterType === 'All' || e.taskType === filterType;
- return matchSearch && matchStatus && matchType;
+ const matchMember = filterMember === 'All' || e.assignedTo === filterMember;
+ 
+ let matchDate = true;
+ if (dateRange.start || dateRange.end) {
+   if (!e.targetDate) {
+     matchDate = false;
+   } else {
+     const target = typeof e.targetDate.toDate === 'function' ? e.targetDate.toDate() : new Date(e.targetDate);
+     if (!Number.isNaN(target.getTime())) {
+       const t = target.getTime();
+       if (dateRange.start && t < new Date(dateRange.start).getTime()) matchDate = false;
+       if (dateRange.end && t > new Date(dateRange.end).getTime() + 86400000) matchDate = false;
+     } else {
+       matchDate = false;
+     }
+   }
+ }
+
+ return matchSearch && matchStatus && matchType && matchMember && matchDate;
  });
- }, [enquiries, search, filterStatus, filterType]);
+ }, [enquiries, search, filterStatus, filterType, filterMember, dateRange]);
 
  const selectedEnquirySet = useMemo(() => new Set(selectedEnquiryIds), [selectedEnquiryIds]);
  const visibleEnquiryIds = useMemo(() => filtered.map((enquiry) => enquiry.id), [filtered]);
@@ -483,10 +503,11 @@ export default function EnquiryPage() {
 
  {/* Filters + View Toggle */}
  <div className="card py-3 px-4">
+ <div className="flex flex-col gap-3">
  <div className="flex items-center gap-3 flex-wrap">
- <div className="relative flex-1 max-w-xs">
+ <div className="relative flex-1 min-w-[200px] max-w-xs">
  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
- <input type="text" placeholder="Search company, contact, phone..." className="input-field pl-9 w-full"
+ <input type="text" placeholder="Search company, contact..." className="input-field pl-9 w-full"
  value={search} onChange={e => setSearch(e.target.value)} />
  </div>
  <select className="input-field w-32" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
@@ -497,6 +518,15 @@ export default function EnquiryPage() {
  <option value="All">All Types</option>
  {ENQUIRY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
  </select>
+ <select className="input-field w-36" value={filterMember} onChange={e => setFilterMember(e.target.value)}>
+ <option value="All">All Members</option>
+ {activeMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+ </select>
+ <div className="flex items-center gap-2">
+ <input type="date" className="input-field w-32" value={dateRange.start} onChange={e => setDateRange({...dateRange, start: e.target.value})} title="Target Start Date" />
+ <span className="text-gray-400">-</span>
+ <input type="date" className="input-field w-32" value={dateRange.end} onChange={e => setDateRange({...dateRange, end: e.target.value})} title="Target End Date" />
+ </div>
  <span className="text-xs text-gray-400 ml-auto">{filtered.length} results</span>
  <div className="view-toggle">
  <button onClick={() => setView('table')} className={`view-toggle-btn ${view === 'table' ? 'active' : ''}`}>
@@ -505,6 +535,7 @@ export default function EnquiryPage() {
  <button onClick={() => setView('kanban')} className={`view-toggle-btn ${view === 'kanban' ? 'active' : ''}`}>
  <Columns3 className="w-3.5 h-3.5" /> Pipeline
  </button>
+ </div>
  </div>
  </div>
  </div>
