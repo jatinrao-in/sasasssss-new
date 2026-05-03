@@ -206,7 +206,7 @@ export function RealtimeProvider({ children }) {
       ref: query(
         collection(db, COLLECTIONS.tools),
         where('assignedTo', '==', uid),
-        where('returnStatus', '==', 'pending'),
+        orderBy('createdAt', 'desc'),
       ),
     });
 
