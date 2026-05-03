@@ -46,7 +46,6 @@ export function useTools() {
     const ref = query(
       collection(db, COLLECTIONS.tools),
       where('assignedTo', '==', currentUser?.uid),
-      where('returnStatus', '==', 'pending'),
     );
 
     const unsubscribe = onSnapshot(

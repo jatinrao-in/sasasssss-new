@@ -38,6 +38,7 @@ export default function DashboardPage() {
  const myProjectIds = [...new Set(myTasks.filter(t => t.projectId).map(t => t.projectId))];
  const myProjects = projects.filter(p => myProjectIds.includes(p.id));
  const myPendingTools = tools.filter(t => t.returnStatus === 'pending');
+ const myAllTools = tools;
 
  const loading = tasksLoading || fuLoading || payLoading || projLoading || toolsLoading;
 
@@ -223,38 +224,41 @@ export default function DashboardPage() {
  </div>
  </section>
 
- <section className="px-4 mb-5">
- <h2 className="text-base font-semibold text-[var(--text-primary)] flex items-center gap-2 mb-3"><Wrench className="h-4 w-4 text-teal-600" />Assigned Tools</h2>
- <div className="space-y-2.5">
- {loading ? Array(2).fill(0).map((_, i) => (
- <Card key={i}>
- <CardContent className="p-3.5 flex items-center justify-between">
- <div>
- <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-2" />
- <div className="h-3 w-32 bg-gray-100 rounded animate-pulse" />
- </div>
- <div className="h-6 w-16 bg-gray-200 rounded-full animate-pulse" />
- </CardContent>
- </Card>
- )) : myPendingTools.length === 0 ? (
- <p className="text-center py-6 text-gray-400 text-sm">No tools currently assigned</p>
- ) : myPendingTools.map(tool => {
- const daysSinceAssigned = tool.createdAt ? Math.floor((new Date() - tool.createdAt.toDate()) / (1000 * 60 * 60 * 24)) : 0;
- return (
- <Card key={tool.id} className="hover:shadow-card-hover transition-shadow">
- <CardContent className="p-3.5 flex items-center justify-between">
- <div>
- <p className="font-semibold text-sm text-[var(--text-primary)]">{tool.toolName}</p>
- <p className="text-xs text-[var(--text-muted)] mt-1">Handed over: {tool.createdAt ? formatDate(tool.createdAt) : 'Unknown'}</p>
- <p className="text-[10px] text-gray-400 mt-0.5">Assigned {daysSinceAssigned} days ago</p>
- </div>
- <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100 flex-shrink-0">Pending</Badge>
- </CardContent>
- </Card>
- );
- })}
- </div>
- </section>
+  <section className="px-4 mb-5">
+  <div className="flex items-center justify-between mb-3">
+  <h2 className="text-base font-semibold text-[var(--text-primary)] flex items-center gap-2"><Wrench className="h-4 w-4 text-teal-600" />My Assigned Tools</h2>
+  {myPendingTools.length > 0 && <span className="text-xs bg-orange-100 text-orange-700 font-semibold px-2.5 py-1 rounded-full">{myPendingTools.length} Pending</span>}
+  </div>
+  <div className="space-y-2.5">
+  {loading ? Array(2).fill(0).map((_, i) => (
+  <Card key={i}><CardContent className="p-3.5"><div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-2" /><div className="h-3 w-32 bg-gray-100 rounded animate-pulse" /></CardContent></Card>
+  )) : myAllTools.length === 0 ? (
+  <p className="text-center py-6 text-gray-400 text-sm">No tools assigned</p>
+  ) : myAllTools.map(tool => {
+  const handedDate = tool.handedOverDate?.toDate ? tool.handedOverDate.toDate() : (tool.createdAt?.toDate ? tool.createdAt.toDate() : new Date(tool.handedOverDate || tool.createdAt));
+  const daysSince = handedDate && !isNaN(handedDate.getTime()) ? Math.floor((new Date() - handedDate) / 864e5) : 0;
+  const isPending = tool.returnStatus === 'pending';
+  return (
+  <Card key={tool.id} className={`${isPending ? 'border-orange-100' : 'border-green-100'}`}>
+  <CardContent className="p-3.5">
+  <div className="flex items-start justify-between mb-2">
+  <p className="font-semibold text-sm text-[var(--text-primary)]">{tool.toolName}</p>
+  <Badge className={isPending ? 'bg-orange-100 text-orange-700 hover:bg-orange-100' : 'bg-green-100 text-green-700 hover:bg-green-100'}>
+  {isPending ? 'Pending' : 'Returned'}
+  </Badge>
+  </div>
+  <div className="space-y-1">
+  <p className="text-xs text-[var(--text-muted)]">Handed over: {handedDate && !isNaN(handedDate.getTime()) ? handedDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Unknown'}</p>
+  <p className="text-xs text-[var(--text-muted)]">Days since issue: <span className={`font-semibold ${daysSince > 30 ? 'text-red-500' : daysSince > 15 ? 'text-amber-500' : 'text-gray-700'}`}>{daysSince} days</span></p>
+  {tool.condition && <p className="text-xs text-[var(--text-muted)]">Condition: <span className="font-medium text-gray-700">{tool.condition}</span></p>}
+  {tool.notes && <p className="text-xs text-gray-400 italic mt-1">{tool.notes}</p>}
+  </div>
+  </CardContent>
+  </Card>
+  );
+  })}
+  </div>
+  </section>
  </div>
  );
 }
