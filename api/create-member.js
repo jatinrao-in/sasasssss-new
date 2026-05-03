@@ -121,6 +121,9 @@ export default async function handler(req, res) {
         await sendWelcomeMessage(
           whatsapp.trim(),
           name.trim(),
+          email.trim().toLowerCase(),
+          'Ask admin for password',
+          'sasasssss.vercel.app'
         );
       } catch (msgErr) {
         console.warn('Welcome WhatsApp skipped:', msgErr.message);

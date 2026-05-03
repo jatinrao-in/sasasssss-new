@@ -764,6 +764,48 @@ export default function WhatsAppAutomationPage() {
     }
   };
 
+  const handleSendEveningUpdate = async () => {
+    if (isBalanceDepleted) {
+      toast.error('WhatsApp messages paused. Balance is Rs.0. Add balance to continue.');
+      return;
+    }
+
+    setSending(true);
+    try {
+      const response = await fetch('/api/cron/send-reminders?slot=evening&force=1', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${await currentUser.getIdToken()}`,
+        },
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to send evening update');
+      }
+
+      toast.success(`Evening update sent to ${result.results?.sent || 0} users.`);
+      
+      if (result.results?.logs) {
+        setSendResults(result.results.logs.map(log => ({
+          memberName: log.name,
+          status: log.status,
+          error: log.error || log.reason
+        })));
+        setSendSummary({
+          sent: result.results.sent || 0,
+          failed: result.results.failed || 0,
+          total: (result.results.sent || 0) + (result.results.failed || 0)
+        });
+        setResultsOpen(true);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setSending(false);
+    }
+  };
+
   const handleExportLogs = () => {
     exportCSV(
       filteredLogs.map((item) => ({
@@ -890,6 +932,13 @@ export default function WhatsAppAutomationPage() {
               <button type="button" className="btn-secondary justify-center" onClick={() => setHistoryOpen(true)}>
                 <History className="h-4 w-4" />
                 Payment History
+              </button>
+              <button type="button" className="btn-primary justify-center bg-indigo-600 hover:bg-indigo-700" disabled={sending} onClick={handleSendEveningUpdate}>
+                {sending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                {sending ? 'Sending...' : 'Send Evening Update Now'}
+              </button>
+              <button type="button" className="btn-secondary justify-center" onClick={() => window.open('https://sasasssss.vercel.app', '_blank')}>
+                Open App
               </button>
             </div>
           </div>

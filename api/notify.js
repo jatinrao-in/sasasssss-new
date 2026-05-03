@@ -12,7 +12,6 @@ import {
   sendPaymentReminder,
   sendRgpReminder,
   sendToolReturn,
-  sendToolAssigned,
   sendDailyReminder,
 } from '../server/whatsapp/msg91.js';
 
@@ -90,14 +89,19 @@ async function dispatchWhatsApp(eventType, context) {
         context.overdueDays ?? 0,
       );
 
-    case 'salary_paid':
+    case 'salary_paid': {
+      const amt = stripCurrencyPrefix(context.netSalary) || '0';
+      if (Number(amt) <= 0) {
+        return { success: true, message: 'Skipped - amount is 0' };
+      }
       return sendSalaryCredited(
         to,
         context.memberName,
-        stripCurrencyPrefix(context.netSalary) || '0',
+        amt,
         context.month       || '',
         context.paidDate    || new Date().toLocaleDateString('en-IN'),
       );
+    }
 
     case 'payment_due':
       return sendPaymentReminder(
@@ -181,11 +185,12 @@ async function dispatchWhatsApp(eventType, context) {
       );
 
     case 'tool_assigned':
-      return sendToolAssigned(
+      return sendToolReturn(
         to,
         context.memberName,
         context.toolName || '',
         context.issuedDate || new Date().toLocaleDateString('en-IN'),
+        0
       );
 
 

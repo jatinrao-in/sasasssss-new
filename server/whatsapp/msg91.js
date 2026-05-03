@@ -102,79 +102,72 @@ async function sendTemplate(toNumber, templateName, variables) {
 
 // ─── Template-specific helpers ──────────────────────────────────────────────
 
+const S = (val) => String(val ?? '') || 'N/A';
+
 /**
- * 1. general_message — {{1}} name, {{2}} message
+ * 1. welcome_message — {{1}}name {{2}}email {{3}}password {{4}}appURL
  */
-export async function sendGeneralMessage(toNumber, memberName, message) {
-  return sendTemplate(toNumber, 'general_message', [memberName, message]);
+export async function sendWelcomeMessage(toNumber, memberName, email, password, appURL) {
+  return sendTemplate(toNumber, 'welcome_message', [S(memberName), S(email), S(password), S(appURL)]);
 }
 
 /**
- * 2. daily_reminder — {{1}} name, {{2}} pendingTasks, {{3}} overdueTasks
+ * 2. tool_return — {{1}}name {{2}}toolName {{3}}issuedDate {{4}}daysSinceIssue
  */
-export async function sendDailyReminder(toNumber, memberName, pendingTasks, overdueTasks) {
-  return sendTemplate(toNumber, 'daily_reminder', [memberName, String(pendingTasks), String(overdueTasks)]);
+export async function sendToolReturn(toNumber, memberName, toolName, issuedDate, daysSinceIssue) {
+  return sendTemplate(toNumber, 'tool_return', [S(memberName), S(toolName), S(issuedDate), S(daysSinceIssue)]);
 }
 
 /**
- * 3. salary_credited — {{1}} name, {{2}} amount, {{3}} month, {{4}} paymentDate
+ * 3. rgp_reminder — {{1}}name {{2}}docNumber {{3}}fromCompany {{4}}toCompany {{5}}daysOpen
  */
-export async function sendSalaryCredited(toNumber, memberName, amount, month, paymentDate) {
-  return sendTemplate(toNumber, 'salary_credited', [memberName, amount, month, paymentDate]);
+export async function sendRgpReminder(toNumber, memberName, docNumber, fromCompany, toCompany, daysOpen) {
+  return sendTemplate(toNumber, 'rgp_reminder', [S(memberName), S(docNumber), S(fromCompany), S(toCompany), S(daysOpen)]);
 }
 
 /**
- * 4. task_assigned — {{1}} name, {{2}} taskName, {{3}} projectName, {{4}} deadline
+ * 4. payment_reminder — {{1}}name {{2}}clientName {{3}}invoiceNumber {{4}}pendingAmount
+ */
+export async function sendPaymentReminder(toNumber, memberName, clientName, invoiceNumber, pendingAmount) {
+  return sendTemplate(toNumber, 'payment_reminder', [S(memberName), S(clientName), S(invoiceNumber), S(pendingAmount)]);
+}
+
+/**
+ * 5. task_assigned — {{1}}name {{2}}taskName {{3}}projectName {{4}}deadline
  */
 export async function sendTaskAssigned(toNumber, memberName, taskName, projectName, deadline) {
-  return sendTemplate(toNumber, 'task_assigned', [memberName, taskName, projectName, deadline]);
+  return sendTemplate(toNumber, 'task_assigned', [S(memberName), S(taskName), S(projectName), S(deadline)]);
 }
 
 /**
- * 5. task_overdue — {{1}} name, {{2}} taskName, {{3}} projectName, {{4}} overdueDays
+ * 6. task_overdue — {{1}}name {{2}}taskName {{3}}projectName {{4}}overdueDays
  */
 export async function sendTaskOverdue(toNumber, memberName, taskName, projectName, overdueDays) {
-  return sendTemplate(toNumber, 'task_overdue', [memberName, taskName, projectName, String(overdueDays)]);
+  return sendTemplate(toNumber, 'task_overdue', [S(memberName), S(taskName), S(projectName), S(overdueDays)]);
 }
 
 /**
- * 6. payment_reminder — {{1}} name, {{2}} customerName, {{3}} invoiceNo, {{4}} amount
+ * 7. salary_credited — {{1}}name {{2}}netSalary {{3}}month {{4}}paidDate
  */
-export async function sendPaymentReminder(toNumber, memberName, customerName, invoiceNo, amount) {
-  return sendTemplate(toNumber, 'payment_reminder', [memberName, customerName, invoiceNo, String(amount)]);
+export async function sendSalaryCredited(toNumber, memberName, netSalary, month, paidDate) {
+  return sendTemplate(toNumber, 'salary_credited', [S(memberName), S(netSalary), S(month), S(paidDate)]);
 }
 
 /**
- * 7. rgp_reminder — {{1}} name, {{2}} docNumber, {{3}} fromCompany, {{4}} toCompany, {{5}} openDays
+ * 8. daily_reminder — {{1}}name {{2}}pendingTasks {{3}}overdueTasks
  */
-export async function sendRgpReminder(toNumber, memberName, docNumber, fromCompany, toCompany, openDays) {
-  return sendTemplate(toNumber, 'rgp_reminder', [memberName, docNumber, fromCompany, toCompany, String(openDays)]);
+export async function sendDailyReminder(toNumber, memberName, pendingTasks, overdueTasks) {
+  // Never send null/undefined. Default to "0" if falsy but allow "0".
+  const pt = pendingTasks ?? 0;
+  const ot = overdueTasks ?? 0;
+  return sendTemplate(toNumber, 'daily_reminder', [S(memberName), String(pt), String(ot)]);
 }
 
 /**
- * 8. tool_return — {{1}} name, {{2}} toolName, {{3}} issuedDate, {{4}} days
+ * 9. general_message — {{1}}name {{2}}summary
  */
-export async function sendToolReturn(toNumber, memberName, toolName, issuedDate, days) {
-  return sendTemplate(toNumber, 'tool_return', [memberName, toolName, issuedDate, String(days)]);
-}
-
-/**
- * 10. tool_assigned — reuses task_assigned template: {{1}} name, {{2}} toolName, {{3}} 'Tool Department', {{4}} issuedDate
- */
-export async function sendToolAssigned(toNumber, memberName, toolName, issuedDate) {
-  return sendTemplate(toNumber, 'task_assigned', [memberName, toolName, 'Tool Department', issuedDate]);
-}
-
-/**
- * 9. welcome_message — {{1}} name
- */
-export async function sendWelcomeMessage(toNumber, memberName) {
-  return sendTemplate(toNumber, 'welcome_message', [memberName]);
-}
-
-// Legacy wrapper — kept for backward compatibility with old callers
-export async function sendViaMsg91(toNumber, message) {
-  return sendGeneralMessage(toNumber, '', message);
+export async function sendGeneralMessage(toNumber, memberName, summary) {
+  return sendTemplate(toNumber, 'general_message', [S(memberName), S(summary)]);
 }
 
 export { handleConfigError };

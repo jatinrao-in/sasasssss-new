@@ -2,49 +2,31 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { handleCors } from '../../server/cors.js';
 import { requireEnv } from '../../server/config.js';
 import { getAdminServices } from '../../server/firebaseAdmin.js';
+import { verifyFirebaseRequest, requireAdmin } from '../../server/auth.js';
+import { assertWhatsAppBalance, recordSuccessfulWhatsAppSend } from '../../server/whatsapp/balance.js';
 import {
-  buildDayRangeIst,
-  formatIstDate,
-  formatIstTime,
-  getCompanyName,
-  getTeamSummaryContext,
-  mergeAutomationSettings,
-} from '../../server/whatsapp/automation.js';
-import {
-  handleConfigError,
   sendDailyReminder,
   sendGeneralMessage,
+  sendTaskOverdue,
+  sendToolReturn,
+  sendRgpReminder,
+  sendPaymentReminder
 } from '../../server/whatsapp/msg91.js';
-import { assertWhatsAppBalance, recordSuccessfulWhatsAppSend } from '../../server/whatsapp/balance.js';
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function getSlotConfig(slot, settings) {
-  if (slot === 'morning') {
-    return {
-      enabled: Boolean(settings.morningEnabled),
-      time: settings.morningTime,
-    };
-  }
-  if (slot === 'evening') {
-    return {
-      enabled: Boolean(settings.eveningEnabled),
-      time: settings.eveningTime,
-    };
-  }
-  const error = new Error('slot must be "morning" or "evening"');
-  error.statusCode = 400;
-  throw error;
 }
 
 function readCronSecret(req) {
   return String(req.headers.authorization || req.headers['x-cron-secret'] || '').trim();
 }
 
-function shouldBypassTimeCheck(req) {
-  return String(req.query?.force || '').trim() === '1';
+function calcDaysOpen(dateObj) {
+  if (!dateObj) return 0;
+  const target = dateObj.toDate ? dateObj.toDate() : new Date(dateObj);
+  const now = new Date();
+  const diffTime = Math.abs(now - target);
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 }
 
 export default async function handler(req, res) {
@@ -56,302 +38,197 @@ export default async function handler(req, res) {
 
   try {
     const { CRON_SECRET } = requireEnv(['CRON_SECRET']);
+    let isAdmin = false;
+    
+    if (readCronSecret(req) === `Bearer ${CRON_SECRET}`) {
+      isAdmin = true;
+    } else {
+      try {
+        const authContext = await verifyFirebaseRequest(req);
+        requireAdmin(authContext);
+        isAdmin = true;
+      } catch (err) {
+        isAdmin = false;
+      }
+    }
 
-    if (readCronSecret(req) !== `Bearer ${CRON_SECRET}`) {
+    if (!isAdmin) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const { db } = getAdminServices();
     const slot = String(req.query?.slot || '').trim().toLowerCase();
 
-    const [settingsDoc, companyDoc, runtimeDoc] = await Promise.all([
-      db.doc('settings/whatsapp_automation').get(),
-      db.doc('settings/company').get(),
-      db.doc('settings/whatsapp_automation_runtime').get(),
-    ]);
-
-    if (!settingsDoc.exists) {
-      return res.status(200).json({ success: true, message: 'No WhatsApp automation settings configured' });
+    if (slot !== 'morning' && slot !== 'evening') {
+      return res.status(400).json({ error: 'slot must be "morning" or "evening"' });
     }
-
-    const settings = mergeAutomationSettings(settingsDoc.data());
-    const slotConfig = getSlotConfig(slot, settings);
-
-    if (!slotConfig.enabled) {
-      return res.status(200).json({ success: true, slot, message: `${slot} reminder disabled` });
-    }
-
-    const now = new Date();
-    const currentIstTime = formatIstTime(now);
-    const currentIstDate = formatIstDate(now);
-
-    if (!shouldBypassTimeCheck(req) && currentIstTime !== slotConfig.time) {
-      return res.status(200).json({
-        success: true,
-        slot,
-        message: `Current IST time ${currentIstTime} does not match scheduled time ${slotConfig.time}`,
-      });
-    }
-
-    const runtimeData = runtimeDoc.exists ? runtimeDoc.data() : {};
-    if (!shouldBypassTimeCheck(req) && runtimeData?.lastRunDates?.[slot] === currentIstDate) {
-      return res.status(200).json({
-        success: true,
-        slot,
-        message: `${slot} reminders already processed for ${currentIstDate}`,
-      });
-    }
-
-    const companyName = getCompanyName(companyDoc);
-
-    const usersSnap = await db.collection('users')
-      .where('role', '==', 'member')
-      .where('status', '==', 'active')
-      .get();
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const memberResults = [];
+    const usersSnap = await db.collection('users').where('status', '==', 'active').get();
+    const allUsers = usersSnap.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
 
-    for (const userDoc of usersSnap.docs) {
-      const user = { uid: userDoc.id, ...userDoc.data() };
+    const members = allUsers.filter(u => u.role === 'member');
+    const admins = allUsers.filter(u => u.role === 'admin');
 
-      if (!user.whatsapp) {
-        memberResults.push({
-          memberName: user.name || 'Unknown',
-          memberUid: userDoc.id,
-          phone: '',
-          status: 'skipped',
-          error: 'No WhatsApp number',
-        });
-        continue;
+    const results = { sent: 0, failed: 0, logs: [] };
+
+    const logAndRecord = async (user, template, sendFn, ...args) => {
+      if (!user.whatsapp || String(user.whatsapp).length < 10) {
+        results.logs.push({ name: user.name, status: 'skipped', reason: 'Invalid or missing whatsapp' });
+        return;
       }
-
-      let availableBalanceForSend;
       try {
-        availableBalanceForSend = await assertWhatsAppBalance(db, 1);
-      } catch (error) {
-        if (error.statusCode === 402) {
-          await db.collection('whatsapp_logs').add({
-            to: user.whatsapp || '',
-            memberName: user.name || 'Unknown',
-            memberUid: userDoc.id,
-            messageType: slot,
-            template: 'daily_reminder',
-            status: 'failed',
-            error: error.message,
-            sentAt: Timestamp.now(),
-          }).catch(() => {});
-
-          memberResults.push({
-            memberName: user.name || 'Unknown',
-            memberUid: userDoc.id,
-            phone: user.whatsapp || '',
-            status: 'failed',
-            error: error.message,
-          });
-          continue;
-        }
-
-        throw error;
-      }
-
-      try {
-        // Count tasks
-        const tasksSnap = await db.collection('tasks').where('assignedTo', '==', userDoc.id).get();
-        const tasks = tasksSnap.docs.map((d) => d.data());
-        let pendingTasks = tasks.filter((t) => t.status !== 'completed').length;
-        let overdueTasks = tasks.filter((t) => {
-          if (t.status === 'completed') return false;
-          const target = t.targetDate?.toDate?.() || (t.targetDate ? new Date(t.targetDate) : null);
-          return target && target < today;
-        }).length;
-
-        // Count enquiries
-        const enquiriesSnap = await db.collection('enquiries').where('assignedTo', '==', userDoc.id).get();
-        const enquiries = enquiriesSnap.docs.map((d) => d.data());
-        pendingTasks += enquiries.filter((e) => e.status === 'open').length;
-        overdueTasks += enquiries.filter((e) => {
-          if (e.status !== 'open') return false;
-          const target = e.targetDate?.toDate?.() || (e.targetDate ? new Date(e.targetDate) : null);
-          return target && target < today;
-        }).length;
-
-        // Count follow-ups
-        const followupsSnap = await db.collection('followups').where('assignedTo', '==', userDoc.id).get();
-        const followups = followupsSnap.docs.map((d) => d.data());
-        pendingTasks += followups.filter((f) => f.status === 'pending').length;
-        overdueTasks += followups.filter((f) => {
-          if (f.status !== 'pending') return false;
-          const target = f.nextFollowupDate?.toDate?.() || (f.nextFollowupDate ? new Date(f.nextFollowupDate) : null);
-          return target && target <= today;
-        }).length;
-
-        // Count payments
-        const paymentsSnap = await db.collection('payments').where('assignedTo', '==', userDoc.id).get();
-        const payments = paymentsSnap.docs.map((d) => d.data());
-        pendingTasks += payments.filter((p) => p.paymentStatus !== 'received').length;
-        overdueTasks += payments.filter((p) => {
-          if (p.paymentStatus === 'received') return false;
-          const target = p.targetPaymentDate?.toDate?.() || (p.targetPaymentDate ? new Date(p.targetPaymentDate) : null);
-          return target && target <= today;
-        }).length;
-
-        // Use daily_reminder template (variables: name, pendingTasks, overdueTasks)
-        const sendResult = await sendDailyReminder(
-          user.whatsapp,
-          user.name || 'Team Member',
-          pendingTasks,
-          overdueTasks,
-        );
-
-        const status = sendResult.sent ? 'sent' : 'failed';
-
+        const availableBalanceForSend = await assertWhatsAppBalance(db, 1);
+        const sendResult = await sendFn(user.whatsapp, user.name || 'Team Member', ...args);
+        
         await db.collection('whatsapp_logs').add({
           to: sendResult.to,
           memberName: user.name || 'Unknown',
-          memberUid: userDoc.id,
+          memberUid: user.uid,
           messageType: slot,
-          template: 'daily_reminder',
-          status,
+          template,
+          status: 'sent',
           msg91Response: sendResult.result,
-          pendingTasks,
-          overdueTasks,
           sentAt: Timestamp.now(),
         });
-
-        if (status === 'sent') {
-          await recordSuccessfulWhatsAppSend(db, {
-            actor: 'Automation Cron',
-            balanceBefore: availableBalanceForSend,
-            messageType: slot,
-            phone: sendResult.to,
-            recipientName: user.name || 'Unknown',
-            source: 'api/cron/send-reminders',
-          });
-        }
-
-        memberResults.push({
-          memberName: user.name || 'Unknown',
-          memberUid: userDoc.id,
+        
+        await recordSuccessfulWhatsAppSend(db, {
+          actor: 'Automation Cron',
+          balanceBefore: availableBalanceForSend,
+          messageType: template,
           phone: sendResult.to,
-          status,
-          pendingTasks,
-          overdueTasks,
+          recipientName: user.name || 'Unknown',
+          source: 'api/cron/send-reminders',
         });
+        results.sent++;
       } catch (error) {
         await db.collection('whatsapp_logs').add({
           to: user.whatsapp || '',
           memberName: user.name || 'Unknown',
-          memberUid: userDoc.id,
+          memberUid: user.uid,
           messageType: slot,
-          template: 'daily_reminder',
+          template,
           status: 'failed',
-          msg91Response: error.providerResponse || { error: error.message },
           error: error.message,
           sentAt: Timestamp.now(),
         }).catch(() => {});
-
-        memberResults.push({
-          memberName: user.name || 'Unknown',
-          memberUid: userDoc.id,
-          phone: user.whatsapp || '',
-          status: 'failed',
-          error: error.message,
-        });
+        results.failed++;
+        results.logs.push({ name: user.name, status: 'failed', error: error.message });
       }
+    };
 
-      await sleep(500);
-    }
+    if (slot === 'morning') {
+      for (const user of members) {
+        let pendingTasksCount = 0;
+        let overdueTasksCount = 0;
 
-    // ── Admin summary ────────────────────────────────────────────────────────
-    const adminResults = [];
-    if (settings.adminSummaryEnabled) {
-      const summaryContext = await getTeamSummaryContext(db, companyName, memberResults, now);
-      const totalPending = memberResults.reduce((s, r) => s + (r.pendingTasks || 0), 0);
-      const totalOverdue = memberResults.reduce((s, r) => s + (r.overdueTasks || 0), 0);
-
-      const adminSummaryText =
-        `Daily ${slot} summary for ${currentIstDate}:\n` +
-        `Members notified: ${memberResults.length}\n` +
-        `Total pending tasks: ${totalPending}\n` +
-        `Total overdue tasks: ${totalOverdue}`;
-
-      for (const adminNumber of (settings.adminNumbers || []).filter(Boolean)) {
-        let availableBalanceForAdmin;
-        try {
-          availableBalanceForAdmin = await assertWhatsAppBalance(db, 1);
-          const sendResult = await sendGeneralMessage(adminNumber, 'Admin', adminSummaryText);
-          const status = sendResult.sent ? 'sent' : 'failed';
-
-          await db.collection('whatsapp_logs').add({
-            to: sendResult.to,
-            memberName: 'Admin Summary',
-            messageType: 'admin_summary',
-            template: 'general_message',
-            status,
-            msg91Response: sendResult.result,
-            sentAt: Timestamp.now(),
-          }).catch(() => {});
-
-          if (status === 'sent') {
-            await recordSuccessfulWhatsAppSend(db, {
-              actor: 'Automation Cron',
-              balanceBefore: availableBalanceForAdmin,
-              messageType: 'admin_summary',
-              phone: sendResult.to,
-              recipientName: 'Admin Summary',
-              source: 'api/cron/send-reminders',
-            });
+        // Tasks
+        const tasksSnap = await db.collection('tasks').where('assignedTo', '==', user.uid).get();
+        for (const doc of tasksSnap.docs) {
+          const t = doc.data();
+          if (t.status !== 'completed') {
+            pendingTasksCount++;
+            const target = t.targetDate?.toDate?.() || (t.targetDate ? new Date(t.targetDate) : null);
+            if (target && target < today) {
+              overdueTasksCount++;
+              const overdueDays = calcDaysOpen(t.targetDate);
+              await logAndRecord(user, 'task_overdue', sendTaskOverdue, t.taskName, t.projectName || 'General', overdueDays);
+              await sleep(300);
+            }
           }
-
-          adminResults.push({ phone: sendResult.to, status });
-        } catch (error) {
-          await db.collection('whatsapp_logs').add({
-            to: adminNumber,
-            memberName: 'Admin Summary',
-            messageType: 'admin_summary',
-            template: 'general_message',
-            status: 'failed',
-            error: error.message,
-            sentAt: Timestamp.now(),
-          }).catch(() => {});
-          adminResults.push({ phone: adminNumber, status: 'failed', error: error.message });
         }
 
+        // Tools
+        const toolsSnap = await db.collection('tools').where('assignedTo', '==', user.uid).where('returnStatus', '==', 'pending').get();
+        for (const doc of toolsSnap.docs) {
+          const t = doc.data();
+          const daysSinceIssue = calcDaysOpen(t.handedOverDate);
+          if (daysSinceIssue > 30) {
+            const issuedDateStr = t.handedOverDate?.toDate?.()?.toLocaleDateString('en-IN') || 'Unknown';
+            await logAndRecord(user, 'tool_return', sendToolReturn, t.toolName, issuedDateStr, daysSinceIssue);
+            await sleep(300);
+          }
+        }
+
+        // RGPs
+        const rgpSnap = await db.collection('rgp').where('assignedTo', '==', user.uid).where('status', '==', 'open').get();
+        for (const doc of rgpSnap.docs) {
+          const r = doc.data();
+          const daysOpen = calcDaysOpen(r.date);
+          if (daysOpen > 15) {
+            await logAndRecord(user, 'rgp_reminder', sendRgpReminder, r.docNumber || 'N/A', r.fromCompany || 'N/A', r.toCompany || 'N/A', daysOpen);
+            await sleep(300);
+          }
+        }
+
+        // Payments
+        const hasPaymentAccess = user.permissions?.includes('payments') || user.permissions?.includes('outgoing_payments');
+        if (hasPaymentAccess) {
+          const paymentsSnap = await db.collection('payments').where('assignedTo', '==', user.uid).get();
+          for (const doc of paymentsSnap.docs) {
+            const p = doc.data();
+            if (p.paymentStatus !== 'received') {
+              const target = p.targetPaymentDate?.toDate?.() || (p.targetPaymentDate ? new Date(p.targetPaymentDate) : null);
+              if (target && target < today) {
+                await logAndRecord(user, 'payment_reminder', sendPaymentReminder, p.customerName || 'N/A', p.invoiceNo || 'N/A', p.amount || '0');
+                await sleep(300);
+              }
+            }
+          }
+        }
+
+        // Daily Reminder (Members Only)
+        await logAndRecord(user, 'daily_reminder', sendDailyReminder, pendingTasksCount, overdueTasksCount);
+        await sleep(500);
+      }
+    } else if (slot === 'evening') {
+      let teamCompleted = 0;
+      let teamPending = 0;
+      let teamOverdue = 0;
+
+      for (const user of members) {
+        let completedToday = 0;
+        let pending = 0;
+        let overdue = 0;
+
+        const tasksSnap = await db.collection('tasks').where('assignedTo', '==', user.uid).get();
+        for (const doc of tasksSnap.docs) {
+          const t = doc.data();
+          if (t.status === 'completed') {
+            const comp = t.completedAt?.toDate?.() || (t.completedAt ? new Date(t.completedAt) : null);
+            if (comp && comp.toDateString() === today.toDateString()) {
+              completedToday++;
+            }
+          } else {
+            pending++;
+            const target = t.targetDate?.toDate?.() || (t.targetDate ? new Date(t.targetDate) : null);
+            if (target && target < today) overdue++;
+          }
+        }
+
+        teamCompleted += completedToday;
+        teamPending += pending;
+        teamOverdue += overdue;
+
+        const summary = `You completed ${completedToday} tasks today. Pending: ${pending}. Overdue: ${overdue}.`;
+        await logAndRecord(user, 'general_message', sendGeneralMessage, summary);
+        await sleep(500);
+      }
+
+      // Admins
+      const adminSummary = `Team summary: ${teamPending} tasks open, ${teamOverdue} overdue, ${teamCompleted} completed today.`;
+      for (const admin of admins) {
+        await logAndRecord(admin, 'general_message', sendGeneralMessage, adminSummary);
         await sleep(500);
       }
     }
 
-    // ── Record last-run timestamp ────────────────────────────────────────────
-    await db.doc('settings/whatsapp_automation_runtime').set(
-      {
-        lastRunDates: { ...(runtimeData?.lastRunDates || {}), [slot]: currentIstDate },
-        lastRunTimes: { ...(runtimeData?.lastRunTimes || {}), [slot]: currentIstTime },
-        updatedAt: Timestamp.now(),
-      },
-      { merge: true },
-    );
-
-    const { start } = buildDayRangeIst(now);
-    return res.status(200).json({
-      success: true,
-      slot,
-      processed: memberResults.length,
-      sent: memberResults.filter((r) => r.status === 'sent').length,
-      failed: memberResults.filter((r) => r.status === 'failed').length,
-      adminSummaryProcessed: adminResults.length,
-      date: currentIstDate,
-      scheduledTime: slotConfig.time,
-      runStartedAt: start.toISOString(),
-      results: memberResults,
-      adminResults,
-    });
+    return res.status(200).json({ success: true, slot, results });
 
   } catch (error) {
     console.error('send-reminders failed:', error.message);
-    if (handleConfigError(res, error)) return;
-    return res.status(error.statusCode || 500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 }
