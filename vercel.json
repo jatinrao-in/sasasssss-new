@@ -17,12 +17,13 @@
     }
   ],
   "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" },
     { "src": "/admin", "headers": { "Location": "/admin/" }, "status": 308 },
     { "src": "/admin/assets/(.*)", "dest": "/admin-panel/assets/$1" },
     { "src": "/admin/(.*\\..*)", "dest": "/admin-panel/$1" },
     { "src": "/admin/(.*)", "dest": "/admin-panel/index.html" },
-    { "src": "/((?!api/).+\\..*)", "dest": "/team-member-pwa/$1" },
-    { "src": "/((?!api/)[^.]*)", "dest": "/team-member-pwa/index.html" }
+    { "src": "/(.*\\..*)", "dest": "/team-member-pwa/$1" },
+    { "src": "/(.*)", "dest": "/team-member-pwa/index.html" }
   ],
   "crons": [
     { "path": "/api/cron/daily-tasks", "schedule": "30 2 * * *" },
