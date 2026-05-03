@@ -14,6 +14,7 @@ import SplashScreen from './components/SplashScreen';
 import OfflineBanner from './components/OfflineBanner';
 import AutoUpdateHandler from './components/AutoUpdateHandler';
 import { getFirstAccessiblePath } from './lib/accessControl';
+import PwaInstallPrompt from './components/PwaInstallPrompt';
 
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const AccessDeniedPage = lazy(() => import('./pages/AccessDeniedPage'));
@@ -173,6 +174,7 @@ export default function App() {
       <AutoUpdateHandler />
       <OfflineBanner />
       <ExitHandler />
+      <PwaInstallPrompt />
       <AuthProvider>
         <RealtimeProvider>
           <ToastProvider>
