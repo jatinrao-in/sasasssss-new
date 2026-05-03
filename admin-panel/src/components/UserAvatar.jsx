@@ -50,12 +50,17 @@ export default function UserAvatar({
   showRing = false,
 }) {
   const [pressed, setPressed] = useState(false);
+  const [imgError, setImgError] = useState(false);
+  
   const isInteractive = typeof onClick === 'function';
   const identifier = user?.uid || user?.id || user?.name || user?.email || 'default';
   const name = user?.name || user?.displayName || user?.email || 'User';
+  
   const color = useMemo(() => getAvatarColor(identifier), [identifier]);
   const initials = useMemo(() => getInitials(name), [name]);
   const fontSize = Math.max(12, size * 0.38);
+
+  const avatarUrl = `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(identifier)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffdfbf,ffd5dc`;
 
   const handleKeyDown = (event) => {
     if (!isInteractive) {
@@ -100,10 +105,20 @@ export default function UserAvatar({
         transform: pressed ? 'scale(0.92)' : 'scale(1)',
         transition: 'transform 0.1s ease, box-shadow 0.2s ease',
         WebkitTapHighlightColor: 'transparent',
+        overflow: 'hidden',
       }}
       tabIndex={isInteractive ? 0 : -1}
     >
-      {initials}
+      {!imgError ? (
+        <img 
+          src={avatarUrl} 
+          alt={name} 
+          onError={() => setImgError(true)}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+      ) : (
+        initials
+      )}
     </div>
   );
 }
