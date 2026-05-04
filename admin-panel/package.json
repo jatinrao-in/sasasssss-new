@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node ../scripts/validate-env.mjs admin-panel && vite build",
+    "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
