@@ -61,7 +61,7 @@ export default async function handler(
     const callerDoc = await db
       .doc(`users/${decoded.uid}`).get();
 
-    if (!callerDoc.exists() ||
+    if (!callerDoc.exists ||
       callerDoc.data()?.role !== 'admin') {
       return res.status(403).json({
         error: 'Admin access required'
