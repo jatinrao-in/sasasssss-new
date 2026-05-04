@@ -1,136 +1,169 @@
-import { handleConfigError } from '../server/config.js';
-import { handleCors } from '../server/cors.js';
-import { getAdminServices } from '../server/firebaseAdmin.js';
-import { verifyFirebaseRequest, requireAdmin } from '../server/auth.js';
+import { getAdminApp } from
+  './lib/firebaseAdmin.js';
 
-export default async function handler(req, res) {
-  if (handleCors(req, res)) return;
+export default async function handler(
+  req, res
+) {
+  res.setHeader(
+    'Access-Control-Allow-Origin', '*');
+  res.setHeader(
+    'Access-Control-Allow-Methods',
+    'POST, OPTIONS');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'Content-Type, Authorization');
 
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({
+      error: 'Use POST method'
+    });
   }
 
-  try {
-    const authContext = await verifyFirebaseRequest(req);
-    requireAdmin(authContext);
+  const authHeader =
+    req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(403).json({
+      error: 'Bearer token required'
+    });
+  }
 
-    const { auth, db } = getAdminServices();
-    const { uid } = req.body || {};
+  let adminApp;
+  try {
+    adminApp = getAdminApp();
+  } catch (initError) {
+    console.error('Admin init failed:',
+      initError.message);
+    return res.status(500).json({
+      error: 'Server config error: ' +
+        initError.message
+    });
+  }
+
+  const { auth, db } = adminApp;
+
+  try {
+    const token =
+      authHeader.split('Bearer ')[1];
+
+    let decoded;
+    try {
+      decoded = await auth
+        .verifyIdToken(token);
+    } catch (tokenErr) {
+      return res.status(403).json({
+        error: 'Invalid token. Login again.'
+      });
+    }
+
+    const callerDoc = await db
+      .doc(`users/${decoded.uid}`).get();
+
+    if (!callerDoc.exists() ||
+      callerDoc.data()?.role !== 'admin') {
+      return res.status(403).json({
+        error: 'Admin access required'
+      });
+    }
+
+    const { uid } = req.body;
 
     if (!uid) {
-      return res.status(400).json({ error: 'uid is required' });
+      return res.status(400).json({
+        error: 'uid required'
+      });
     }
 
-    // Prevent self-deletion
-    if (uid === authContext.decodedToken.uid) {
-      return res.status(400).json({ error: 'Cannot delete your own account' });
+    if (uid === decoded.uid) {
+      return res.status(400).json({
+        error: 'Cannot delete yourself'
+      });
     }
 
-    // 1. Get user data to find the email
-    const userRef = db.doc(`users/${uid}`);
-    const userSnap = await userRef.get();
-    
-    if (!userSnap.exists) {
-      return res.status(404).json({ error: 'User not found in Firestore' });
-    }
-    const userData = userSnap.data();
-    const emailToBlacklist = userData.email;
-
-    const deleteLog = {
-      uid,
-      authDeleted: false,
-      firestoreDeleted: false,
-      notificationsDeleted: 0,
-      salaryDeleted: 0,
-      tasksUnassigned: 0,
-      emailBlacklisted: false,
-    };
-
-    // 2. Add email to blacklist
-    if (emailToBlacklist) {
-      try {
-        await db.doc(`blacklisted_emails/${emailToBlacklist}`).set({
-          email: emailToBlacklist,
-          deletedAt: new Date(),
-          deletedBy: authContext.decodedToken.uid,
-          uid: uid
-        });
-        deleteLog.emailBlacklisted = true;
-      } catch (blacklistErr) {
-        console.error('Blacklist error:', blacklistErr.message);
-        throw new Error('Failed to blacklist email. Aborting deletion to prevent re-registration.');
-      }
-    }
-
-    // 3. Delete from Firebase Auth
+    // Delete Firebase Auth
     try {
       await auth.deleteUser(uid);
-      deleteLog.authDeleted = true;
+      console.log('Auth deleted:', uid);
     } catch (authErr) {
-      // User may not exist in Auth (orphan Firestore record) — continue anyway
-      console.warn('Auth deleteUser skipped:', authErr.message);
+      console.log('Auth skip:',
+        authErr.message);
     }
 
-    // 4. Delete Firestore user document
+    // Delete Firestore user doc
     try {
-      await userRef.delete();
-      deleteLog.firestoreDeleted = true;
-    } catch (fsErr) {
-      console.error('Firestore user delete error:', fsErr.message);
-    }
-
-    // 3. Delete notification subcollection items
-    try {
-      const notifsSnap = await db.collection('notifications').doc(uid).collection('items').get();
-      if (!notifsSnap.empty) {
-        await Promise.all(notifsSnap.docs.map((d) => d.ref.delete()));
-        await db.collection('notifications').doc(uid).delete().catch(() => {});
-        deleteLog.notificationsDeleted = notifsSnap.size;
-      }
+      await db.doc(`users/${uid}`).delete();
     } catch (e) {
-      console.warn('Notification cleanup error:', e.message);
+      console.log('User doc:', e.message);
     }
 
-    // 4. Delete salary subcollection
+    // Delete notifications
     try {
-      const salarySnap = await db.collection('salary').doc(uid).collection('months').get();
-      if (!salarySnap.empty) {
-        await Promise.all(salarySnap.docs.map((d) => d.ref.delete()));
-        await db.collection('salary').doc(uid).delete().catch(() => {});
-        deleteLog.salaryDeleted = salarySnap.size;
-      }
-    } catch (e) {
-      console.warn('Salary cleanup error:', e.message);
-    }
+      const nSnap = await db
+        .collection('notifications')
+        .doc(uid)
+        .collection('items')
+        .get();
+      await Promise.all(
+        nSnap.docs.map(d => d.ref.delete())
+      );
+    } catch (e) {}
 
-    // 5. Unassign tasks (don't delete — keep task history)
+    // Delete salary records
     try {
-      const tasksSnap = await db.collection('tasks').where('assignedTo', '==', uid).get();
-      if (!tasksSnap.empty) {
-        await Promise.all(tasksSnap.docs.map((d) => d.ref.update({
-          assignedTo: '',
+      const sSnap = await db
+        .collection('salary')
+        .doc(uid)
+        .collection('months')
+        .get();
+      await Promise.all(
+        sSnap.docs.map(d => d.ref.delete())
+      );
+    } catch (e) {}
+
+    // Unassign tasks
+    try {
+      const tSnap = await db
+        .collection('tasks')
+        .where('assignedTo', '==', uid)
+        .get();
+      await Promise.all(
+        tSnap.docs.map(d => d.ref.update({
+          assignedTo: null,
           assignedToName: 'Unassigned',
-          updatedAt: new Date(),
-        })));
-        deleteLog.tasksUnassigned = tasksSnap.size;
-      }
-    } catch (e) {
-      console.warn('Task unassign error:', e.message);
-    }
+          updatedAt: new Date()
+        }))
+      );
+    } catch (e) {}
 
-    console.log(`Member ${uid} fully deleted by ${authContext.decodedToken.uid}`, deleteLog);
+    // Save to blacklist
+    try {
+      const userSnap = await db
+        .doc(`users/${uid}`).get();
+      const email = userSnap.data()?.email;
+      if (email) {
+        await db
+          .collection('blacklisted_emails')
+          .add({
+            email,
+            uid,
+            deletedAt: new Date(),
+            deletedBy: decoded.uid
+          });
+      }
+    } catch (e) {}
 
     return res.status(200).json({
       success: true,
-      message: 'Member permanently deleted from Auth and Firestore',
-      deleteLog,
+      message: 'Member permanently deleted'
     });
+
   } catch (error) {
-    console.error('Delete member error:', error);
-
-    if (handleConfigError(res, error)) return;
-
-    const statusCode = error.statusCode || 500;
-    return res.status(statusCode).json({ error: error.message });
+    console.error('Delete error:',
+      error.message);
+    return res.status(500).json({
+      error: error.message
+    });
   }
 }
