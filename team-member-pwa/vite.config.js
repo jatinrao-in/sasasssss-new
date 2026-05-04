@@ -1,9 +1,8 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
-import { createVersionPlugin, resolveBuildId } from '../scripts/vite-version-plugin.mjs'
 
-const buildId = resolveBuildId('team-member-pwa');
+const buildId = Date.now().toString();
 
 export default defineConfig({
   define: {
@@ -12,10 +11,6 @@ export default defineConfig({
   plugins: [
     react({
       include: /\.[jt]sx?$/,
-    }),
-    createVersionPlugin({
-      appName: 'team-member-pwa',
-      buildId,
     }),
     VitePWA({
       registerType: 'autoUpdate',

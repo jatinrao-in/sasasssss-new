@@ -1,8 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { createVersionPlugin, resolveBuildId } from '../scripts/vite-version-plugin.mjs'
 
-const buildId = resolveBuildId('admin-panel');
+const buildId = Date.now().toString();
 
 export default defineConfig({
   define: {
@@ -11,10 +10,6 @@ export default defineConfig({
   plugins: [
     react({
       include: /\.[jt]sx?$/,
-    }),
-    createVersionPlugin({
-      appName: 'admin-panel',
-      buildId,
     }),
   ],
   base: '/admin/',

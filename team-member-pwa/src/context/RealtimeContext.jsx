@@ -203,11 +203,21 @@ export function RealtimeProvider({ children }) {
     listenToList({
       key: 'tools',
       scope: 'RealtimeProvider.tools',
+      // NOTE: No orderBy here — combining where() + orderBy() on different fields
+      // requires a Firestore composite index. Without it the query silently returns 0 docs.
+      // We sort client-side instead to avoid the index requirement.
       ref: query(
         collection(db, COLLECTIONS.tools),
         where('assignedTo', '==', uid),
-        orderBy('createdAt', 'desc'),
       ),
+      onData: (data) => {
+        const sorted = [...data].sort((a, b) => {
+          const aTime = a.createdAt?.toMillis?.() ?? 0;
+          const bTime = b.createdAt?.toMillis?.() ?? 0;
+          return bTime - aTime;
+        });
+        setCollectionState('tools', sorted);
+      },
     });
 
     unsubs.push(onSnapshot(
