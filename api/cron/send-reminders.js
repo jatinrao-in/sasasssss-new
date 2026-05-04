@@ -8,6 +8,7 @@ import {
   sendDailyReminder,
   sendGeneralMessage,
   sendTaskOverdue,
+  sendTaskAssigned,
   sendToolReturn,
   sendRgpReminder,
   sendPaymentReminder
@@ -59,12 +60,15 @@ export default async function handler(req, res) {
     const { db } = getAdminServices();
     const slot = String(req.query?.slot || '').trim().toLowerCase();
 
-    if (slot !== 'morning' && slot !== 'evening') {
-      return res.status(400).json({ error: 'slot must be "morning" or "evening"' });
+    const validSlots = ['morning', 'evening', 'overdue', 'deadline', 'payment'];
+    if (!validSlots.includes(slot)) {
+      return res.status(400).json({ error: `slot must be one of: ${validSlots.join(', ')}` });
     }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
 
     const usersSnap = await db.collection('users').where('status', '==', 'active').get();
     const allUsers = usersSnap.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
@@ -124,7 +128,6 @@ export default async function handler(req, res) {
         let pendingTasksCount = 0;
         let overdueTasksCount = 0;
 
-        // Tasks
         const tasksSnap = await db.collection('tasks').where('assignedTo', '==', user.uid).get();
         for (const doc of tasksSnap.docs) {
           const t = doc.data();
@@ -133,53 +136,9 @@ export default async function handler(req, res) {
             const target = t.targetDate?.toDate?.() || (t.targetDate ? new Date(t.targetDate) : null);
             if (target && target < today) {
               overdueTasksCount++;
-              const overdueDays = calcDaysOpen(t.targetDate);
-              await logAndRecord(user, 'task_overdue', sendTaskOverdue, t.taskName, t.projectName || 'General', overdueDays);
-              await sleep(300);
             }
           }
         }
-
-        // Tools
-        const toolsSnap = await db.collection('tools').where('assignedTo', '==', user.uid).where('returnStatus', '==', 'pending').get();
-        for (const doc of toolsSnap.docs) {
-          const t = doc.data();
-          const daysSinceIssue = calcDaysOpen(t.handedOverDate);
-          if (daysSinceIssue > 30) {
-            const issuedDateStr = t.handedOverDate?.toDate?.()?.toLocaleDateString('en-IN') || 'Unknown';
-            await logAndRecord(user, 'tool_return', sendToolReturn, t.toolName, issuedDateStr, daysSinceIssue);
-            await sleep(300);
-          }
-        }
-
-        // RGPs
-        const rgpSnap = await db.collection('rgp').where('assignedTo', '==', user.uid).where('status', '==', 'open').get();
-        for (const doc of rgpSnap.docs) {
-          const r = doc.data();
-          const daysOpen = calcDaysOpen(r.date);
-          if (daysOpen > 15) {
-            await logAndRecord(user, 'rgp_reminder', sendRgpReminder, r.docNumber || 'N/A', r.fromCompany || 'N/A', r.toCompany || 'N/A', daysOpen);
-            await sleep(300);
-          }
-        }
-
-        // Payments
-        const hasPaymentAccess = user.permissions?.includes('payments') || user.permissions?.includes('outgoing_payments');
-        if (hasPaymentAccess) {
-          const paymentsSnap = await db.collection('payments').where('assignedTo', '==', user.uid).get();
-          for (const doc of paymentsSnap.docs) {
-            const p = doc.data();
-            if (p.paymentStatus !== 'received') {
-              const target = p.targetPaymentDate?.toDate?.() || (p.targetPaymentDate ? new Date(p.targetPaymentDate) : null);
-              if (target && target < today) {
-                await logAndRecord(user, 'payment_reminder', sendPaymentReminder, p.customerName || 'N/A', p.invoiceNo || 'N/A', p.amount || '0');
-                await sleep(300);
-              }
-            }
-          }
-        }
-
-        // Daily Reminder (Members Only)
         await logAndRecord(user, 'daily_reminder', sendDailyReminder, pendingTasksCount, overdueTasksCount);
         await sleep(500);
       }
@@ -217,11 +176,57 @@ export default async function handler(req, res) {
         await sleep(500);
       }
 
-      // Admins
       const adminSummary = `Team summary: ${teamPending} tasks open, ${teamOverdue} overdue, ${teamCompleted} completed today.`;
       for (const admin of admins) {
         await logAndRecord(admin, 'general_message', sendGeneralMessage, adminSummary);
         await sleep(500);
+      }
+    } else if (slot === 'overdue') {
+      for (const user of members) {
+        const tasksSnap = await db.collection('tasks').where('assignedTo', '==', user.uid).get();
+        for (const doc of tasksSnap.docs) {
+          const t = doc.data();
+          if (t.status !== 'completed') {
+            const target = t.targetDate?.toDate?.() || (t.targetDate ? new Date(t.targetDate) : null);
+            if (target && target < today) {
+              const overdueDays = calcDaysOpen(t.targetDate);
+              await logAndRecord(user, 'task_overdue', sendTaskOverdue, t.taskName, t.projectName || 'General', overdueDays);
+              await sleep(300);
+            }
+          }
+        }
+      }
+    } else if (slot === 'deadline') {
+      for (const user of members) {
+        const tasksSnap = await db.collection('tasks').where('assignedTo', '==', user.uid).get();
+        for (const doc of tasksSnap.docs) {
+          const t = doc.data();
+          if (t.status !== 'completed') {
+            const target = t.targetDate?.toDate?.() || (t.targetDate ? new Date(t.targetDate) : null);
+            if (target && target.toDateString() === tomorrow.toDateString()) {
+              const deadlineStr = target.toLocaleDateString('en-IN');
+              await logAndRecord(user, 'task_assigned', sendTaskAssigned, t.taskName, t.projectName || 'General', deadlineStr);
+              await sleep(300);
+            }
+          }
+        }
+      }
+    } else if (slot === 'payment') {
+      for (const user of members) {
+        const hasPaymentAccess = user.permissions?.includes('payments') || user.permissions?.includes('outgoing_payments');
+        if (hasPaymentAccess) {
+          const paymentsSnap = await db.collection('payments').where('assignedTo', '==', user.uid).get();
+          for (const doc of paymentsSnap.docs) {
+            const p = doc.data();
+            if (p.paymentStatus !== 'received') {
+              const target = p.targetPaymentDate?.toDate?.() || (p.targetPaymentDate ? new Date(p.targetPaymentDate) : null);
+              if (target && target < today) {
+                await logAndRecord(user, 'payment_reminder', sendPaymentReminder, p.customerName || 'N/A', p.invoiceNo || 'N/A', p.amount || '0');
+                await sleep(300);
+              }
+            }
+          }
+        }
       }
     }
 
