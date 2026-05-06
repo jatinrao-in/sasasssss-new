@@ -11,7 +11,7 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import { useTasks } from '../hooks/useTasks';
 import { useToast } from '../hooks/useToast';
-import { useMemberSalary, useMemberSalaryMonth, formatMonthLabel, calcSalary } from '../hooks/useSalary';
+import { useMemberSalary, useMemberSalaryMonth, formatMonthLabel } from '../hooks/useSalary';
 import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { logInfo } from '../lib/firestoreDebug';
@@ -51,13 +51,7 @@ function monthOptions() {
 // ─── Salary Card ──────────────────────────────────────────────────────────────
 function SalaryCard({ record, month }) {
   const isPaid = record?.status === 'paid';
-  const base = record?.baseSalary ?? 0;
-  const working = record?.workingDays ?? 26;
-  const present = record?.presentDays ?? 26;
-  const ot = record?.overtimePayment ?? 0;
-  const calc = calcSalary(base, working, present, ot);
-  const lop = record?.lopDeduction ?? calc.lopDeduction;
-  const net = record?.netSalary ?? calc.netSalary;
+  const net = record?.netSalary ?? 0;
 
   return (
     <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
@@ -69,47 +63,10 @@ function SalaryCard({ record, month }) {
         </span>
       </div>
 
-      {/* Attendance */}
-      <div className="bg-white px-4 py-3 space-y-2 border-b border-gray-100">
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-500">Working Days</span>
-          <span className="font-medium text-gray-800">{record?.workingDays ?? 26} days</span>
-        </div>
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-500">Present Days</span>
-          <span className="font-medium text-gray-800">{record?.presentDays ?? 26} days</span>
-        </div>
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-500">LOP Days</span>
-          <span className={`font-medium ${(record?.lopDays ?? calc.lopDays) > 0 ? 'text-orange-500' : 'text-gray-400'}`}>
-            {record?.lopDays ?? calc.lopDays} days
-          </span>
-        </div>
-      </div>
-
-      {/* Salary Breakdown */}
-      <div className="bg-white px-4 py-3 space-y-2 border-b border-gray-100">
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-500">Base Salary</span>
-          <span className="font-medium text-gray-800">{fmt(base)}</span>
-        </div>
-        {lop > 0 && (
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">LOP Deduction</span>
-            <span className="font-medium text-red-500">-{fmt(lop)}</span>
-          </div>
-        )}
-        {ot > 0 && (
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Overtime Payment</span>
-            <span className="font-medium text-green-600">+{fmt(ot)}</span>
-          </div>
-        )}
-        <div className="h-px bg-gray-100" />
-        <div className="flex justify-between items-center">
-          <span className="text-sm font-semibold text-gray-700">Net Salary</span>
-          <span className="text-2xl font-bold text-teal-600">{fmt(net)}</span>
-        </div>
+      {/* Salary Amount */}
+      <div className="bg-white px-4 py-5 border-b border-gray-100 text-center">
+        <span className="block text-sm font-medium text-gray-500 mb-1">Salary Amount</span>
+        <span className="text-3xl font-bold text-teal-600">{fmt(net)}</span>
       </div>
 
       {/* Status */}

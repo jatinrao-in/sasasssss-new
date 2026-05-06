@@ -15,25 +15,6 @@ import {
   updateDocumentRef,
 } from '../lib/firestore-helpers';
 
-// Calculation logic
-export function calcSalary(baseSalary, workingDays, presentDays, overtimePayment) {
-  const base = Number(baseSalary) || 0;
-  const working = Number(workingDays) || 0;
-  const present = Math.min(Number(presentDays) || 0, working);
-  const ot = Number(overtimePayment) || 0;
-  const perDayRate = working > 0 ? base / working : 0;
-  const lopDays = Math.max(0, working - present);
-  const lopDeduction = Math.round(perDayRate * lopDays);
-  const netSalary = Math.max(0, Math.round(base - lopDeduction) + ot);
-  return {
-    perDayRate: Math.round(perDayRate),
-    lopDays,
-    lopDeduction,
-    netSalary,
-    overtimePayment: ot,
-  };
-}
-
 export function formatMonthLabel(monthStr) {
   if (!monthStr) return '';
   const [y, m] = monthStr.split('-');
@@ -128,7 +109,7 @@ export function useSalaryActions() {
   const { log } = useAuditLog();
 
   const saveSalary = useCallback(async (uid, month, data) => {
-    const calc = calcSalary(data.baseSalary, data.workingDays, data.presentDays, data.overtimePayment);
+    const netSalary = Number(data.netSalary) || 0;
     const ref = getSalaryMonthDoc(db, uid, month);
 
     await setDocument(
@@ -138,14 +119,7 @@ export function useSalaryActions() {
         month,
         memberName: data.memberName || '',
         designation: data.designation || '',
-        workingDays: Number(data.workingDays) || 26,
-        presentDays: Number(data.presentDays) || 0,
-        overtimePayment: calc.overtimePayment,
-        lopDays: calc.lopDays,
-        baseSalary: Number(data.baseSalary) || 0,
-        perDayRate: calc.perDayRate,
-        lopDeduction: calc.lopDeduction,
-        netSalary: calc.netSalary,
+        netSalary,
         status: data.status || 'pending',
         paidDate: data.paidDate ?? null,
         remarks: data.remarks || '',
@@ -160,7 +134,7 @@ export function useSalaryActions() {
       memberUid: uid,
       month,
       memberName: data.memberName || '',
-      netSalary: calc.netSalary,
+      netSalary,
     });
   }, [log]);
 
@@ -180,20 +154,6 @@ export function useSalaryActions() {
       { action: 'delete salary', collectionName: 'salary_months' },
     );
     await log('salary_deleted', { memberUid: uid, month });
-  }, [log]);
-
-  const bulkSetWorkingDays = useCallback(async (uids, month, workingDays) => {
-    await Promise.all(
-      uids.map((uid) =>
-        setDocument(
-          getSalaryMonthDoc(db, uid, month),
-          { workingDays: Number(workingDays), updatedAt: serverTimestamp() },
-          { merge: true },
-          { action: 'set salary working days', collectionName: 'salary_months' },
-        )
-      )
-    );
-    await log('salary_working_days_bulk_set', { memberUids: uids, month, workingDays: Number(workingDays) });
   }, [log]);
 
   const bulkMarkPaid = useCallback(async (rows) => {
@@ -224,13 +184,6 @@ export function useSalaryActions() {
             month,
             memberName: member.name || '',
             designation: member.designation || '',
-            workingDays: 26,
-            presentDays: 26,
-            overtimePayment: 0,
-            lopDays: 0,
-            baseSalary: 0,
-            perDayRate: 0,
-            lopDeduction: 0,
             netSalary: 0,
             status: 'pending',
             paidDate: null,
@@ -253,7 +206,6 @@ export function useSalaryActions() {
     saveSalary,
     markPaid,
     deleteSalary,
-    bulkSetWorkingDays,
     bulkMarkPaid,
     initMonthForAllMembers,
   };
@@ -267,7 +219,7 @@ export function useSalary(selectedUserId = null) {
   const addSalary = (userId, monthYear, data) =>
     saveSalary(userId, monthYear, {
       ...data,
-      baseSalary: data.basicSalary || data.baseSalary || 0,
+      netSalary: data.netSalary || data.baseSalary || data.basicSalary || 0,
       memberName: data.employeeName || data.memberName || '',
     });
 

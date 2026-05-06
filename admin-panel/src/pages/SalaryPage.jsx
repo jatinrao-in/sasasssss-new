@@ -9,7 +9,6 @@ import { useTeam } from '../hooks/useTeam';
 import {
   useSalaryForMonth,
   useSalaryActions,
-  calcSalary,
   formatMonthLabel,
 } from '../hooks/useSalary';
 import { useToast } from '../hooks/useToast';
@@ -66,21 +65,14 @@ function SkeletonRow() {
 // Edit modal
 function EditModal({ row, month, onClose, onSave }) {
   const [form, setForm] = useState({
-    workingDays: row?.workingDays ?? 26,
-    presentDays: row?.presentDays ?? 26,
-    baseSalary: row?.baseSalary ?? 0,
-    overtimePayment: row?.overtimePayment ?? 0,
+    netSalary: row?.netSalary ?? 0,
     remarks: row?.remarks ?? '',
   });
   const [saving, setSaving] = useState(false);
 
-  const calc = calcSalary(form.baseSalary, form.workingDays, form.presentDays, form.overtimePayment);
-  const presentExceedsWorking = Number(form.presentDays) > Number(form.workingDays);
-
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const handleSave = async () => {
-    if (presentExceedsWorking) return;
     setSaving(true);
     try {
       await onSave(form);
@@ -111,96 +103,27 @@ function EditModal({ row, month, onClose, onSave }) {
 
         {/* Fields */}
         <div className="px-5 py-4 space-y-4">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-4">
             <div>
-              <label className="label">Working Days</label>
-              <input
-                className="input-field"
-                type="number" min="1" max="31"
-                value={form.workingDays}
-                onChange={(e) => set('workingDays', e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="label">Present Days</label>
-              <input
-                className={`input-field ${presentExceedsWorking ? 'border-red-400 focus:ring-red-400' : ''}`}
-                type="number" min="0" max={form.workingDays}
-                value={form.presentDays}
-                onChange={(e) => set('presentDays', e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="label">Base Salary (Rs)</label>
+              <label className="label">Salary Amount (Rs)</label>
               <input
                 className="input-field"
                 type="number" min="0"
-                value={form.baseSalary}
-                onChange={(e) => set('baseSalary', e.target.value)}
+                value={form.netSalary}
+                onChange={(e) => set('netSalary', e.target.value)}
               />
             </div>
+
             <div>
-              <label className="label">OT Payment (Rs)</label>
+              <label className="label">Remarks (optional)</label>
               <input
                 className="input-field"
-                type="number" min="0"
-                value={form.overtimePayment}
-                onChange={(e) => set('overtimePayment', e.target.value)}
+                type="text"
+                placeholder="Any notes..."
+                value={form.remarks}
+                onChange={(e) => set('remarks', e.target.value)}
               />
             </div>
-          </div>
-
-          {presentExceedsWorking && (
-            <p className="text-xs text-red-500 flex items-center gap-1">
-              <AlertTriangle className="w-3.5 h-3.5" />
-              Present days cannot exceed working days
-            </p>
-          )}
-
-          {/* Auto-calculated preview */}
-          <div className="bg-gray-50 rounded-xl p-4 space-y-2.5 text-sm border border-[var(--border-primary)]">
-            <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">
-              Auto Calculated
-            </p>
-            <div className="flex justify-between">
-              <span className="text-[var(--text-muted)]">Per Day Rate</span>
-              <span className="font-medium text-[var(--text-primary)]">{formatCurrency(calc.perDayRate)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-[var(--text-muted)]">LOP Days</span>
-              <span className={`font-medium ${calc.lopDays > 0 ? 'text-orange-500' : 'text-gray-400'}`}>
-                {calc.lopDays} days
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-[var(--text-muted)]">LOP Deduction</span>
-              <span className="font-medium text-red-500">
-                {calc.lopDeduction > 0 ? `-${formatCurrency(calc.lopDeduction)}` : '-'}
-              </span>
-            </div>
-            {calc.overtimePayment > 0 && (
-              <div className="flex justify-between">
-                <span className="text-[var(--text-muted)]">Overtime Payment</span>
-                <span className="font-medium text-green-600">
-                  +{formatCurrency(calc.overtimePayment)}
-                </span>
-              </div>
-            )}
-            <div className="flex justify-between items-center border-t border-[var(--border-primary)] pt-2.5">
-              <span className="font-semibold text-[var(--text-primary)]">Net Salary</span>
-              <span className="text-2xl font-bold text-teal-600">{formatCurrency(calc.netSalary)}</span>
-            </div>
-          </div>
-
-          <div>
-            <label className="label">Remarks (optional)</label>
-            <input
-              className="input-field"
-              type="text"
-              placeholder="Any notes..."
-              value={form.remarks}
-              onChange={(e) => set('remarks', e.target.value)}
-            />
           </div>
         </div>
 
@@ -209,7 +132,7 @@ function EditModal({ row, month, onClose, onSave }) {
           <button onClick={onClose} className="btn-secondary">Cancel</button>
           <button
             onClick={handleSave}
-            disabled={saving || presentExceedsWorking}
+            disabled={saving}
             className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? (
@@ -275,15 +198,13 @@ export default function SalaryPage() {
   const { members, loading: teamLoading } = useTeam();
   const [month, setMonth] = useState(currentMonth);
   const [editRow, setEditRow] = useState(null);
-  const [bulkDays, setBulkDays] = useState('');
-  const [showBulkInput, setShowBulkInput] = useState(false);
   const [processing, setProcessing] = useState(false);
 
   const teamMembers = useMemo(() => members.filter((m) => m.role === 'member'), [members]);
 
   // Fetch salary data with individual listeners per member.
   const { records, loading: salaryLoading } = useSalaryForMonth(teamMembers, month);
-  const { saveSalary, markPaid, deleteSalary, bulkSetWorkingDays, bulkMarkPaid, initMonthForAllMembers } =
+  const { saveSalary, markPaid, deleteSalary, bulkMarkPaid, initMonthForAllMembers } =
     useSalaryActions();
 
   const loading = teamLoading || salaryLoading;
@@ -292,27 +213,16 @@ export default function SalaryPage() {
   const rows = useMemo(() => {
     return teamMembers.map((m) => {
       const rec = records[m.id];
-      const base = rec?.baseSalary ?? 0;
-      const working = rec?.workingDays ?? 26;
-      const present = rec?.presentDays ?? 26;
-      const ot = rec?.overtimePayment ?? 0;
-      const calc = calcSalary(base, working, present, ot);
+      const net = rec?.netSalary ?? 0;
       return {
         uid: m.id,
         memberName: m.name || '',
         designation: m.designation || '',
         month,
-        workingDays: rec?.workingDays ?? 26,
-        presentDays: rec?.presentDays ?? 26,
-        baseSalary: base,
-        overtimePayment: ot,
         status: rec?.status ?? 'pending',
         paidDate: rec?.paidDate ?? null,
         remarks: rec?.remarks ?? '',
-        perDayRate: rec?.perDayRate ?? calc.perDayRate,
-        lopDays: rec?.lopDays ?? calc.lopDays,
-        lopDeduction: rec?.lopDeduction ?? calc.lopDeduction,
-        netSalary: rec?.netSalary ?? calc.netSalary,
+        netSalary: net,
         hasData: !!rec,
       };
     });
@@ -416,27 +326,6 @@ export default function SalaryPage() {
     }
   }, [teamMembers, month, initMonthForAllMembers, toast]);
 
-  // Bulk: set working days.
-  const handleBulkWorkingDays = useCallback(async () => {
-    const days = Number(bulkDays);
-    if (!days || days < 1 || days > 31) {
-      toast.error('Enter valid days (1-31)');
-      return;
-    }
-    setProcessing(true);
-    try {
-      await bulkSetWorkingDays(teamMembers.map((m) => m.id), month, days);
-      toast.success(`Working days set to ${days} for all members`);
-      setShowBulkInput(false);
-      setBulkDays('');
-    } catch (e) {
-      console.error('Bulk working days error:', e);
-      toast.error('Failed: ' + e.message);
-    } finally {
-      setProcessing(false);
-    }
-  }, [bulkDays, teamMembers, month, bulkSetWorkingDays, toast]);
-
   // Bulk: mark all paid.
   const handleBulkMarkPaid = useCallback(async () => {
     const pending = rows.filter((r) => r.status === 'pending' && r.hasData && Number(r.netSalary) > 0);
@@ -512,32 +401,7 @@ export default function SalaryPage() {
 
       {/* Bulk actions */}
       <div className="flex items-center gap-2 flex-wrap">
-        <button
-          onClick={() => setShowBulkInput((v) => !v)}
-          className="btn-secondary text-xs flex items-center gap-1"
-        >
-          <Users className="w-3.5 h-3.5" /> Set Working Days for All
-        </button>
 
-        {showBulkInput && (
-          <div className="flex items-center gap-2">
-            <input
-              type="number" min="1" max="31" placeholder="Days (e.g. 26)"
-              value={bulkDays}
-              onChange={(e) => setBulkDays(e.target.value)}
-              className="input-field w-24 text-sm py-1.5"
-            />
-            <button onClick={handleBulkWorkingDays} disabled={processing} className="btn-primary text-xs py-1.5 px-3">
-              Apply
-            </button>
-            <button
-              onClick={() => { setShowBulkInput(false); setBulkDays(''); }}
-              className="text-xs text-gray-400 hover:text-gray-600"
-            >
-              Cancel
-            </button>
-          </div>
-        )}
 
         <button
           onClick={handleBulkMarkPaid}
@@ -555,15 +419,9 @@ export default function SalaryPage() {
             <thead>
               <tr className="bg-gray-50 border-b border-[var(--border-primary)]">
                 <th className="table-header text-left min-w-[160px]">Employee</th>
-                <th className="table-header text-center">Working Days</th>
-                <th className="table-header text-center">Present Days</th>
-                <th className="table-header text-center">LOP Days</th>
-                <th className="table-header text-right">Base Salary</th>
-                <th className="table-header text-right">Per Day</th>
-                <th className="table-header text-right text-red-500">LOP Deduction</th>
-                <th className="table-header text-right text-green-600">OT Payment</th>
-                <th className="table-header text-right text-teal-700">Net Salary</th>
+                <th className="table-header text-right">Salary Amount</th>
                 <th className="table-header text-center">Status</th>
+                <th className="table-header text-center">Paid Date</th>
                 <th className="table-header text-center">Actions</th>
               </tr>
             </thead>
@@ -614,31 +472,6 @@ export default function SalaryPage() {
                       </div>
                     </td>
 
-                    <td className="table-cell text-center text-[var(--text-primary)]">{row.workingDays}</td>
-                    <td className="table-cell text-center text-[var(--text-primary)]">{row.presentDays}</td>
-
-                    <td className="table-cell text-center">
-                      <span className={row.lopDays > 0 ? 'text-orange-500 font-semibold' : 'text-gray-400'}>
-                        {row.lopDays}
-                      </span>
-                    </td>
-
-                    <td className="table-cell text-right text-[var(--text-primary)]">
-                      {formatCurrency(row.baseSalary)}
-                    </td>
-
-                    <td className="table-cell text-right text-[var(--text-muted)] text-xs">
-                      {formatCurrency(row.perDayRate)}
-                    </td>
-
-                    <td className="table-cell text-right text-red-500 font-medium">
-                      {row.lopDeduction > 0 ? `-${formatCurrency(row.lopDeduction)}` : '-'}
-                    </td>
-
-                    <td className="table-cell text-right text-green-600 font-medium">
-                      {row.overtimePayment > 0 ? `+${formatCurrency(row.overtimePayment)}` : '-'}
-                    </td>
-
                     <td className="table-cell text-right font-bold text-teal-700">
                       {formatCurrency(row.netSalary)}
                     </td>
@@ -651,6 +484,12 @@ export default function SalaryPage() {
                       ) : (
                         <span className="text-xs text-gray-400">-</span>
                       )}
+                    </td>
+
+                    <td className="table-cell text-center text-[var(--text-muted)] text-xs">
+                      {row.status === 'paid' && row.paidDate
+                        ? new Date(row.paidDate.toDate ? row.paidDate.toDate() : row.paidDate).toLocaleDateString('en-IN')
+                        : '-'}
                     </td>
 
                     <td className="table-cell">

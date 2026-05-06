@@ -12,17 +12,6 @@ import {
   logSnapshot,
 } from '../lib/firestoreDebug';
 
-export function calcSalary(baseSalary, workingDays, presentDays, overtimePayment) {
-  const base = Number(baseSalary) || 0;
-  const working = Number(workingDays) || 0;
-  const present = Math.min(Number(presentDays) || 0, working);
-  const ot = Number(overtimePayment) || 0;
-  const perDayRate = working > 0 ? base / working : 0;
-  const lopDays = Math.max(0, working - present);
-  const lopDeduction = Math.round(perDayRate * lopDays);
-  const netSalary = Math.max(0, Math.round(base - lopDeduction) + ot);
-  return { perDayRate: Math.round(perDayRate), lopDays, lopDeduction, netSalary, overtimePayment: ot };
-}
 
 export function formatMonthLabel(monthStr) {
   if (!monthStr) return '';
