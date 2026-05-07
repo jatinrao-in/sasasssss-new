@@ -1,4 +1,4 @@
-import { getAdminApp } from '../_lib/firebaseAdmin.js';
+import { getAdminApp } from '../lib/firebaseAdmin.js';
 import {
   sendDailyReminder,
   sendGeneralMessage,
