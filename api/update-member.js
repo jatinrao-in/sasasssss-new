@@ -1,52 +1,72 @@
-import { Timestamp } from 'firebase-admin/firestore';
-import { handleConfigError } from '../server/config.js';
-import { handleCors } from '../server/cors.js';
-import { getAdminServices } from '../server/firebaseAdmin.js';
-import { requireAdmin, verifyFirebaseRequest } from '../server/auth.js';
-import {
-  ensureMainAdminUid,
-  getAllPageKeys,
-  normalizeRole,
-  normalizeStatus,
-  sanitizePermissions,
-} from '../server/accessControl.js';
+import { getAdminApp } from './lib/firebaseAdmin.js';
 
 export default async function handler(req, res) {
-  if (handleCors(req, res)) {
-    return;
-  }
+  // CORS Headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ error: 'Use POST method' });
   }
 
-  const {
-    uid,
-    name,
-    email,
-    password,
-    phone,
-    whatsapp,
-    designation,
-    role,
-    permissions,
-    status,
-  } = req.body || {};
-
-  if (!uid) {
-    return res.status(400).json({ error: 'uid is required' });
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(403).json({ error: 'Bearer token required' });
   }
 
-  if (password && String(password).length < 8) {
-    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  let adminApp;
+  try {
+    adminApp = getAdminApp();
+  } catch (initError) {
+    console.error('Admin init failed:', initError.message);
+    return res.status(500).json({ error: 'Server config error: ' + initError.message });
   }
+
+  const { auth, db } = adminApp;
 
   try {
-    const authContext = await verifyFirebaseRequest(req);
-    requireAdmin(authContext);
+    const token = authHeader.split('Bearer ')[1];
 
-    const { auth, db } = getAdminServices();
-    const mainAdminUid = await ensureMainAdminUid(db, authContext.decodedToken.uid);
+    // Verify caller token
+    let decoded;
+    try {
+      decoded = await auth.verifyIdToken(token);
+    } catch (tokenErr) {
+      return res.status(403).json({ error: 'Invalid token. Login again.' });
+    }
+
+    // Verify caller is admin
+    const callerDoc = await db.doc(`users/${decoded.uid}`).get();
+    if (!callerDoc.exists || callerDoc.data()?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const {
+      uid,
+      name,
+      email,
+      password,
+      phone,
+      whatsapp,
+      designation,
+      role,
+      permissions,
+      status,
+    } = req.body || {};
+
+    if (!uid) {
+      return res.status(400).json({ error: 'uid is required' });
+    }
+
+    if (password && String(password).length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+
+    // Get existing user from Firestore
     const userRef = db.collection('users').doc(uid);
     const userSnapshot = await userRef.get();
 
@@ -55,78 +75,88 @@ export default async function handler(req, res) {
     }
 
     const existingUser = userSnapshot.data() || {};
-    const existingRole = normalizeRole(existingUser.role);
-    const nextRole = role ? normalizeRole(role) : existingRole;
-    const nextStatus = status ? normalizeStatus(status) : normalizeStatus(existingUser.status);
-    const nextPermissions = permissions === undefined
-      ? sanitizePermissions(nextRole, existingUser.permissions)
-      : sanitizePermissions(nextRole, permissions, { fallbackToAll: false });
+
+    // Determine main admin (the first admin created, stored in settings/main)
+    let mainAdminUid = null;
+    try {
+      const settingsDoc = await db.doc('settings/main').get();
+      mainAdminUid = settingsDoc.data()?.adminUid || null;
+    } catch (_) {}
 
     const isMainAdmin = Boolean(mainAdminUid) && uid === mainAdminUid;
 
-    if (isMainAdmin) {
-      const requestedPermissions = permissions === undefined ? getAllPageKeys('admin') : nextPermissions;
-      const hasFullAdminAccess = getAllPageKeys('admin').every((pageKey) => requestedPermissions.includes(pageKey));
+    // Normalize role and status
+    const nextRole = role ? (role === 'admin' ? 'admin' : 'member') : (existingUser.role || 'member');
+    const nextStatus = status ? (status === 'inactive' ? 'inactive' : 'active') : (existingUser.status || 'active');
 
-      if (nextRole !== 'admin' || nextStatus !== 'active' || !hasFullAdminAccess) {
-        return res.status(400).json({ error: 'Main admin must remain active with full admin access' });
+    // Protect main admin: cannot demote, deactivate, or remove permissions
+    if (isMainAdmin) {
+      if (nextRole !== 'admin' || nextStatus !== 'active') {
+        return res.status(400).json({ error: 'Main admin must remain active with admin role' });
       }
     }
 
+    // Build permission list
+    const adminPerms = [
+      'dashboard', 'projects', 'enquiry',
+      'followups', 'payments',
+      'outgoing_payments', 'rgp', 'salary',
+      'tools', 'team', 'settings', 'whatsapp'
+    ];
+    const memberPerms = [
+      'dashboard', 'tasks', 'enquiry',
+      'followups', 'payments', 'rgp', 'profile'
+    ];
+
+    let nextPermissions;
+    if (isMainAdmin) {
+      nextPermissions = adminPerms;
+    } else if (permissions !== undefined) {
+      // Filter provided permissions to only valid ones for the role
+      const validPerms = nextRole === 'admin' ? adminPerms : memberPerms;
+      nextPermissions = permissions.filter(p => validPerms.includes(p));
+    } else {
+      // Keep existing or default by role
+      nextPermissions = Array.isArray(existingUser.permissions)
+        ? existingUser.permissions
+        : (nextRole === 'admin' ? adminPerms : memberPerms);
+    }
+
+    // Update Firebase Auth user
     const authUpdates = {};
 
-    if (name) {
-      authUpdates.displayName = name.trim();
-    }
-
-    if (email) {
-      authUpdates.email = email.trim();
-    }
-
-    if (password) {
-      authUpdates.password = password;
-    }
-
-    if (status) {
-      const parsedStatus = normalizeStatus(status);
-      if (parsedStatus !== normalizeStatus(existingUser.status)) {
-        authUpdates.disabled = parsedStatus === 'inactive';
-      }
+    if (name) authUpdates.displayName = name.trim();
+    if (email) authUpdates.email = email.trim();
+    if (password) authUpdates.password = password;
+    if (status && !isMainAdmin) {
+      authUpdates.disabled = nextStatus === 'inactive';
     }
 
     if (Object.keys(authUpdates).length > 0) {
-      await auth.updateUser(uid, authUpdates);
+      try {
+        await auth.updateUser(uid, authUpdates);
+      } catch (authErr) {
+        if (authErr.code === 'auth/email-already-exists') {
+          return res.status(409).json({ error: 'This email is already registered' });
+        }
+        return res.status(400).json({ error: authErr.message });
+      }
     }
 
+    // Update Firestore document
     const firestoreUpdate = {
-      updatedAt: Timestamp.now(),
+      updatedAt: new Date(),
     };
 
-    if (name !== undefined) {
-      firestoreUpdate.name = name.trim();
-    }
-
-    if (email !== undefined) {
-      firestoreUpdate.email = email.trim();
-    }
-
-    if (phone !== undefined) {
-      firestoreUpdate.phone = String(phone).trim();
-    }
-
-    if (whatsapp !== undefined) {
-      firestoreUpdate.whatsapp = String(whatsapp).trim();
-    }
-
-    if (designation !== undefined) {
-      firestoreUpdate.designation = designation.trim();
-    }
+    if (name !== undefined) firestoreUpdate.name = name.trim();
+    if (email !== undefined) firestoreUpdate.email = email.trim();
+    if (phone !== undefined) firestoreUpdate.phone = String(phone).trim();
+    if (whatsapp !== undefined) firestoreUpdate.whatsapp = String(whatsapp).trim();
+    if (designation !== undefined) firestoreUpdate.designation = designation.trim();
 
     firestoreUpdate.role = isMainAdmin ? 'admin' : nextRole;
     firestoreUpdate.status = isMainAdmin ? 'active' : nextStatus;
-    firestoreUpdate.permissions = isMainAdmin
-      ? getAllPageKeys('admin')
-      : nextPermissions;
+    firestoreUpdate.permissions = nextPermissions;
 
     await userRef.set(firestoreUpdate, { merge: true });
 
@@ -137,21 +167,9 @@ export default async function handler(req, res) {
       role: firestoreUpdate.role,
       status: firestoreUpdate.status,
     });
+
   } catch (error) {
-    console.error('Critical:', error.message);
-
-    if (handleConfigError(res, error)) {
-      return;
-    }
-
-    const statusCode = error.statusCode
-      || (error.code === 'auth/email-already-exists' ? 409 : 0)
-      || (String(error.code || '').startsWith('auth/') ? 401 : 0)
-      || 500;
-    const message = error.code === 'auth/email-already-exists'
-      ? 'This email is already registered'
-      : error.message;
-
-    return res.status(statusCode).json({ error: message });
+    console.error('Update member error:', error.message);
+    return res.status(500).json({ error: error.message });
   }
 }
