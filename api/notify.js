@@ -221,6 +221,11 @@ export default async function handler(req, res) {
   }
 
   const { eventType, context } = req.body || {};
+  
+  console.log('Notify called:', eventType);
+  console.log('Context:', JSON.stringify(context));
+  console.log('MSG91 key exists:', !!process.env.MSG91_AUTH_KEY);
+  console.log('MSG91 number:', process.env.MSG91_INTEGRATED_NUMBER);
 
   if (!eventType || !context) {
     return res.status(400).json({ error: 'Missing eventType or context' });

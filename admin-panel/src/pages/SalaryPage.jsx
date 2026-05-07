@@ -65,12 +65,18 @@ function SkeletonRow() {
 // Edit modal
 function EditModal({ row, month, onClose, onSave }) {
   const [form, setForm] = useState({
-    netSalary: row?.netSalary ?? 0,
+    basicSalary: row?.basicSalary ?? 0,
+    workingDays: row?.workingDays ?? 0,
+    presentDays: row?.presentDays ?? 0,
+    overtime: row?.overtime ?? 0,
+    allowances: row?.allowances ?? 0,
     remarks: row?.remarks ?? '',
   });
   const [saving, setSaving] = useState(false);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const netSalary = (Number(form.basicSalary) || 0) + (Number(form.overtime) || 0) + (Number(form.allowances) || 0);
 
   const handleSave = async () => {
     setSaving(true);
@@ -104,14 +110,67 @@ function EditModal({ row, month, onClose, onSave }) {
         {/* Fields */}
         <div className="px-5 py-4 space-y-4">
           <div className="space-y-4">
-            <div>
-              <label className="label">Salary Amount (Rs)</label>
-              <input
-                className="input-field"
-                type="number" min="0"
-                value={form.netSalary}
-                onChange={(e) => set('netSalary', e.target.value)}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="label">Working Days</label>
+                <input
+                  className="input-field"
+                  type="number" min="0" step="0.5"
+                  value={form.workingDays}
+                  onChange={(e) => set('workingDays', e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="label">Present Days</label>
+                <input
+                  className="input-field"
+                  type="number" min="0" step="0.5"
+                  value={form.presentDays}
+                  onChange={(e) => set('presentDays', e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="label">Basic Salary</label>
+                <input
+                  className="input-field"
+                  type="number" min="0"
+                  value={form.basicSalary}
+                  onChange={(e) => set('basicSalary', e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="label">Overtime</label>
+                <input
+                  className="input-field"
+                  type="number" min="0"
+                  value={form.overtime}
+                  onChange={(e) => set('overtime', e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="label">Allowances</label>
+                <input
+                  className="input-field"
+                  type="number" min="0"
+                  value={form.allowances}
+                  onChange={(e) => set('allowances', e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="label">Net Salary</label>
+                <input
+                  className="input-field bg-gray-50 text-teal-700 font-bold"
+                  type="number"
+                  value={netSalary}
+                  disabled
+                />
+              </div>
             </div>
 
             <div>
@@ -222,6 +281,11 @@ export default function SalaryPage() {
         status: rec?.status ?? 'pending',
         paidDate: rec?.paidDate ?? null,
         remarks: rec?.remarks ?? '',
+        basicSalary: rec?.basicSalary ?? 0,
+        workingDays: rec?.workingDays ?? 0,
+        presentDays: rec?.presentDays ?? 0,
+        overtime: rec?.overtime ?? 0,
+        allowances: rec?.allowances ?? 0,
         netSalary: net,
         hasData: !!rec,
       };
@@ -419,7 +483,11 @@ export default function SalaryPage() {
             <thead>
               <tr className="bg-gray-50 border-b border-[var(--border-primary)]">
                 <th className="table-header text-left min-w-[160px]">Employee</th>
-                <th className="table-header text-right">Salary Amount</th>
+                <th className="table-header text-center">Days (W/P)</th>
+                <th className="table-header text-right">Basic</th>
+                <th className="table-header text-right">Overtime</th>
+                <th className="table-header text-right">Allowances</th>
+                <th className="table-header text-right">Net Salary</th>
                 <th className="table-header text-center">Status</th>
                 <th className="table-header text-center">Paid Date</th>
                 <th className="table-header text-center">Actions</th>
@@ -470,6 +538,24 @@ export default function SalaryPage() {
                           <p className="text-[10px] text-[var(--text-muted)]">{row.designation || 'Member'}</p>
                         </div>
                       </div>
+                    </td>
+
+                    <td className="table-cell text-center">
+                      <div className="text-xs">
+                        <span className="text-gray-500">W:</span> {row.workingDays} <span className="text-gray-300">|</span> <span className="text-gray-500">P:</span> {row.presentDays}
+                      </div>
+                    </td>
+
+                    <td className="table-cell text-right text-gray-700">
+                      {formatCurrency(row.basicSalary)}
+                    </td>
+
+                    <td className="table-cell text-right text-gray-700">
+                      {formatCurrency(row.overtime)}
+                    </td>
+
+                    <td className="table-cell text-right text-gray-700">
+                      {formatCurrency(row.allowances)}
                     </td>
 
                     <td className="table-cell text-right font-bold text-teal-700">

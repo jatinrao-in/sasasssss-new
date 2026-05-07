@@ -243,7 +243,7 @@ export default function ProjectDetailPage() {
         // Silent WhatsApp notification via MSG91 task_assigned template
         const member = members.find((m) => m.id === taskData.assignedTo);
         if (member) {
-          notifyTaskAssigned(member, taskData, project);
+          await notifyTaskAssigned(member, taskData, project);
         }
       }
 

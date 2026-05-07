@@ -1,18 +1,24 @@
 const MSG91_API_URL = 'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/';
 
 export function normalizeIndianWhatsAppNumber(toNumber) {
-  const digits = String(toNumber ?? '')
+  if (!toNumber) {
+    throw new Error('No WhatsApp number');
+  }
+  const cleaned = String(toNumber)
     .replace(/\D/g, '')
     .replace(/^0+/, '')
     .replace(/^91/, '');
+  
+  console.log('Original:', toNumber);
+  console.log('Cleaned:', cleaned);
 
-  if (digits.length !== 10) {
-    const error = new Error(`Invalid phone number: ${toNumber} (must be 10 digits after stripping country code)`);
+  if (cleaned.length !== 10) {
+    const error = new Error(`Invalid number: ${toNumber} cleaned: ${cleaned} length: ${cleaned.length}`);
     error.statusCode = 400;
     throw error;
   }
 
-  return `91${digits}`;
+  return `91${cleaned}`;
 }
 
 export function isMsg91Success(result) {
@@ -67,7 +73,9 @@ async function sendTemplate(toNumber, templateName, variables) {
     },
   };
 
-  console.log('MSG91 sending:', { template: templateName, to: phone, variables });
+  console.log('Sending template:', templateName);
+  console.log('To number:', phone);
+  console.log('Variables:', variables);
 
   const response = await fetch(MSG91_API_URL, {
     method: 'POST',
@@ -79,7 +87,7 @@ async function sendTemplate(toNumber, templateName, variables) {
   });
 
   const result = await response.json();
-  console.log('MSG91 response:', result);
+  console.log('MSG91 raw response:', JSON.stringify(result));
 
   if (!response.ok) {
     const error = new Error(resolveMsg91ErrorMessage(result));

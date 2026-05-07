@@ -63,10 +63,34 @@ function SalaryCard({ record, month }) {
         </span>
       </div>
 
-      {/* Salary Amount */}
+      {/* Net Salary Amount */}
       <div className="bg-white px-4 py-5 border-b border-gray-100 text-center">
-        <span className="block text-sm font-medium text-gray-500 mb-1">Salary Amount</span>
+        <span className="block text-sm font-medium text-gray-500 mb-1">Net Salary</span>
         <span className="text-3xl font-bold text-teal-600">{fmt(net)}</span>
+      </div>
+
+      {/* Details */}
+      <div className="bg-white px-4 py-3 border-b border-gray-100 space-y-1">
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-500">Working Days</span>
+          <span className="font-medium text-gray-700">{record?.workingDays || 0}</span>
+        </div>
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-500">Present Days</span>
+          <span className="font-medium text-gray-700">{record?.presentDays || 0}</span>
+        </div>
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-500">Basic Salary</span>
+          <span className="font-medium text-gray-700">{fmt(record?.basicSalary || 0)}</span>
+        </div>
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-500">Overtime</span>
+          <span className="font-medium text-gray-700">{fmt(record?.overtime || 0)}</span>
+        </div>
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-500">Allowances</span>
+          <span className="font-medium text-gray-700">{fmt(record?.allowances || 0)}</span>
+        </div>
       </div>
 
       {/* Status */}

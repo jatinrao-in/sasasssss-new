@@ -109,7 +109,12 @@ export function useSalaryActions() {
   const { log } = useAuditLog();
 
   const saveSalary = useCallback(async (uid, month, data) => {
-    const netSalary = Number(data.netSalary) || 0;
+    const basicSalary = Number(data.basicSalary) || 0;
+    const overtime = Number(data.overtime) || 0;
+    const allowances = Number(data.allowances) || 0;
+    const workingDays = Number(data.workingDays) || 0;
+    const presentDays = Number(data.presentDays) || 0;
+    const netSalary = basicSalary + overtime + allowances;
     const ref = getSalaryMonthDoc(db, uid, month);
 
     await setDocument(
@@ -119,6 +124,11 @@ export function useSalaryActions() {
         month,
         memberName: data.memberName || '',
         designation: data.designation || '',
+        basicSalary,
+        overtime,
+        allowances,
+        workingDays,
+        presentDays,
         netSalary,
         status: data.status || 'pending',
         paidDate: data.paidDate ?? null,
@@ -184,6 +194,11 @@ export function useSalaryActions() {
             month,
             memberName: member.name || '',
             designation: member.designation || '',
+            basicSalary: 0,
+            overtime: 0,
+            allowances: 0,
+            workingDays: 0,
+            presentDays: 0,
             netSalary: 0,
             status: 'pending',
             paidDate: null,
