@@ -116,7 +116,11 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Delete error:', error.message);
-    return res.status(500).json({ error: error.message });
+    console.error('Delete member error:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return res.status(500).json({ 
+      error: 'Member deletion failed', 
+      details: errorMessage 
+    });
   }
 }

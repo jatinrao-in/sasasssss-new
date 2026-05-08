@@ -111,7 +111,7 @@ export default async function handler(req, res) {
     let nextPermissions;
     if (isMainAdmin) {
       nextPermissions = adminPerms;
-    } else if (permissions !== undefined) {
+    } else if (permissions !== undefined && Array.isArray(permissions)) {
       // Filter provided permissions to only valid ones for the role
       const validPerms = nextRole === 'admin' ? adminPerms : memberPerms;
       nextPermissions = permissions.filter(p => validPerms.includes(p));
@@ -122,12 +122,16 @@ export default async function handler(req, res) {
         : (nextRole === 'admin' ? adminPerms : memberPerms);
     }
 
+    // Standardize email
+    const cleanEmail = email ? String(email).trim().toLowerCase() : (existingUser.email || '').toLowerCase();
+
     // Update Firebase Auth user
     const authUpdates = {};
 
-    if (name) authUpdates.displayName = name.trim();
-    if (email) authUpdates.email = email.trim();
+    if (name !== undefined && name !== null) authUpdates.displayName = String(name).trim();
+    if (email !== undefined && email !== null) authUpdates.email = cleanEmail;
     if (password) authUpdates.password = password;
+    
     if (status && !isMainAdmin) {
       authUpdates.disabled = nextStatus === 'inactive';
     }
@@ -136,10 +140,14 @@ export default async function handler(req, res) {
       try {
         await auth.updateUser(uid, authUpdates);
       } catch (authErr) {
+        console.error('Auth update failed:', authErr.message);
         if (authErr.code === 'auth/email-already-exists') {
           return res.status(409).json({ error: 'This email is already registered' });
         }
-        return res.status(400).json({ error: authErr.message });
+        if (authErr.code === 'auth/user-not-found') {
+          return res.status(404).json({ error: 'User not found in Authentication' });
+        }
+        return res.status(400).json({ error: 'Auth update failed: ' + authErr.message });
       }
     }
 
@@ -148,11 +156,11 @@ export default async function handler(req, res) {
       updatedAt: new Date(),
     };
 
-    if (name !== undefined) firestoreUpdate.name = name.trim();
-    if (email !== undefined) firestoreUpdate.email = email.trim();
-    if (phone !== undefined) firestoreUpdate.phone = String(phone).trim();
-    if (whatsapp !== undefined) firestoreUpdate.whatsapp = String(whatsapp).trim();
-    if (designation !== undefined) firestoreUpdate.designation = designation.trim();
+    if (name !== undefined && name !== null) firestoreUpdate.name = String(name).trim();
+    if (email !== undefined && email !== null) firestoreUpdate.email = cleanEmail;
+    if (phone !== undefined && phone !== null) firestoreUpdate.phone = String(phone).trim();
+    if (whatsapp !== undefined && whatsapp !== null) firestoreUpdate.whatsapp = String(whatsapp).trim();
+    if (designation !== undefined && designation !== null) firestoreUpdate.designation = String(designation).trim();
 
     firestoreUpdate.role = isMainAdmin ? 'admin' : nextRole;
     firestoreUpdate.status = isMainAdmin ? 'active' : nextStatus;
@@ -169,7 +177,11 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Update member error:', error.message);
-    return res.status(500).json({ error: error.message });
+    console.error('Update member error:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return res.status(500).json({ 
+      error: 'Update failed', 
+      details: errorMessage 
+    });
   }
 }

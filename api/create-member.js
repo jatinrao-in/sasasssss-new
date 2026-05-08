@@ -85,13 +85,13 @@ export default async function handler(req, res) {
     try {
       await db.doc(`users/${newUser.uid}`).set({
         uid: newUser.uid,
-        name: name.trim(),
+        name: String(name || '').trim(),
         email: email.trim().toLowerCase(),
-        phone: phone?.trim() || '',
-        whatsapp: whatsapp?.trim() || '',
-        designation: designation?.trim() || '',
+        phone: String(phone || '').trim(),
+        whatsapp: String(whatsapp || '').trim(),
+        designation: String(designation || '').trim(),
         role: role || 'member',
-        permissions: permissions?.length
+        permissions: (permissions && Array.isArray(permissions))
           ? permissions
           : role === 'admin'
           ? adminPerms
@@ -127,7 +127,11 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Create member error:', error.message);
-    return res.status(500).json({ error: error.message });
+    console.error('Create member error:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return res.status(500).json({ 
+      error: 'Member creation failed', 
+      details: errorMessage 
+    });
   }
 }

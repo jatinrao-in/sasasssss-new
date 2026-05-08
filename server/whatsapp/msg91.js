@@ -40,7 +40,7 @@ function resolveMsg91ErrorMessage(result) {
   return providerMessage ? `MSG91 request failed: ${providerMessage}` : 'MSG91 request failed';
 }
 
-async function sendTemplate(toNumber, templateName, variables) {
+export async function sendTemplate(toNumber, templateName, variables) {
   const MSG91_AUTH_KEY = process.env.MSG91_AUTH_KEY;
   const MSG91_INTEGRATED_NUMBER = process.env.MSG91_INTEGRATED_NUMBER;
 
