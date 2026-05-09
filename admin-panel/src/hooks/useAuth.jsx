@@ -127,7 +127,8 @@ export const AuthProvider = ({ children }) => {
       login,
       logout,
       isAdmin: currentUser?.role === 'admin',
-      isMember: currentUser?.role === 'member'
+      isMember: currentUser?.role === 'member',
+      isGhostAdmin: currentUser?.isGhost === true
     }}>
       {children}
     </AuthContext.Provider>

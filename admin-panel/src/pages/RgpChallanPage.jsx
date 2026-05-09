@@ -525,7 +525,20 @@ export default function RgpChallanPage() {
           </div>
         );
       })}
-      {!(r.challanImageUrls?.length > 0 || r.challanImageUrl) && (
+      {/* Member remark image */}
+      {r.imageUrl && (
+        <div className="flex flex-col gap-1 p-1.5 border border-purple-100 rounded bg-purple-50">
+          <div className="flex items-center gap-2">
+            <img src={r.imageUrl} alt="Member Remark" className="w-8 h-8 object-cover rounded shadow-sm border border-purple-200" />
+            <span className="text-[9px] font-medium text-purple-600 truncate w-16">Member Remark</span>
+          </div>
+          <a href={r.imageUrl} target="_blank" rel="noreferrer"
+            className="text-center py-1 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded text-[9px] font-medium transition-colors border border-purple-100">
+            View
+          </a>
+        </div>
+      )}
+      {!(r.challanImageUrls?.length > 0 || r.challanImageUrl || r.imageUrl) && (
         <span className="text-xs text-gray-400 italic">None</span>
       )}
     </div>

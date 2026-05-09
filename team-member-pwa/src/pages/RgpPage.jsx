@@ -140,6 +140,12 @@ export default function RgpPage() {
   const [uploadingItemId, setUploadingItemId] = useState(null);
   const [confirmState, setConfirmState] = useState({ open: false, onConfirm: null });
 
+  // Remark image upload state
+  const [selectedRemarkImage, setSelectedRemarkImage] = useState(null);
+  const [remarkImagePreview, setRemarkImagePreview] = useState(null);
+  const [remarkImageUploading, setRemarkImageUploading] = useState(false);
+  const [remarkImageUrl, setRemarkImageUrl] = useState(null);
+
   const handleImageUpload = async (event, item) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
@@ -212,6 +218,43 @@ export default function RgpPage() {
     setSelectedStatus('open');
     setStatusRemarks('');
     setRemarkText('');
+    setSelectedRemarkImage(null);
+    setRemarkImagePreview(null);
+    setRemarkImageUrl(null);
+  };
+
+  const handleRemarkImageSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image too large. Max 5MB allowed.');
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      toast.error('Only image files are allowed.');
+      return;
+    }
+    setSelectedRemarkImage(file);
+    setRemarkImageUrl(null); // reset any previously uploaded URL
+    const reader = new FileReader();
+    reader.onload = (ev) => setRemarkImagePreview(ev.target.result);
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleRemarkImageUpload = async () => {
+    if (!selectedRemarkImage) return;
+    setRemarkImageUploading(true);
+    try {
+      const compressedBlob = await compressImage(selectedRemarkImage);
+      const url = await uploadToImgbb(compressedBlob);
+      setRemarkImageUrl(url);
+      toast.success('Image uploaded!');
+    } catch (err) {
+      toast.error('Upload failed: ' + (err.message || 'Unknown error'));
+    } finally {
+      setRemarkImageUploading(false);
+    }
   };
 
   const handleFirestoreError = (firestoreError, fallbackMessage) => {
@@ -276,22 +319,26 @@ export default function RgpPage() {
   };
 
   const handleAddRemark = async () => {
-    if (!selectedItem) {
+    if (!selectedItem) return;
+
+    if (!remarkText.trim() && !remarkImageUrl) {
+      toast.error('Add a remark or upload an image');
       return;
     }
 
-    if (!remarkText.trim()) {
-      toast.error('Please write a remark first');
+    if (selectedRemarkImage && !remarkImageUrl) {
+      toast.error('Please upload the selected image first');
       return;
     }
 
     setSaving(true);
     try {
       await updateRgp(selectedItem.id, {
-        remarks: remarkText.trim(),
+        remarks: remarkText.trim() || selectedItem.remarks || '',
+        imageUrl: remarkImageUrl || selectedItem.imageUrl || null,
         updatedAt: serverTimestamp(),
       });
-      toast.success('Remark added successfully');
+      toast.success('Remark saved successfully');
       resetSheets();
     } catch (firestoreError) {
       handleFirestoreError(firestoreError, 'Failed to add remark');
@@ -663,23 +710,49 @@ export default function RgpPage() {
 
                 {/* Remarks */}
                 {item.remarks && (
-                  <div style={{
-                    marginBottom: '12px'
-                  }}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                      Remarks
+                    </p>
+                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                      {item.remarks}
+                    </p>
+                  </div>
+                )}
+
+                {/* Member-attached remark image */}
+                {item.imageUrl && (
+                  <div style={{ marginBottom: '12px' }}>
                     <p style={{
                       fontSize: '11px',
                       color: 'var(--text-muted)',
-                      marginBottom: '4px'
+                      marginBottom: '6px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
                     }}>
-                      Remarks
+                      Attached Image
                     </p>
-                    <p style={{
-                      fontSize: '13px',
-                      color: 'var(--text-secondary)',
-                      fontStyle: 'italic'
-                    }}>
-                      {item.remarks}
-                    </p>
+                    <a href={item.imageUrl} target="_blank" rel="noreferrer" style={{ display: 'block' }}>
+                      <img
+                        src={item.imageUrl}
+                        alt="Attached"
+                        style={{
+                          width: '100%',
+                          maxHeight: '160px',
+                          objectFit: 'cover',
+                          borderRadius: '8px',
+                          border: '1px solid var(--border-primary)',
+                          cursor: 'pointer'
+                        }}
+                      />
+                      <p style={{
+                        fontSize: '11px',
+                        color: 'var(--accent-primary)',
+                        marginTop: '4px'
+                      }}>
+                        Tap to view full image
+                      </p>
+                    </a>
                   </div>
                 )}
 
@@ -823,20 +896,120 @@ export default function RgpPage() {
           </SheetHeader>
 
           {selectedItem && (
-            <div className="space-y-5 py-2">
+            <div className="space-y-4 py-2">
+              {/* Text Remark */}
               <div className="space-y-2">
                 <Label htmlFor="rgp-remark">Remark</Label>
                 <textarea
                   id="rgp-remark"
-                  rows={4}
+                  rows={3}
                   value={remarkText}
                   onChange={(event) => setRemarkText(event.target.value)}
                   placeholder="Write your remark here..."
-                  className="flex min-h-[120px] w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  className="flex min-h-[90px] w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
               </div>
 
-              <Button className="h-11 w-full" onClick={handleAddRemark} disabled={saving}>
+              {/* Image Upload Section */}
+              <div>
+                <Label style={{ display: 'block', marginBottom: '8px' }}>
+                  Attach Image <span style={{ fontWeight: '400', color: 'var(--text-muted)' }}>(Optional · Max 5MB)</span>
+                </Label>
+
+                {/* Drop zone — only shown when no image selected */}
+                {!remarkImagePreview && (
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    padding: '14px',
+                    border: '2px dashed var(--border-primary)',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    color: 'var(--text-secondary)',
+                    fontSize: '14px',
+                    background: 'var(--bg-secondary)'
+                  }}>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handleRemarkImageSelect}
+                      style={{ display: 'none' }}
+                    />
+                    <Camera className="w-4 h-4" /> Tap to attach image / take photo
+                  </label>
+                )}
+
+                {/* Preview + upload/success */}
+                {remarkImagePreview && (
+                  <div style={{ position: 'relative' }}>
+                    <img
+                      src={remarkImagePreview}
+                      alt="Preview"
+                      style={{
+                        width: '100%',
+                        maxHeight: '200px',
+                        objectFit: 'cover',
+                        borderRadius: '10px',
+                        border: '1px solid var(--border-primary)'
+                      }}
+                    />
+                    {/* Remove button */}
+                    <button
+                      onClick={() => {
+                        setSelectedRemarkImage(null);
+                        setRemarkImagePreview(null);
+                        setRemarkImageUrl(null);
+                      }}
+                      style={{
+                        position: 'absolute', top: '8px', right: '8px',
+                        background: '#DC2626', color: 'white', border: 'none',
+                        borderRadius: '50%', width: '28px', height: '28px',
+                        cursor: 'pointer', fontSize: '14px', display: 'flex',
+                        alignItems: 'center', justifyContent: 'center', lineHeight: 1
+                      }}
+                    >
+                      ✕
+                    </button>
+
+                    {/* Upload button — only while not yet uploaded */}
+                    {!remarkImageUrl && (
+                      <button
+                        onClick={handleRemarkImageUpload}
+                        disabled={remarkImageUploading}
+                        style={{
+                          width: '100%', marginTop: '8px', padding: '10px',
+                          background: remarkImageUploading ? '#94A3B8' : 'var(--accent-primary)',
+                          color: 'white', border: 'none', borderRadius: '8px',
+                          cursor: remarkImageUploading ? 'not-allowed' : 'pointer',
+                          fontSize: '14px', fontWeight: '600'
+                        }}
+                      >
+                        {remarkImageUploading ? 'Uploading...' : 'Upload Image to Cloud'}
+                      </button>
+                    )}
+
+                    {/* Success badge */}
+                    {remarkImageUrl && (
+                      <div style={{
+                        marginTop: '8px', padding: '8px 12px',
+                        background: '#DCFCE7', borderRadius: '8px',
+                        color: '#16A34A', fontSize: '13px', fontWeight: '600'
+                      }}>
+                        ✓ Image uploaded successfully!
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <Button
+                className="h-11 w-full"
+                onClick={handleAddRemark}
+                disabled={saving || remarkImageUploading}
+              >
                 {saving ? 'Saving...' : 'Save Remark'}
               </Button>
             </div>

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
  BarChart, Bar, LineChart, Line, AreaChart, Area,
@@ -30,6 +30,7 @@ import PaymentsPopup from '../components/popups/PaymentsPopup';
 import TeamPopup     from '../components/popups/TeamPopup';
 import { RankBadge } from '../components/ui/TextIndicators';
 import UserAvatar from '../components/UserAvatar';
+import { useAuth } from '../hooks/useAuth';
 
 // Live clock
 
@@ -143,6 +144,7 @@ function AIInsightsWidget({ data }) {
 
 export default function DashboardPage() {
  const navigate = useNavigate();
+ const { isGhostAdmin } = useAuth();
  const { projects, loading: projLoading } = useProjects();
  const { tasks, loading: taskLoading } = useTasks();
  const { members, loading: teamLoading } = useTeam();
@@ -491,23 +493,24 @@ export default function DashboardPage() {
  </div>
 
  {/* Quick actions */}
- {widgetConfig.quickActions && (
- <div className="flex gap-3">
- {[
- { label: 'New Task', icon: Plus, bg: 'bg-teal-500 hover:bg-teal-600 text-white', onClick: () => navigate('/projects') },
- { label: 'New Enquiry', icon: FileText, bg: 'bg-blue-500 hover:bg-blue-600 text-white', onClick: () => navigate('/enquiry') },
- { label: 'New Payment', icon: CreditCard, bg: 'bg-amber-500 hover:bg-amber-600 text-white', onClick: () => navigate('/payments') },
- { label: 'Follow-Up', icon: MessageSquare, bg: 'bg-purple-500 hover:bg-purple-600 text-white', onClick: () => navigate('/followup') },
- ].map((action, i) => {
- const Icon = action.icon;
- return (
- <button key={i} onClick={action.onClick} className={`quick-action-btn ${action.bg}`}>
- <Icon className="w-4 h-4" /> {action.label}
- </button>
- );
- })}
- </div>
- )}
+ // Quick actions
+  {widgetConfig.quickActions && !isGhostAdmin && (
+  <div className="flex gap-3">
+  {[
+  { label: 'New Task', icon: Plus, bg: 'bg-teal-500 hover:bg-teal-600 text-white', onClick: () => navigate('/projects') },
+  { label: 'New Enquiry', icon: FileText, bg: 'bg-blue-500 hover:bg-blue-600 text-white', onClick: () => navigate('/enquiry') },
+  { label: 'New Payment', icon: CreditCard, bg: 'bg-amber-500 hover:bg-amber-600 text-white', onClick: () => navigate('/payments') },
+  { label: 'Follow-Up', icon: MessageSquare, bg: 'bg-purple-500 hover:bg-purple-600 text-white', onClick: () => navigate('/followup') },
+  ].map((action, i) => {
+  const Icon = action.icon;
+  return (
+  <button key={i} onClick={action.onClick} className={`quick-action-btn ${action.bg}`}>
+  <Icon className="w-4 h-4" /> {action.label}
+  </button>
+  );
+  })}
+  </div>
+  )}
 
  {/* AI Insights */}
  {widgetConfig.aiInsights && (

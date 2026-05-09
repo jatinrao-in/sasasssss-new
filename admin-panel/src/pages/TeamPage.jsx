@@ -418,7 +418,7 @@ function AccountModal({ editing, mainAdminUid, onClose, onSave }) {
 
 export default function TeamPage() {
   const toast = useToast();
-  const { mainAdminUid } = useAuth();
+  const { mainAdminUid, isGhostAdmin } = useAuth();
   const { deleteState, confirmDelete, handleConfirm, handleClose } = useDelete();
   const { log } = useAuditLog();
   const { members, loading, deleteMember } = useTeam({ includeAdmins: true });
@@ -618,10 +618,12 @@ export default function TeamPage() {
             Create member and admin accounts, then control exactly which pages each one can open.
           </p>
         </div>
-        <button onClick={openCreateModal} className="btn-primary">
-          <Plus className="h-4 w-4" />
-          Add Member
-        </button>
+        {!isGhostAdmin && (
+          <button onClick={openCreateModal} className="btn-primary">
+            <Plus className="h-4 w-4" />
+            Add Member
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-4 gap-4">
@@ -807,29 +809,31 @@ export default function TeamPage() {
                   )}
                 </div>
 
-                <div className="mt-4 grid grid-cols-2 gap-2 border-t border-gray-50 pt-4">
-                  <button
-                    onClick={() => openEditModal(member)}
-                    className="rounded-xl bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-700 transition-colors hover:bg-teal-100"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleToggleStatus(member)}
-                    disabled={isMainAdmin}
-                    className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
-                      isMainAdmin
-                        ? 'cursor-not-allowed bg-gray-100 text-gray-400'
-                        : member.status === 'active'
-                          ? 'bg-red-50 text-red-600 hover:bg-red-100'
-                          : 'bg-green-50 text-green-700 hover:bg-green-100'
-                    }`}
-                  >
-                    {member.status === 'active' || isMainAdmin ? 'Deactivate' : 'Activate'}
-                  </button>
-                </div>
+                {!isGhostAdmin && (
+                  <div className="mt-4 grid grid-cols-2 gap-2 border-t border-gray-50 pt-4">
+                    <button
+                      onClick={() => openEditModal(member)}
+                      className="rounded-xl bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-700 transition-colors hover:bg-teal-100"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleToggleStatus(member)}
+                      disabled={isMainAdmin}
+                      className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
+                        isMainAdmin
+                          ? 'cursor-not-allowed bg-gray-100 text-gray-400'
+                          : member.status === 'active'
+                            ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                            : 'bg-green-50 text-green-700 hover:bg-green-100'
+                      }`}
+                    >
+                      {member.status === 'active' || isMainAdmin ? 'Deactivate' : 'Activate'}
+                    </button>
+                  </div>
+                )}
 
-                {!isMainAdmin && (
+                {!isMainAdmin && !isGhostAdmin && (
                   <div className="mt-2 opacity-0 transition-opacity group-hover:opacity-100">
                     <DeleteButton onClick={() => handleDeleteMember(member)} />
                   </div>

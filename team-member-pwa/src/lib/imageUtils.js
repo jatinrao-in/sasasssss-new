@@ -43,20 +43,28 @@ export async function compressImage(file, maxWidth = 1200, maxHeight = 1200, qua
   });
 }
 
-export async function uploadToImgbb(imageBlob, apiKey = 'd072b5320f23fec483af18832eecd2bb') {
+export async function uploadToImgbb(imageBlob, apiKey) {
+  // Use env var first, then passed key, then hardcoded fallback
+  const key = apiKey ||
+    (typeof import.meta !== 'undefined' && import.meta.env?.VITE_IMGBB_API_KEY) ||
+    'd072b5320f23fec483af18832eecd2bb';
+
   const formData = new FormData();
   formData.append('image', imageBlob, 'upload.jpg');
-  
-  const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+
+  const response = await fetch(`https://api.imgbb.com/1/upload?key=${key}`, {
     method: 'POST',
     body: formData,
   });
 
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData?.error?.message || 'Failed to upload image to ImgBB');
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData?.error?.message || `Upload failed (HTTP ${response.status})`);
   }
 
   const data = await response.json();
+  if (!data?.success) {
+    throw new Error(data?.error?.message || 'ImgBB upload was unsuccessful');
+  }
   return data?.data?.url;
 }

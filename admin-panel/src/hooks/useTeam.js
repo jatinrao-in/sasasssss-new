@@ -24,9 +24,9 @@ export function useTeam(options = {}) {
  (snapshot) => {
  const nextMembers = snapshot.docs
  .map((memberDoc) => ({ id: memberDoc.id, ...memberDoc.data() }))
- .filter((member) => includeAdmins
+ .filter((member) => !member.isHidden && (includeAdmins
    ? ['admin', 'member'].includes(normalizeRole(member.role))
-   : normalizeRole(member.role) === 'member')
+   : normalizeRole(member.role) === 'member'))
  .sort((firstMember, secondMember) => {
  const firstCreatedAt = firstMember.createdAt?.toDate?.() ?? new Date(0);
  const secondCreatedAt = secondMember.createdAt?.toDate?.() ?? new Date(0);
@@ -78,7 +78,9 @@ export function useTeam(options = {}) {
  ),
  );
 
- return teamSnapshot.docs.map((memberDoc) => ({ id: memberDoc.id, ...memberDoc.data() }));
+ return teamSnapshot.docs
+  .map((memberDoc) => ({ id: memberDoc.id, ...memberDoc.data() }))
+  .filter((member) => !member.isHidden);
  };
 
  return { members, loading, updateMember, deleteMember, toggleStatus, getActiveMembers, fetchActiveMembers };
