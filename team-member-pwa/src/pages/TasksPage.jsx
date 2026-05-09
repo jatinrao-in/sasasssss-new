@@ -7,8 +7,8 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../components/ui/sheet';
-import { Percent, IndianRupee, Folder, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
-import { serverTimestamp } from 'firebase/firestore';
+import { Percent, IndianRupee, Folder, ChevronDown, ChevronUp, AlertTriangle, CalendarClock } from 'lucide-react';
+import { serverTimestamp, collection, query, where, getDocs, doc, updateDoc, addDoc } from 'firebase/firestore';
 import { useAuth } from '../hooks/useAuth';
 import { useTasks } from '../hooks/useTasks';
 import { useProjects } from '../hooks/useProjects';
@@ -42,6 +42,11 @@ export default function TasksPage() {
   const [expenseSheetOpen, setExpenseSheetOpen] = useState(false);
   const [expenseActivity, setExpenseActivity] = useState('');
   const [expenseAmount, setExpenseAmount] = useState('');
+
+  // Reschedule Sheet
+  const [rescheduleSheetOpen, setRescheduleSheetOpen] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleReason, setRescheduleReason] = useState('');
 
   const loading = tasksLoading || projectsLoading;
 
@@ -142,6 +147,59 @@ export default function TasksPage() {
     setExpenseActivity(''); 
     setExpenseAmount(''); 
     setExpenseSheetOpen(true); 
+  };
+
+  const openRescheduleSheet = (task) => {
+    setSelectedTask(task);
+    setRescheduleDate('');
+    setRescheduleReason('');
+    setRescheduleSheetOpen(true);
+  };
+
+  const handleRequestReschedule = async () => {
+    if (!selectedTask || !rescheduleDate || !rescheduleReason) return;
+    setSaving(true);
+    try {
+      // 1. Update task with request
+      const taskRef = doc(db, COLLECTIONS.tasks, selectedTask.id);
+      await updateDoc(taskRef, {
+        rescheduleRequest: {
+          requestedBy: userData?.uid,
+          requestedByName: userData?.displayName || userData?.name || 'Team Member',
+          suggestedDate: new Date(rescheduleDate),
+          reason: rescheduleReason,
+          requestedAt: serverTimestamp(),
+          status: 'pending'
+        },
+        updatedAt: serverTimestamp()
+      });
+
+      // 2. Fetch admin users to send notifications
+      const q = query(collection(db, COLLECTIONS.users), where('role', '==', 'admin'));
+      const adminSnap = await getDocs(q);
+      
+      const notifyPromises = adminSnap.docs.map(adminDoc => {
+        const adminUid = adminDoc.id;
+        const notificationRef = collection(db, `notifications/${adminUid}/items`);
+        return addDoc(notificationRef, {
+          title: 'Reschedule Request',
+          body: `${userData?.displayName || userData?.name || 'Member'} requested reschedule for: ${selectedTask.title}`,
+          message: `${userData?.displayName || userData?.name || 'Member'} requested reschedule for: ${selectedTask.title}`,
+          type: 'task',
+          read: false,
+          createdAt: serverTimestamp(),
+          relatedId: selectedTask.id
+        });
+      });
+      await Promise.all(notifyPromises);
+
+      toast.success('Reschedule request sent to admin');
+      setRescheduleSheetOpen(false);
+    } catch (err) {
+      toast.error('Failed to send request: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleUpdateCompletion = async () => {
@@ -319,6 +377,21 @@ export default function TasksPage() {
                           <span>Start: {formatDate(task.startDate)}</span>
                           <span>Due: {formatDate(task.targetDate)}</span>
                         </div>
+
+                        {task.rescheduleCount > 0 && (
+                          <div className="mb-2 inline-block">
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded border bg-orange-50 text-orange-700 border-orange-200">
+                              Rescheduled {task.rescheduleCount} times
+                            </span>
+                          </div>
+                        )}
+                        {task.rescheduleRequest?.status === 'pending' && (
+                          <div className="mb-2 inline-block ml-2">
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded border bg-yellow-50 text-yellow-700 border-yellow-200">
+                              Reschedule Pending
+                            </span>
+                          </div>
+                        )}
                         
                         {task.status === 'overdue' && (
                           <p className="text-xs text-red-500 font-medium mb-2">⚠ {task.overdueDays || '?'} days overdue</p>
@@ -333,15 +406,27 @@ export default function TasksPage() {
                         </div>
                         
                         {task.status !== 'completed' && (
-                          <div className="flex gap-2">
-                            <Button variant="secondary" size="sm" className="flex-1 h-9" onClick={() => openUpdateSheet(task)}>
-                              <Percent className="h-3 w-3 mr-1" /> Update %
-                            </Button>
-                            {task.projectId && (
-                              <Button variant="outline" size="sm" className="flex-1 h-9" onClick={() => openExpenseSheet(task)}>
-                                <IndianRupee className="h-3 w-3 mr-1" /> Add Expense
+                          <div className="flex flex-col gap-2">
+                            <div className="flex gap-2">
+                              <Button variant="secondary" size="sm" className="flex-1 h-9" onClick={() => openUpdateSheet(task)}>
+                                <Percent className="h-3 w-3 mr-1" /> Update %
                               </Button>
-                            )}
+                              {task.projectId && (
+                                <Button variant="outline" size="sm" className="flex-1 h-9" onClick={() => openExpenseSheet(task)}>
+                                  <IndianRupee className="h-3 w-3 mr-1" /> Add Expense
+                                </Button>
+                              )}
+                            </div>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="w-full h-9" 
+                              onClick={() => openRescheduleSheet(task)}
+                              disabled={task.rescheduleRequest?.status === 'pending'}
+                            >
+                              <CalendarClock className="h-3 w-3 mr-1" /> 
+                              {task.rescheduleRequest?.status === 'pending' ? 'Request pending...' : 'Request Reschedule'}
+                            </Button>
                           </div>
                         )}
                       </CardContent>
@@ -429,6 +514,36 @@ export default function TasksPage() {
               </div>
               <Button className="w-full min-h-[44px] mt-2" onClick={handleAddExpense} disabled={saving}>
                 {saving ? 'Submitting...' : 'Submit Expense'}
+              </Button>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={rescheduleSheetOpen} onOpenChange={setRescheduleSheetOpen}>
+        <SheetContent>
+          <SheetHeader><SheetTitle>Request Reschedule</SheetTitle></SheetHeader>
+          {selectedTask && (
+            <div className="mt-4 space-y-4">
+              <div>
+                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Task</p>
+                <p className="text-sm font-medium text-gray-900">{selectedTask.title}</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Suggested New Date</Label>
+                <Input type="date" value={rescheduleDate} onChange={e => setRescheduleDate(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Reason</Label>
+                <textarea 
+                  className="w-full min-h-[100px] p-3 text-sm border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  placeholder="Why do you need more time?" 
+                  value={rescheduleReason} 
+                  onChange={e => setRescheduleReason(e.target.value)} 
+                />
+              </div>
+              <Button className="w-full min-h-[44px] mt-2" onClick={handleRequestReschedule} disabled={saving || !rescheduleDate || !rescheduleReason}>
+                {saving ? 'Submitting...' : 'Submit Request'}
               </Button>
             </div>
           )}
