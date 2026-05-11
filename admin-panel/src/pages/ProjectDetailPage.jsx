@@ -416,6 +416,7 @@ export default function ProjectDetailPage() {
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [rescheduleTaskData, setRescheduleTaskData] = useState(null);
   const [expandedRequestId, setExpandedRequestId] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   const project = projects.find((projectItem) => projectItem.id === id);
   const projectTasks = tasks.filter((task) => task.projectId === id);
@@ -482,8 +483,6 @@ export default function ProjectDetailPage() {
       throw error;
     }
   };
-
-  const [saving, setSaving] = useState(false);
 
   const handleUpdateTask = async (taskId, formData) => {
     if (!taskId) {
