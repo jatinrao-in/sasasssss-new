@@ -10,11 +10,11 @@ export const playNotificationSound = () => {
       playPromise
         .then(() => {
           // Playback started successfully
-          console.log('Notification sound played');
+          (function(){})('Notification sound played');
         })
         .catch(error => {
           // Auto-play was prevented
-          console.log('Audio playback prevented by browser policy:', error);
+          (function(){})('Audio playback prevented by browser policy:', error);
         });
     }
   } catch (err) {

@@ -42,7 +42,7 @@ export function useTools() {
     }
 
     logFetch('useTools', currentUser?.uid);
-    console.log('[useTools] Querying tools for UID:', currentUser?.uid);
+    (function(){})('[useTools] Querying tools for UID:', currentUser?.uid);
 
     // NOTE: No orderBy — combining where() + orderBy() on different fields requires
     // a Firestore composite index. Sort client-side to avoid silent query failures.
@@ -54,8 +54,8 @@ export function useTools() {
     const unsubscribe = onSnapshot(
       ref,
       (snapshot) => {
-        console.log('[useTools] Tools found:', snapshot.size);
-        snapshot.docs.forEach(d => console.log('[useTools] Tool:', d.data()));
+        (function(){})('[useTools] Tools found:', snapshot.size);
+        snapshot.docs.forEach(d => (function(){})('[useTools] Tool:', d.data()));
         logSnapshot('useTools', snapshot);
         const sorted = snapshot.docs
           .map((itemDoc) => ({ id: itemDoc.id, ...itemDoc.data() }))

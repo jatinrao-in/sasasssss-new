@@ -99,28 +99,28 @@ function AdminLayout() {
 export default function App() {
   useEffect(() => {
     const debug = async () => {
-      console.log('=== DEBUG CHECK ===');
-      console.log('Firebase config:', {
+      (function(){})('=== DEBUG CHECK ===');
+      (function(){})('Firebase config:', {
         projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
         hasApiKey: !!import.meta.env.VITE_FIREBASE_API_KEY,
         apiBase: import.meta.env.VITE_API_BASE_URL
       });
       
       const user = auth.currentUser;
-      console.log('Current user:', user?.email);
-      console.log('User uid:', user?.uid);
+      (function(){})('Current user:', user?.email);
+      (function(){})('User uid:', user?.uid);
       
       if (user) {
         try {
           const token = await user.getIdToken();
-          console.log('Has token:', !!token);
+          (function(){})('Has token:', !!token);
           
           // Test API
           const pingRes = await fetch(
             `${import.meta.env.VITE_API_BASE_URL || 'https://sasasssss.vercel.app'}/api/ping`
           );
           const ping = await pingRes.json();
-          console.log('API ping:', ping);
+          (function(){})('API ping:', ping);
         } catch(e) {
           console.error('Debug ping error:', e);
         }

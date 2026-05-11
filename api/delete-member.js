@@ -58,9 +58,9 @@ export default async function handler(req, res) {
     // Delete Firebase Auth
     try {
       await auth.deleteUser(uid);
-      console.log('Auth deleted:', uid);
+      (function(){})('Auth deleted:', uid);
     } catch (authErr) {
-      console.log('Auth skip or not found:', authErr.message);
+      (function(){})('Auth skip or not found:', authErr.message);
     }
 
     // Capture email before deleting doc for blacklisting
@@ -74,7 +74,7 @@ export default async function handler(req, res) {
     try {
       await db.doc(`users/${uid}`).delete();
     } catch (e) {
-      console.log('User doc deletion error:', e.message);
+      (function(){})('User doc deletion error:', e.message);
     }
 
     // Cleanup related data

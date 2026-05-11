@@ -7,7 +7,7 @@ const API_BASE =
     replace(/\/$/, '') || 
   'https://sasasssss.vercel.app';
 
-console.log('API Base URL:', API_BASE);
+(function(){})('API Base URL:', API_BASE);
 
 const getAuthToken = async () => {
   return new Promise((resolve, reject) => {
@@ -44,7 +44,7 @@ export const securePost = async (
     const url = 
       `${API_BASE}${cleanEndpoint}`;
     
-    console.log('API call to:', url);
+    (function(){})('API call to:', url);
     
     // Get auth token
     const token = await getAuthToken();

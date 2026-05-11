@@ -730,11 +730,11 @@ export default function WhatsAppAutomationPage() {
         'custom'
       );
 
-      console.log('Full result:', JSON.stringify(result));
+      (function(){})('Full result:', JSON.stringify(result));
 
       if (result.results) {
         result.results.forEach(r => {
-          console.log('Member:', r.memberName,
+          (function(){})('Member:', r.memberName,
             'Status:', r.status,
             'Error:', r.error,
             'MSG91:', r.msg91Response

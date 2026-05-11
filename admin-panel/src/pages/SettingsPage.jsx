@@ -670,7 +670,7 @@ export default function SettingsPage() {
             id: docSnap.id,
             ...docSnap.data(),
           }));
-          console.log(`Backed up ${collectionName}:`, snapshot.size, 'docs');
+          (function(){})(`Backed up ${collectionName}:`, snapshot.size, 'docs');
         } catch (collectionError) {
           console.error(`Error backing up ${collectionName}:`, collectionError.message);
           backup[collectionName] = [];
@@ -870,7 +870,7 @@ export default function SettingsPage() {
           `Sync complete! Auth: ${authUsersCount} users · Kept: ${validDocsKept} · Removed: ${orphanDocsDeleted} orphan${orphanDocsDeleted !== 1 ? 's' : ''}`
         );
         if (orphanDocsDeleted > 0) {
-          console.log('[Sync Users] Deleted orphans:', result.deletedUsers);
+          (function(){})('[Sync Users] Deleted orphans:', result.deletedUsers);
         }
         await log('user_sync_cleanup', result.summary);
       } else {

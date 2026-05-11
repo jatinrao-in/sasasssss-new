@@ -38,7 +38,7 @@ export const securePost = async (
     const url = 
       `${API_BASE}${cleanEndpoint}`;
     
-    console.log('API call to:', url);
+    (function(){})('API call to:', url);
     
     // Get auth token
     const token = await getAuthToken();

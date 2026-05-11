@@ -29,7 +29,7 @@ const isPositiveNumber = (value) => Number.isFinite(Number(value)) && Number(val
 
 export const notify = async (eventType, context) => {
   if (!eventType || typeof context !== 'object' || context === null) {
-    console.log('Skip: invalid notification payload');
+    (function(){})('Skip: invalid notification payload');
     return;
   }
 
@@ -42,19 +42,19 @@ export const notify = async (eventType, context) => {
 
 export const notifyTaskAssigned = async (member, task, project) => {
   if (!hasWhatsapp(member)) {
-    console.log('Skip: no WhatsApp number');
+    (function(){})('Skip: no WhatsApp number');
     return;
   }
   if (!task?.title) {
-    console.log('Skip: task title missing');
+    (function(){})('Skip: task title missing');
     return;
   }
   if (!task?.assignedTo) {
-    console.log('Skip: task is not assigned');
+    (function(){})('Skip: task is not assigned');
     return;
   }
   if (!project?.name) {
-    console.log('Skip: project name missing');
+    (function(){})('Skip: project name missing');
     return;
   }
 
@@ -76,19 +76,19 @@ export const notifyTaskAssigned = async (member, task, project) => {
 
 export const notifySalaryPaid = async (member, salary, month) => {
   if (!hasWhatsapp(member)) {
-    console.log('Skip: no WhatsApp number');
+    (function(){})('Skip: no WhatsApp number');
     return;
   }
   if (!isPositiveNumber(salary?.netSalary)) {
-    console.log('Skip: invalid salary amount');
+    (function(){})('Skip: invalid salary amount');
     return;
   }
   if (!month) {
-    console.log('Skip: no month specified');
+    (function(){})('Skip: no month specified');
     return;
   }
   if (salary?.status !== 'paid') {
-    console.log('Skip: salary not marked paid');
+    (function(){})('Skip: salary not marked paid');
     return;
   }
 
@@ -120,19 +120,19 @@ export const notifyPaymentDue = async (member, payment) => {
   );
 
   if (!hasWhatsapp(member)) {
-    console.log('Skip: no WhatsApp number');
+    (function(){})('Skip: no WhatsApp number');
     return;
   }
   if (!payment?.customerName) {
-    console.log('Skip: customer name missing');
+    (function(){})('Skip: customer name missing');
     return;
   }
   if (!isPositiveNumber(pendingAmount)) {
-    console.log('Skip: invalid pending amount');
+    (function(){})('Skip: invalid pending amount');
     return;
   }
   if (payment?.paymentStatus === 'received') {
-    console.log('Skip: payment already received');
+    (function(){})('Skip: payment already received');
     return;
   }
 
@@ -154,15 +154,15 @@ export const notifyPaymentDue = async (member, payment) => {
 
 export const notifyTaskOverdue = async (member, task, project) => {
   if (!hasWhatsapp(member)) {
-    console.log('Skip: no WhatsApp number');
+    (function(){})('Skip: no WhatsApp number');
     return;
   }
   if (!task?.title) {
-    console.log('Skip: task title missing');
+    (function(){})('Skip: task title missing');
     return;
   }
   if (!project?.name) {
-    console.log('Skip: project name missing');
+    (function(){})('Skip: project name missing');
     return;
   }
 
@@ -171,7 +171,7 @@ export const notifyTaskOverdue = async (member, task, project) => {
     : new Date(task?.targetDate);
 
   if (Number.isNaN(target.getTime())) {
-    console.log('Skip: invalid task target date');
+    (function(){})('Skip: invalid task target date');
     return;
   }
 
@@ -195,11 +195,11 @@ export const notifyTaskOverdue = async (member, task, project) => {
 
 export const notifyRgpOverdue = async (member, rgp) => {
   if (!hasWhatsapp(member)) {
-    console.log('Skip: no WhatsApp number');
+    (function(){})('Skip: no WhatsApp number');
     return;
   }
   if (!rgp?.docNumber) {
-    console.log('Skip: RGP document number missing');
+    (function(){})('Skip: RGP document number missing');
     return;
   }
 
@@ -208,7 +208,7 @@ export const notifyRgpOverdue = async (member, rgp) => {
     : new Date(rgp?.createdAt);
 
   if (Number.isNaN(created.getTime())) {
-    console.log('Skip: invalid RGP created date');
+    (function(){})('Skip: invalid RGP created date');
     return;
   }
 
@@ -233,11 +233,11 @@ export const notifyRgpOverdue = async (member, rgp) => {
 
 export const notifyToolNotReturned = async (member, tool) => {
   if (!hasWhatsapp(member)) {
-    console.log('Skip: no WhatsApp number');
+    (function(){})('Skip: no WhatsApp number');
     return;
   }
   if (!tool?.name) {
-    console.log('Skip: tool name missing');
+    (function(){})('Skip: tool name missing');
     return;
   }
 
@@ -246,7 +246,7 @@ export const notifyToolNotReturned = async (member, tool) => {
     : new Date(tool?.issuedDate);
 
   if (Number.isNaN(issued.getTime())) {
-    console.log('Skip: invalid tool issue date');
+    (function(){})('Skip: invalid tool issue date');
     return;
   }
 

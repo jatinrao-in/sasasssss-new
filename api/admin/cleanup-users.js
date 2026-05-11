@@ -26,11 +26,11 @@ export default async function handler(req, res) {
       pageToken = listResult.pageToken;
     } while (pageToken);
 
-    console.log(`[cleanup-users] Auth accounts found: ${authUids.size}`, [...authUids]);
+    (function(){})(`[cleanup-users] Auth accounts found: ${authUids.size}`, [...authUids]);
 
     // ── STEP 2: Collect all Firestore /users documents ─────────────────────
     const firestoreSnap = await db.collection('users').get();
-    console.log(`[cleanup-users] Firestore docs found: ${firestoreSnap.size}`);
+    (function(){})(`[cleanup-users] Firestore docs found: ${firestoreSnap.size}`);
 
     // ── STEP 3: Partition into valid vs orphan ──────────────────────────────
     const validDocs = [];
@@ -46,8 +46,8 @@ export default async function handler(req, res) {
       }
     });
 
-    console.log('[cleanup-users] Valid:', validDocs);
-    console.log('[cleanup-users] Orphans:', orphanDocs);
+    (function(){})('[cleanup-users] Valid:', validDocs);
+    (function(){})('[cleanup-users] Orphans:', orphanDocs);
 
     // ── STEP 4: Delete orphans + their sub-collections ──────────────────────
     const deleteResults = [];
@@ -79,7 +79,7 @@ export default async function handler(req, res) {
           console.warn(`[cleanup-users] Salary cleanup for ${orphan.id}:`, e.message);
         }
 
-        console.log(`[cleanup-users] Deleted orphan: ${orphan.email} (${orphan.id})`);
+        (function(){})(`[cleanup-users] Deleted orphan: ${orphan.email} (${orphan.id})`);
       } catch (delErr) {
         result.status = 'error';
         result.error = delErr.message;

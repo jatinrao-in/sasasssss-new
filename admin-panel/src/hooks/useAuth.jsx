@@ -40,7 +40,7 @@ export const AuthProvider = ({ children }) => {
           
           let userData;
           if (!userDoc.exists()) {
-            console.log('Creating missing user profile...');
+            (function(){})('Creating missing user profile...');
             userData = {
               name: firebaseUser.displayName || 'Admin',
               email: firebaseUser.email,

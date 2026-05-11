@@ -27,7 +27,7 @@ export default async function handler(
   }
 
   const slot = req.query.slot || 'morning';
-  console.log('Cron running slot:', slot);
+  (function(){})('Cron running slot:', slot);
 
   let adminApp;
   try {
@@ -64,8 +64,8 @@ export default async function handler(
       u => u.role === 'member'
     );
 
-    console.log('Total users:', allUsers.length);
-    console.log('Members:', members.length);
+    (function(){})('Total users:', allUsers.length);
+    (function(){})('Members:', members.length);
 
     // ═══════════════════════════
     // MORNING AND EVENING SLOTS
@@ -312,7 +312,7 @@ export default async function handler(
       }
     }
 
-    console.log('Cron complete:', results);
+    (function(){})('Cron complete:', results);
 
     return res.status(200).json({
       success: true,
