@@ -178,15 +178,21 @@ export default function ProjectsPage() {
  }
  };
 
- const handleEdit = async (data) => {
- try {
- await updateProject(editing.id, data);
- toast.success('Project updated!');
- } catch (err) {
- toast.error('Failed: ' + err.message);
- throw err;
- }
- };
+  const handleEdit = async (data) => {
+    if (!editing?.id) return;
+    setSaving(true);
+    try {
+      await updateProject(editing.id, data);
+      toast.success('Project updated successfully');
+      setEditing(null);
+      setShowModal(false);
+    } catch (error) {
+      console.error('Update project error:', error);
+      toast.error('Failed to update project: ' + error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
  const handleKanbanDrop = async (item, newStatus) => {
  try {

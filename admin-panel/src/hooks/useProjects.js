@@ -59,10 +59,22 @@ export function useProjects() {
   return projectRef;
  };
 
- const updateProject = async (projectId, updates) => {
-  await updateDocument(db, COLLECTIONS.projects, projectId, updates, 'update project');
-  await log('project_updated', { projectId, updates });
- };
+  const updateProject = async (projectId, updates) => {
+    if (!projectId) throw new Error('Project ID is required for update');
+
+    const sanitizedUpdates = {
+      ...updates,
+      updatedAt: serverTimestamp(),
+    };
+
+    // Ensure numeric values and trimmed strings if they exist in updates
+    if (sanitizedUpdates.name) sanitizedUpdates.name = sanitizedUpdates.name.trim();
+    if (sanitizedUpdates.description) sanitizedUpdates.description = sanitizedUpdates.description.trim();
+    if (sanitizedUpdates.poValue !== undefined) sanitizedUpdates.poValue = Number(sanitizedUpdates.poValue) || 0;
+
+    await updateDocument(db, COLLECTIONS.projects, projectId, sanitizedUpdates, 'update project');
+    await log('project_updated', { projectId, updates: sanitizedUpdates });
+  };
 
  const deleteProject = async (projectId) => {
   await deleteDocument(db, COLLECTIONS.projects, projectId, 'delete project');
