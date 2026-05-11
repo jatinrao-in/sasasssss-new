@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, X, Edit2, CalendarClock, Clock, Check, XCircle } from 'lucide-react';
-import { Timestamp, increment } from 'firebase/firestore';
+import { updateDoc, doc, getDoc, serverTimestamp, Timestamp, increment } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { useAuth } from '../hooks/useAuth';
 import { useNotifications } from '../hooks/useNotifications';
 import { useProjects, useExpenses } from '../hooks/useProjects';
@@ -482,16 +483,54 @@ export default function ProjectDetailPage() {
     }
   };
 
-  const handleEditTask = async (updatedData) => {
+  const [saving, setSaving] = useState(false);
+
+  const handleUpdateTask = async (taskId, formData) => {
+    if (!taskId) {
+      toast.error('Task ID missing');
+      return;
+    }
+
+    setSaving(true);
     try {
-      await updateTask(editTaskData.id, {
-        ...updatedData,
-        updatedAt: serverTimestamp(),
-      });
-      toast.success('Task updated successfully');
-      await recalcCompletion(id);
+      // Get member name if assignedTo changed
+      let assignedToName = formData.assignedToName;
+      if (formData.assignedTo) {
+        const memberSnap = await getDoc(
+          doc(db, 'users', formData.assignedTo)
+        );
+        if (memberSnap.exists()) {
+          assignedToName = memberSnap.data().name;
+        }
+      }
+
+      await updateDoc(
+        doc(db, 'tasks', taskId),
+        {
+          title: formData.title?.trim() || '',
+          description: formData.description?.trim() || '',
+          assignedTo: formData.assignedTo || null,
+          assignedToName: assignedToName || '',
+          targetDate: formData.targetDate
+            ? (formData.targetDate?.seconds ? formData.targetDate : Timestamp.fromDate(new Date(formData.targetDate)))
+            : null,
+          completionPercent: Number(formData.completionPercent || 0),
+          status: formData.status || 'open',
+          priority: formData.priority || 'medium',
+          updatedAt: serverTimestamp()
+        }
+      );
+
+      toast.success('Task updated successfully!');
+      setShowEditTaskModal(false);
+      setEditTaskData(null);
+      await recalcCompletion(id); // Recalculate completion
+
     } catch (error) {
-      toast.error('Failed to update task');
+      console.error('Task update failed:', error.code, error.message);
+      toast.error('Failed to update task: ' + error.message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -834,7 +873,7 @@ export default function ProjectDetailPage() {
       {showEditTaskModal && editTaskData && (
         <EditTaskModal
           onClose={() => { setShowEditTaskModal(false); setEditTaskData(null); }}
-          onSubmit={handleEditTask}
+          onSubmit={(formData) => handleUpdateTask(editTaskData.id, formData)}
           members={activeMembers}
           task={editTaskData}
           project={project}
