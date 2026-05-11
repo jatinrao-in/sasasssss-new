@@ -9,3 +9,4 @@ dist/
 firebase-debug.log
 *firebase-adminsdk-*.json
 .codex-logs/*
+.env*.local

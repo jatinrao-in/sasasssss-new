@@ -70,7 +70,7 @@ const sendTemplate = async (
   console.log('MSG91 result:', result);
 
   return {
-    success: result.type === 'success',
+    success: result.status === 'success',
     response: result,
     phone,
     template: templateName
