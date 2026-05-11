@@ -29,6 +29,7 @@ import {
   orderBy,
   query,
   serverTimestamp,
+  where,
 } from 'firebase/firestore';
 import {
   EmailAuthProvider,
@@ -324,10 +325,17 @@ export default function SettingsPage() {
           limit(50),
         );
         const snapshot = await getDocs(auditQuery);
+        
+        const hiddenUsersSnap = await getDocs(query(
+          collection(db, COLLECTIONS.users), 
+          where('isHidden', '==', true)
+        ));
+        const hiddenUids = new Set(hiddenUsersSnap.docs.map(d => d.id));
+
         setAuditLogs(snapshot.docs.map((docSnap) => ({
           id: docSnap.id,
           ...docSnap.data(),
-        })));
+        })).filter(entry => !hiddenUids.has(entry.performedBy)));
       } catch (error) {
         console.error('Audit log load failed:', error);
         toast.error(`Failed to load audit logs: ${error.message}`);

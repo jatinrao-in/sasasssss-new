@@ -618,12 +618,10 @@ export default function TeamPage() {
             Create member and admin accounts, then control exactly which pages each one can open.
           </p>
         </div>
-        {!isGhostAdmin && (
-          <button onClick={openCreateModal} className="btn-primary">
-            <Plus className="h-4 w-4" />
-            Add Member
-          </button>
-        )}
+        <button onClick={openCreateModal} className="btn-primary">
+          <Plus className="h-4 w-4" />
+          Add Member
+        </button>
       </div>
 
       <div className="grid grid-cols-4 gap-4">
@@ -809,7 +807,6 @@ export default function TeamPage() {
                   )}
                 </div>
 
-                {!isGhostAdmin && (
                   <div className="mt-4 grid grid-cols-2 gap-2 border-t border-gray-50 pt-4">
                     <button
                       onClick={() => openEditModal(member)}
@@ -831,9 +828,8 @@ export default function TeamPage() {
                       {member.status === 'active' || isMainAdmin ? 'Deactivate' : 'Activate'}
                     </button>
                   </div>
-                )}
 
-                {!isMainAdmin && !isGhostAdmin && (
+                {!isMainAdmin && (
                   <div className="mt-2 opacity-0 transition-opacity group-hover:opacity-100">
                     <DeleteButton onClick={() => handleDeleteMember(member)} />
                   </div>

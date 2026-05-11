@@ -494,7 +494,7 @@ export default function DashboardPage() {
 
  {/* Quick actions */}
  // Quick actions
-  {widgetConfig.quickActions && !isGhostAdmin && (
+  {widgetConfig.quickActions && (
   <div className="flex gap-3">
   {[
   { label: 'New Task', icon: Plus, bg: 'bg-teal-500 hover:bg-teal-600 text-white', onClick: () => navigate('/projects') },

@@ -7,7 +7,6 @@ export default function useAuditLog() {
   const { currentUser } = useAuth();
 
   const log = async (action, details = {}) => {
-    if (currentUser?.isGhost) return;
     try {
       await addDocument(db, 'audit_logs', {
         action,
