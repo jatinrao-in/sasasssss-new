@@ -120,14 +120,14 @@ function ProgressSteps({ currentStep }) {
 }
 
 export default function RgpPage() {
-  const { userData } = useAuth();
+  const { currentUser } = useAuth();
   const toast = useToast();
   const {
     rgp,
     loading,
     error,
     updateRgp,
-  } = useRgp(userData?.uid);
+  } = useRgp(currentUser?.uid);
 
   const [activeTab, setActiveTab] = useState('all');
   const [statusSheetOpen, setStatusSheetOpen] = useState(false);
@@ -202,14 +202,14 @@ export default function RgpPage() {
 
   useEffect(() => {
     logInfo('RgpPage', 'Render state:', {
-      uid: userData?.uid || null,
+      uid: currentUser?.uid || null,
       rgp: rgp.length,
       filtered: filteredItems.length,
       activeTab,
       loading,
       error: error?.code || null,
     });
-  }, [activeTab, error?.code, filteredItems.length, loading, rgp.length, userData?.uid]);
+  }, [activeTab, error?.code, filteredItems.length, loading, rgp.length, currentUser?.uid]);
 
   const resetSheets = () => {
     setStatusSheetOpen(false);
@@ -258,12 +258,8 @@ export default function RgpPage() {
   };
 
   const handleFirestoreError = (firestoreError, fallbackMessage) => {
-    if (firestoreError?.code === 'permission-denied') {
-      toast.error('Permission denied. Contact admin.');
-      return;
-    }
-
-    toast.error(fallbackMessage || firestoreError?.message || 'Update failed');
+    console.error('RGP update error:', firestoreError?.code, firestoreError?.message);
+    toast.error('Failed: ' + (firestoreError?.code || 'unknown') + ' - ' + (firestoreError?.message || fallbackMessage));
   };
 
   const openStatusSheet = (item) => {
@@ -321,6 +317,11 @@ export default function RgpPage() {
   const handleAddRemark = async () => {
     if (!selectedItem) return;
 
+    if (!currentUser?.uid) {
+      toast.error('Please login again');
+      return;
+    }
+
     if (!remarkText.trim() && !remarkImageUrl) {
       toast.error('Add a remark or upload an image');
       return;
@@ -336,6 +337,8 @@ export default function RgpPage() {
       await updateRgp(selectedItem.id, {
         remarks: remarkText.trim() || selectedItem.remarks || '',
         imageUrl: remarkImageUrl || selectedItem.imageUrl || null,
+        lastRemarkBy: currentUser.name || currentUser.displayName || currentUser.email,
+        lastRemarkDate: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
       toast.success('Remark saved successfully');
@@ -1008,7 +1011,7 @@ export default function RgpPage() {
               <Button
                 className="h-11 w-full"
                 onClick={handleAddRemark}
-                disabled={saving || remarkImageUploading}
+                disabled={saving || remarkImageUploading || (selectedRemarkImage && !remarkImageUrl)}
               >
                 {saving ? 'Saving...' : 'Save Remark'}
               </Button>
