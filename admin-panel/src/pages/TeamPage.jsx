@@ -36,6 +36,7 @@ import { useTasks } from '../hooks/useTasks';
 import { useToast } from '../hooks/useToast';
 import useDelete from '../hooks/useDelete';
 import { useAuth } from '../hooks/useAuth';
+import { notifyWelcome } from '../lib/notify';
 import { COLLECTIONS, updateDocumentRef } from '../lib/firestore-helpers';
 import { SkeletonCards } from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
@@ -548,6 +549,8 @@ export default function TeamPage() {
       role: form.role,
       permissions: form.permissions || [],
     });
+
+    notifyWelcome(form);
 
     toast.success(
       form.role === 'admin'

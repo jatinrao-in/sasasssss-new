@@ -1,367 +1,168 @@
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { db } from './firebase';
-import { securePost } from './secureApi';
+import { auth } from './firebase';
 
-export const saveAppNotification = async (uid, payload) => {
-  if (!uid) return;
+const API = import.meta.env
+  .VITE_API_BASE_URL ||
+  'https://sasasssss.vercel.app';
+
+const callNotify = async (
+  eventType, context
+) => {
   try {
-    await addDoc(collection(db, 'notifications', uid, 'items'), {
-      ...payload,
-      read: false,
-      createdAt: serverTimestamp()
-    });
-  } catch (err) {
-    console.error('Failed to save app notification:', err);
-  }
-};
+    if (!auth.currentUser) return;
+    const token = await auth.currentUser
+      .getIdToken(true);
 
-const formatDate = (date) => {
-  if (!date) return 'Not set';
-  const parsed = typeof date?.toDate === 'function' ? date.toDate() : new Date(date);
-  if (Number.isNaN(parsed.getTime())) return 'Not set';
-  return parsed.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-};
+    const res = await fetch(
+      `${API}/api/notify`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          eventType,
+          context
+        })
+      }
+    );
 
-const formatNumber = (value) => Number(value || 0).toLocaleString('en-IN');
+    const result = await res.json();
+    console.log('Notify result:', result);
+    return result;
 
-const hasWhatsapp = (member) => Boolean(member?.whatsapp);
-const isPositiveNumber = (value) => Number.isFinite(Number(value)) && Number(value) > 0;
-
-export const notify = async (eventType, context) => {
-  if (!eventType || typeof context !== 'object' || context === null) {
-    (function(){})('Skip: invalid notification payload');
-    return;
-  }
-
-  try {
-    await securePost('/api/notify', { eventType, context });
   } catch (error) {
-    console.error('Notify failed:', error.message);
+    // Silent fail - never block UI
+    console.error('Notify failed:',
+      error.message);
   }
 };
 
-export const notifyTaskAssigned = async (member, task, project) => {
-  if (!hasWhatsapp(member)) {
-    (function(){})('Skip: no WhatsApp number');
-    return;
-  }
-  if (!task?.title) {
-    (function(){})('Skip: task title missing');
-    return;
-  }
-  if (!task?.assignedTo) {
-    (function(){})('Skip: task is not assigned');
-    return;
-  }
-  if (!project?.name) {
-    (function(){})('Skip: project name missing');
-    return;
-  }
-
-  await saveAppNotification(member.id || member.uid, {
-    title: 'New Task Assigned',
-    body: `${task.title} - Due ${formatDate(task.targetDate)}`,
-    type: 'task'
-  });
-
-  await notify('task_assigned', {
-    memberUid: member.id,
-    whatsappNumber: member.whatsapp,
-    memberName: member.name || '',
-    taskName: task.title,
-    projectName: project.name,
-    deadline: formatDate(task.targetDate),
+// Format date helper
+const fmt = (date) => {
+  if (!date) return 'Not set';
+  const d = date?.toDate?.()
+    ? date.toDate()
+    : new Date(date);
+  return d.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
   });
 };
 
-export const notifySalaryPaid = async (member, salary, month) => {
-  if (!hasWhatsapp(member)) {
-    (function(){})('Skip: no WhatsApp number');
-    return;
-  }
-  if (!isPositiveNumber(salary?.netSalary)) {
-    (function(){})('Skip: invalid salary amount');
-    return;
-  }
-  if (!month) {
-    (function(){})('Skip: no month specified');
-    return;
-  }
-  if (salary?.status !== 'paid') {
-    (function(){})('Skip: salary not marked paid');
-    return;
-  }
-
-  await saveAppNotification(member.id || member.uid, {
-    title: 'Salary Paid',
-    body: `Salary of ${formatNumber(salary.netSalary)} paid for ${month}`,
-    type: 'salary'
-  });
-
-  await notify('salary_paid', {
-    memberUid: member.id,
-    whatsappNumber: member.whatsapp,
-    memberName: member.name || '',
-    netSalary: formatNumber(salary.netSalary),
-    month,
-    paidDate: new Date().toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    }),
-  });
-};
-
-export const notifyPaymentDue = async (member, payment) => {
-  const pendingAmount = Number(
-    payment?.netPending
-    ?? payment?.netPendingAmount
-    ?? (Number(payment?.amount || 0) - Number(payment?.totalPaid || 0)),
-  );
-
-  if (!hasWhatsapp(member)) {
-    (function(){})('Skip: no WhatsApp number');
-    return;
-  }
-  if (!payment?.customerName) {
-    (function(){})('Skip: customer name missing');
-    return;
-  }
-  if (!isPositiveNumber(pendingAmount)) {
-    (function(){})('Skip: invalid pending amount');
-    return;
-  }
-  if (payment?.paymentStatus === 'received') {
-    (function(){})('Skip: payment already received');
-    return;
-  }
-
-  await saveAppNotification(member.id || member.uid, {
-    title: 'Payment Due',
-    body: `Payment due for ${payment.customerName} - Rs.${formatNumber(pendingAmount)}`,
-    type: 'payment'
-  });
-
-  await notify('payment_due', {
-    memberUid: member.id,
-    whatsappNumber: member.whatsapp,
-    memberName: member.name || '',
-    customerName: payment.customerName,
-    invoiceNo: payment.invoiceNumber || payment.invoiceNo || 'N/A',
-    amount: `Rs.${formatNumber(pendingAmount)}`,
-  });
-};
-
-export const notifyTaskOverdue = async (member, task, project) => {
-  if (!hasWhatsapp(member)) {
-    (function(){})('Skip: no WhatsApp number');
-    return;
-  }
-  if (!task?.title) {
-    (function(){})('Skip: task title missing');
-    return;
-  }
-  if (!project?.name) {
-    (function(){})('Skip: project name missing');
-    return;
-  }
-
-  const target = typeof task?.targetDate?.toDate === 'function'
-    ? task.targetDate.toDate()
-    : new Date(task?.targetDate);
-
-  if (Number.isNaN(target.getTime())) {
-    (function(){})('Skip: invalid task target date');
-    return;
-  }
-
-  const overdueDays = Math.max(0, Math.floor((Date.now() - target.getTime()) / 86400000));
-
-  await saveAppNotification(member.id || member.uid, {
-    title: 'Task Overdue',
-    body: `Task ${task.title} is overdue by ${overdueDays} days`,
-    type: 'task'
-  });
-
-  await notify('task_overdue', {
-    memberUid: member.id,
-    whatsappNumber: member.whatsapp,
-    memberName: member.name || '',
-    taskName: task.title,
-    projectName: project.name,
-    overdueDays,
-  });
-};
-
-export const notifyRgpOverdue = async (member, rgp) => {
-  if (!hasWhatsapp(member)) {
-    (function(){})('Skip: no WhatsApp number');
-    return;
-  }
-  if (!rgp?.docNumber) {
-    (function(){})('Skip: RGP document number missing');
-    return;
-  }
-
-  const created = typeof rgp?.createdAt?.toDate === 'function'
-    ? rgp.createdAt.toDate()
-    : new Date(rgp?.createdAt);
-
-  if (Number.isNaN(created.getTime())) {
-    (function(){})('Skip: invalid RGP created date');
-    return;
-  }
-
-  const openDays = Math.max(0, Math.floor((Date.now() - created.getTime()) / 86400000));
-
-  await saveAppNotification(member.id || member.uid, {
-    title: 'RGP Overdue',
-    body: `RGP ${rgp.docNumber} is overdue by ${openDays} days`,
-    type: 'rgp'
-  });
-
-  await notify('rgp_overdue', {
-    memberUid: member.id,
-    whatsappNumber: member.whatsapp,
-    memberName: member.name || '',
-    docNumber: rgp.docNumber,
-    fromCompany: rgp.fromCompany || '',
-    toCompany: rgp.toCompany || '',
-    openDays,
-  });
-};
-
-export const notifyToolNotReturned = async (member, tool) => {
-  if (!hasWhatsapp(member)) {
-    (function(){})('Skip: no WhatsApp number');
-    return;
-  }
-  if (!tool?.name) {
-    (function(){})('Skip: tool name missing');
-    return;
-  }
-
-  const issued = typeof tool?.issuedDate?.toDate === 'function'
-    ? tool.issuedDate.toDate()
-    : new Date(tool?.issuedDate);
-
-  if (Number.isNaN(issued.getTime())) {
-    (function(){})('Skip: invalid tool issue date');
-    return;
-  }
-
-  const days = Math.max(0, Math.floor((Date.now() - issued.getTime()) / 86400000));
-
-  await saveAppNotification(member.id || member.uid, {
-    title: 'Tool Not Returned',
-    body: `Tool ${tool.name} not returned for ${days} days`,
-    type: 'tool'
-  });
-
-  await notify('tool_not_returned', {
-    memberUid: member.id,
-    whatsappNumber: member.whatsapp,
-    memberName: member.name || '',
-    toolName: tool.name,
-    issuedDate: formatDate(tool.issuedDate),
-    days,
-  });
-};
-
-export const notifyEnquiryAssigned = async (member, enquiry) => {
-  if (!member?.whatsapp) return;
-  
-  await saveAppNotification(member.id || member.uid, {
-    title: 'New Enquiry Assigned',
-    body: `${enquiry.companyName} - Due ${enquiry.targetDate ? formatDate(enquiry.targetDate) : 'Not set'}`,
-    type: 'enquiry'
-  });
-
-  await notify('enquiry_assigned', {
-    memberUid: member.id || member.uid,
+// 1. Welcome message
+export const notifyWelcome = (member) => {
+  if (!member?.whatsapp?.trim()) return;
+  callNotify('welcome', {
     whatsappNumber: member.whatsapp,
     memberName: member.name,
-    enquiryType: enquiry.taskType || 'Enquiry',
-    companyName: enquiry.companyName || 'Company',
-    targetDate: enquiry.targetDate ? formatDate(enquiry.targetDate) : 'Not set'
+    email: member.email
   });
 };
 
-export const notifyFollowupAssigned = async (member, followup) => {
-  if (!member?.whatsapp) return;
-
-  await saveAppNotification(member.id || member.uid, {
-    title: 'New Followup Assigned',
-    body: `${followup.companyName} - Due ${followup.nextFollowupDate ? formatDate(followup.nextFollowupDate) : 'Not set'}`,
-    type: 'followup'
-  });
-
-  await notify('followup_assigned', {
-    memberUid: member.id || member.uid,
+// 2. Task assigned
+export const notifyTaskAssigned = (
+  member, task, project
+) => {
+  if (!member?.whatsapp?.trim()) return;
+  if (!task?.title) return;
+  callNotify('task_assigned', {
     whatsappNumber: member.whatsapp,
     memberName: member.name,
-    followupType: followup.taskType || 'Follow-up',
-    companyName: followup.companyName || 'Company',
-    nextFollowupDate: followup.nextFollowupDate ? formatDate(followup.nextFollowupDate) : 'Not set'
+    taskName: task.title,
+    projectName: project?.name || 'Project',
+    deadline: fmt(task.targetDate)
   });
 };
 
-export const notifyToolAssigned = async (member, tool) => {
-  if (!member?.whatsapp) return;
-
-  await saveAppNotification(member.id || member.uid, {
-    title: 'New Tool Assigned',
-    body: `Tool ${tool.toolName} assigned`,
-    type: 'tool'
+// 3. Salary paid
+export const notifySalaryPaid = (
+  member, salary, month
+) => {
+  if (!member?.whatsapp?.trim()) return;
+  if (!salary?.netSalary ||
+    salary.netSalary <= 0) return;
+  callNotify('salary_paid', {
+    whatsappNumber: member.whatsapp,
+    memberName: member.name,
+    netSalary: String(
+      Math.round(salary.netSalary)),
+    month: month,
+    paidDate: fmt(new Date())
   });
+};
 
-  await notify('tool_assigned', {
-    memberUid: member.id || member.uid,
+// 4. Tool assigned
+export const notifyToolAssigned = (
+  member, tool
+) => {
+  if (!member?.whatsapp?.trim()) return;
+  callNotify('tool_assigned', {
     whatsappNumber: member.whatsapp,
     memberName: member.name,
     toolName: tool.toolName,
-    issuedDate: formatDate(tool.handedOverDate || new Date()),
-    days: '0'
+    issuedDate: fmt(new Date())
   });
 };
 
-export const notifyRgpAssigned = async (member, rgp) => {
-  if (!member?.whatsapp) return;
-
-  await saveAppNotification(member.id || member.uid, {
-    title: 'New RGP Assigned',
-    body: `RGP ${rgp.docNumber} assigned`,
-    type: 'rgp'
-  });
-
-  await notify('rgp_assigned', {
-    memberUid: member.id || member.uid,
+// 5. RGP assigned
+export const notifyRgpAssigned = (
+  member, rgp
+) => {
+  if (!member?.whatsapp?.trim()) return;
+  callNotify('rgp_assigned', {
     whatsappNumber: member.whatsapp,
     memberName: member.name,
-    type: rgp.type || 'RGP',
     docNumber: rgp.docNumber || 'N/A',
     fromCompany: rgp.fromCompany || 'N/A',
-    toCompany: rgp.toCompany || 'N/A',
-    date: formatDate(new Date())
+    toCompany: rgp.toCompany || 'N/A'
   });
 };
 
-export const notifyPaymentAssigned = async (member, payment) => {
-  if (!member?.whatsapp) return;
-  if (!payment?.customerName) return;
-
-  await saveAppNotification(member.id || member.uid, {
-    title: 'New Payment Assigned',
-    body: `Payment assigned for ${payment.customerName} - Rs.${Number(payment.amount || 0).toLocaleString('en-IN')}`,
-    type: 'payment'
-  });
-
-  await notify('payment_assigned', {
-    memberUid: member.id || member.uid,
+// 6. Payment assigned
+export const notifyPaymentAssigned = (
+  member, payment
+) => {
+  if (!member?.whatsapp?.trim()) return;
+  callNotify('payment_assigned', {
     whatsappNumber: member.whatsapp,
     memberName: member.name,
-    customerName: payment.customerName,
-    invoiceNo: payment.invoiceNumber || 'N/A',
-    amount: `Rs.${Number(payment.amount || 0).toLocaleString('en-IN')}`
+    customerName:
+      payment.customerName || 'Client',
+    invoiceNo:
+      payment.invoiceNumber || 'N/A',
+    amount: String(
+      payment.amount || 0)
+  });
+};
+
+// 7. Enquiry assigned
+export const notifyEnquiryAssigned = (
+  member, enquiry
+) => {
+  if (!member?.whatsapp?.trim()) return;
+  callNotify('task_assigned', {
+    whatsappNumber: member.whatsapp,
+    memberName: member.name,
+    taskName: enquiry.taskType +
+      ' - ' + (enquiry.companyName || ''),
+    projectName: 'Enquiry',
+    deadline: fmt(enquiry.targetDate)
+  });
+};
+
+// 8. Followup assigned
+export const notifyFollowupAssigned = (
+  member, followup
+) => {
+  if (!member?.whatsapp?.trim()) return;
+  callNotify('task_assigned', {
+    whatsappNumber: member.whatsapp,
+    memberName: member.name,
+    taskName: followup.taskType +
+      ' - ' + (followup.companyName || ''),
+    projectName: 'Follow-up',
+    deadline: fmt(followup.nextFollowupDate)
   });
 };
