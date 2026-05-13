@@ -132,98 +132,61 @@ export default async function handler(req, res) {
     // 8:00 PM IST
     // ═══════════════════════════
     if (slot === 'evening') {
-      for (const user of allUsers) {
-        if (!user.whatsapp?.trim()) {
+      // 1. Send individual summary to members
+      for (const member of members) {
+        if (!member.whatsapp?.trim()) {
           results.skipped++;
           continue;
         }
 
         try {
-          let summary = '';
+          const tasksSnap = await db
+            .collection('tasks')
+            .where('assignedTo', '==', member.uid)
+            .get();
+          const tasks = tasksSnap.docs.map(d => d.data());
+          const pending = tasks.filter(t => t.status !== 'completed').length;
+          const overdue = tasks.filter(t => {
+            const target = t.targetDate?.toDate?.() || new Date(t.targetDate);
+            return t.status !== 'completed' && target < today;
+          }).length;
+          const doneToday = tasks.filter(t => {
+            const updated = t.updatedAt?.toDate?.() || new Date(t.updatedAt);
+            return t.status === 'completed' && updated >= today;
+          }).length;
 
-          if (user.role === 'member') {
-            // Member gets own data
-            const tasksSnap = await db
-              .collection('tasks')
-              .where('assignedTo', '==', user.uid)
-              .get();
-            const tasks = tasksSnap.docs.map(d => d.data());
-            const pending = tasks.filter(t => t.status !== 'completed').length;
-            const overdue = tasks.filter(t => {
-              const target = t.targetDate?.toDate?.() || new Date(t.targetDate);
-              return t.status !== 'completed' && target < today;
-            }).length;
-            const doneToday = tasks.filter(t => {
-              const updated = t.updatedAt?.toDate?.() || new Date(t.updatedAt);
-              return t.status === 'completed' && updated >= today;
-            }).length;
+          const followupsSnap = await db
+            .collection('followups')
+            .where('assignedTo', '==', member.uid)
+            .where('status', '==', 'open')
+            .get();
 
-            const followupsSnap = await db
-              .collection('followups')
-              .where('assignedTo', '==', user.uid)
-              .where('status', '==', 'open')
-              .get();
+          const enquiriesSnap = await db
+            .collection('enquiries')
+            .where('assignedTo', '==', member.uid)
+            .where('status', '==', 'open')
+            .get();
 
-            const enquiriesSnap = await db
-              .collection('enquiries')
-              .where('assignedTo', '==', user.uid)
-              .where('status', '==', 'open')
-              .get();
+          const paymentsSnap = await db
+            .collection('payments')
+            .where('assignedTo', '==', member.uid)
+            .where('paymentStatus', '!=', 'received')
+            .get();
 
-            const paymentsSnap = await db
-              .collection('payments')
-              .where('assignedTo', '==', user.uid)
-              .where('paymentStatus', '!=', 'received')
-              .get();
+          const rgpSnap = await db
+            .collection('rgp')
+            .where('assignedTo', '==', member.uid)
+            .where('status', '==', 'open')
+            .get();
 
-            const rgpSnap = await db
-              .collection('rgp')
-              .where('assignedTo', '==', user.uid)
-              .where('status', '==', 'open')
-              .get();
+          const summary = `Tasks pending: ${pending}, Overdue: ${overdue}, Completed today: ${doneToday}, Followups: ${followupsSnap.size}, Enquiries: ${enquiriesSnap.size}, Payments: ${paymentsSnap.size}, RGP open: ${rgpSnap.size}`;
 
-            summary = `Tasks pending: ${pending}, Overdue: ${overdue}, Completed today: ${doneToday}, Followups: ${followupsSnap.size}, Enquiries: ${enquiriesSnap.size}, Payments: ${paymentsSnap.size}, RGP open: ${rgpSnap.size}`;
-          } else {
-            // Admin gets team totals
-            const allTasksSnap = await db.collection('tasks').get();
-            const allTasks = allTasksSnap.docs.map(d => d.data());
-
-            const totalPending = allTasks.filter(t => t.status !== 'completed').length;
-            const totalOverdue = allTasks.filter(t => {
-              const target = t.targetDate?.toDate?.() || new Date(t.targetDate);
-              return t.status !== 'completed' && target < today;
-            }).length;
-            const totalDone = allTasks.filter(t => {
-              const updated = t.updatedAt?.toDate?.() || new Date(t.updatedAt);
-              return t.status === 'completed' && updated >= today;
-            }).length;
-
-            const allFollowupsSnap = await db
-              .collection('followups')
-              .where('status', '==', 'open')
-              .get();
-            const allEnquiriesSnap = await db
-              .collection('enquiries')
-              .where('status', '==', 'open')
-              .get();
-            const allPaymentsSnap = await db
-              .collection('payments')
-              .where('paymentStatus', '!=', 'received')
-              .get();
-            const allRgpSnap = await db
-              .collection('rgp')
-              .where('status', '==', 'open')
-              .get();
-
-            summary = `Team tasks open: ${totalPending}, Overdue: ${totalOverdue}, Done today: ${totalDone}, Followups: ${allFollowupsSnap.size}, Enquiries: ${allEnquiriesSnap.size}, Payments: ${allPaymentsSnap.size}, RGP: ${allRgpSnap.size}`;
-          }
-
-          const result = await sendGeneralMessage(user.whatsapp, user.name, summary);
+          const result = await sendGeneralMessage(member.whatsapp, member.name, summary);
 
           await db.collection('whatsapp_logs').add({
-            to: user.whatsapp,
-            memberName: user.name,
-            memberUid: user.uid,
+            to: member.whatsapp,
+            memberName: member.name,
+            memberUid: member.uid,
             slot: 'evening',
             template: 'general_message',
             summary,
@@ -239,17 +202,99 @@ export default async function handler(req, res) {
           }
 
           results.details.push({
-            name: user.name,
-            role: user.role,
+            name: member.name,
+            role: 'member',
             status: result.success ? 'sent' : 'failed'
           });
 
           await new Promise(r => setTimeout(r, 600));
         } catch (err) {
-          console.error(`Evening error ${user.name}:`, err.message);
+          console.error(`Evening error ${member.name}:`, err.message);
           results.failed++;
-          results.details.push({ name: user.name, status: 'error', error: err.message });
+          results.details.push({ name: member.name, status: 'error', error: err.message });
         }
+      }
+
+      // 2. Generate and send Admin Summary
+      try {
+        const allTasksSnap = await db.collection('tasks').get();
+        const allTasks = allTasksSnap.docs.map(d => d.data());
+
+        const totalPending = allTasks.filter(t => t.status !== 'completed').length;
+        const totalOverdue = allTasks.filter(t => {
+          const target = t.targetDate?.toDate?.() || new Date(t.targetDate);
+          return t.status !== 'completed' && target < today;
+        }).length;
+        const totalDone = allTasks.filter(t => {
+          const updated = t.updatedAt?.toDate?.() || new Date(t.updatedAt);
+          return t.status === 'completed' && updated >= today;
+        }).length;
+
+        const allFollowupsSnap = await db
+          .collection('followups')
+          .where('status', '==', 'open')
+          .get();
+        const allEnquiriesSnap = await db
+          .collection('enquiries')
+          .where('status', '==', 'open')
+          .get();
+        const allPaymentsSnap = await db
+          .collection('payments')
+          .where('paymentStatus', '!=', 'received')
+          .get();
+        const allRgpSnap = await db
+          .collection('rgp')
+          .where('status', '==', 'open')
+          .get();
+
+        const adminSummary = `Team tasks open: ${totalPending}, Overdue: ${totalOverdue}, Done today: ${totalDone}, Followups: ${allFollowupsSnap.size}, Enquiries: ${allEnquiriesSnap.size}, Payments: ${allPaymentsSnap.size}, RGP: ${allRgpSnap.size}`;
+
+        // Send to specified admin numbers
+        const adminNumbers = [
+          '+918130299515',
+          '+917023024124',
+          '+919910822889'
+        ];
+
+        for (const phone of adminNumbers) {
+          // Attempt to find user to get their real name if they exist in DB
+          const adminUser = allUsers.find(u => u.whatsapp === phone || u.whatsapp === phone.replace('+91', ''));
+          const adminName = adminUser ? adminUser.name : 'Admin';
+          const adminUid = adminUser ? adminUser.uid : 'system_admin';
+
+          const result = await sendGeneralMessage(phone, adminName, adminSummary);
+
+          await db.collection('whatsapp_logs').add({
+            to: phone,
+            memberName: adminName,
+            memberUid: adminUid,
+            slot: 'evening',
+            template: 'general_message',
+            summary: adminSummary,
+            status: result.success ? 'sent' : 'failed',
+            msg91Response: result.response,
+            sentAt: new Date()
+          });
+
+          if (result.success) {
+            results.sent++;
+          } else {
+            results.failed++;
+          }
+
+          results.details.push({
+            name: adminName,
+            role: 'admin',
+            status: result.success ? 'sent' : 'failed'
+          });
+
+          await new Promise(r => setTimeout(r, 600));
+        }
+
+      } catch (err) {
+        console.error(`Admin summary error:`, err.message);
+        results.failed++;
+        results.details.push({ name: 'Admins', status: 'error', error: err.message });
       }
     }
 
