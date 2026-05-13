@@ -1,292 +1,271 @@
 import { getAdminApp } from '../lib/firebaseAdmin.js';
-import {
-  sendTaskOverdue,
-  sendPaymentReminder,
-  sendDailyReminder,
-  sendGeneralMessage,
-  sendToolReturn,
-  sendRgpReminder
-} from '../lib/msg91.js';
+import { sendDailyReminder, sendGeneralMessage } from '../lib/msg91.js';
 
-export default async function handler(
-  req, res
-) {
-  res.setHeader(
-    'Access-Control-Allow-Origin', '*');
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
 
-  // Verify cron secret
-  const authHeader = req.headers.authorization;
-  const secret = authHeader?.replace('Bearer ', '');
-
-  if (secret !== process.env.CRON_SECRET) {
+  // Verify secret
+  const auth = req.headers.authorization;
+  if (!auth || auth !== `Bearer ${process.env.CRON_SECRET}`) {
     console.error('Invalid cron secret');
-    return res.status(401).json({
-      error: 'Unauthorized'
-    });
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const slot = req.query.slot || 'morning';
-  console.log('Cron running slot:', slot);
+  const slot = req.query.slot;
+  if (!slot) {
+    return res.status(400).json({ error: 'slot param required: morning or evening' });
+  }
+
+  console.log(`Cron started: ${slot}`);
 
   let adminApp;
   try {
     adminApp = getAdminApp();
   } catch (e) {
-    console.error('Admin init failed:', e.message);
-    return res.status(500).json({
-      error: 'Firebase init failed: ' + e.message
-    });
+    console.error('Firebase init:', e.message);
+    return res.status(500).json({ error: 'Firebase init failed: ' + e.message });
   }
 
   const { db } = adminApp;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
 
-  const results = [];
+  const results = {
+    sent: 0,
+    failed: 0,
+    skipped: 0,
+    details: []
+  };
 
   try {
-    // GET ALL ACTIVE USERS
+    // Fetch all active users
     const usersSnap = await db
       .collection('users')
       .where('status', '==', 'active')
+      .where('isHidden', '!=', true)
       .get();
 
-    const allUsers = usersSnap.docs.map(d => ({
-      uid: d.id,
-      ...d.data()
-    }));
-
+    const allUsers = usersSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
     const members = allUsers.filter(u => u.role === 'member');
-    console.log('Total users:', allUsers.length, 'Members:', members.length);
+
+    console.log(`Users: ${allUsers.length}, Members: ${members.length}`);
 
     // ═══════════════════════════
-    // MORNING SLOT (Members only)
+    // MORNING: daily_reminder
+    // Members only
+    // 8:00 AM IST
     // ═══════════════════════════
     if (slot === 'morning') {
       for (const member of members) {
-        if (!member.whatsapp) continue;
+        if (!member.whatsapp?.trim()) {
+          results.skipped++;
+          results.details.push({
+            name: member.name,
+            status: 'skipped',
+            reason: 'no whatsapp number'
+          });
+          continue;
+        }
 
         try {
-          const uid = member.uid;
-          const tasksSnap = await db.collection('tasks').where('assignedTo', '==', uid).get();
+          // Fetch tasks
+          const tasksSnap = await db
+            .collection('tasks')
+            .where('assignedTo', '==', member.uid)
+            .get();
+
           const tasks = tasksSnap.docs.map(d => d.data());
-          
-          const pendingTasks = tasks.filter(t => t.status !== 'completed').length;
-          const overdueTasks = tasks.filter(t => {
+          const pending = tasks.filter(t => t.status !== 'completed').length;
+          const overdue = tasks.filter(t => {
             const target = t.targetDate?.toDate?.() || new Date(t.targetDate);
             return t.status !== 'completed' && target < today;
           }).length;
 
+          console.log(`${member.name}: pending=${pending} overdue=${overdue}`);
+
           const result = await sendDailyReminder(
             member.whatsapp,
             member.name,
-            pendingTasks,
-            overdueTasks
+            pending,
+            overdue
           );
 
-          results.push({ name: member.name, template: 'daily_reminder', status: result.success ? 'sent' : 'failed' });
-          await new Promise(r => setTimeout(r, 500));
+          // Log to Firestore
+          await db.collection('whatsapp_logs').add({
+            to: member.whatsapp,
+            memberName: member.name,
+            memberUid: member.uid,
+            slot: 'morning',
+            template: 'daily_reminder',
+            variables: { name: member.name, pending, overdue },
+            status: result.success ? 'sent' : 'failed',
+            msg91Response: result.response,
+            sentAt: new Date()
+          });
+
+          if (result.success) {
+            results.sent++;
+          } else {
+            results.failed++;
+          }
+
+          results.details.push({
+            name: member.name,
+            status: result.success ? 'sent' : 'failed',
+            pending,
+            overdue
+          });
+
+          // Delay between sends
+          await new Promise(r => setTimeout(r, 600));
         } catch (err) {
-          console.error(`Error for ${member.name}:`, err.message);
-          results.push({ name: member.name, status: 'error', error: err.message });
+          console.error(`Morning error ${member.name}:`, err.message);
+          results.failed++;
+          results.details.push({ name: member.name, status: 'error', error: err.message });
         }
       }
     }
 
     // ═══════════════════════════
-    // EVENING SLOT (All Users)
+    // EVENING: general_message
+    // All users (members + admins)
+    // 8:00 PM IST
     // ═══════════════════════════
     if (slot === 'evening') {
       for (const user of allUsers) {
-        if (!user.whatsapp) continue;
+        if (!user.whatsapp?.trim()) {
+          results.skipped++;
+          continue;
+        }
 
         try {
-          const uid = user.uid;
-          let pendingTasks = 0, overdueTasks = 0, followups = 0, enquiries = 0, payments = 0, rgp = 0;
+          let summary = '';
 
-          if (user.role === 'admin') {
-            const tasksSnap = await db.collection('tasks').get();
+          if (user.role === 'member') {
+            // Member gets own data
+            const tasksSnap = await db
+              .collection('tasks')
+              .where('assignedTo', '==', user.uid)
+              .get();
             const tasks = tasksSnap.docs.map(d => d.data());
-            pendingTasks = tasks.filter(t => t.status !== 'completed').length;
-            overdueTasks = tasks.filter(t => {
+            const pending = tasks.filter(t => t.status !== 'completed').length;
+            const overdue = tasks.filter(t => {
               const target = t.targetDate?.toDate?.() || new Date(t.targetDate);
               return t.status !== 'completed' && target < today;
             }).length;
+            const doneToday = tasks.filter(t => {
+              const updated = t.updatedAt?.toDate?.() || new Date(t.updatedAt);
+              return t.status === 'completed' && updated >= today;
+            }).length;
 
-            followups = (await db.collection('followups').where('status', '==', 'open').get()).size;
-            enquiries = (await db.collection('enquiries').where('status', '==', 'open').get()).size;
-            payments = (await db.collection('payments').where('paymentStatus', '!=', 'received').get()).size;
-            rgp = (await db.collection('rgp').where('status', '==', 'open').get()).size;
+            const followupsSnap = await db
+              .collection('followups')
+              .where('assignedTo', '==', user.uid)
+              .where('status', '==', 'open')
+              .get();
 
-            const summary = `Team total - Tasks open: ${pendingTasks}, Overdue: ${overdueTasks}, Followups: ${followups}, Enquiries: ${enquiries}, Payments: ${payments}, RGP: ${rgp}`;
-            
-            const result = await sendGeneralMessage(user.whatsapp, user.name, summary);
-            results.push({ name: user.name, template: 'general_message', status: result.success ? 'sent' : 'failed' });
+            const enquiriesSnap = await db
+              .collection('enquiries')
+              .where('assignedTo', '==', user.uid)
+              .where('status', '==', 'open')
+              .get();
 
+            const paymentsSnap = await db
+              .collection('payments')
+              .where('assignedTo', '==', user.uid)
+              .where('paymentStatus', '!=', 'received')
+              .get();
+
+            const rgpSnap = await db
+              .collection('rgp')
+              .where('assignedTo', '==', user.uid)
+              .where('status', '==', 'open')
+              .get();
+
+            summary = `Tasks pending: ${pending}, Overdue: ${overdue}, Completed today: ${doneToday}, Followups: ${followupsSnap.size}, Enquiries: ${enquiriesSnap.size}, Payments: ${paymentsSnap.size}, RGP open: ${rgpSnap.size}`;
           } else {
-            const tasksSnap = await db.collection('tasks').where('assignedTo', '==', uid).get();
-            const tasks = tasksSnap.docs.map(d => d.data());
-            pendingTasks = tasks.filter(t => t.status !== 'completed').length;
-            overdueTasks = tasks.filter(t => {
+            // Admin gets team totals
+            const allTasksSnap = await db.collection('tasks').get();
+            const allTasks = allTasksSnap.docs.map(d => d.data());
+
+            const totalPending = allTasks.filter(t => t.status !== 'completed').length;
+            const totalOverdue = allTasks.filter(t => {
               const target = t.targetDate?.toDate?.() || new Date(t.targetDate);
               return t.status !== 'completed' && target < today;
             }).length;
+            const totalDone = allTasks.filter(t => {
+              const updated = t.updatedAt?.toDate?.() || new Date(t.updatedAt);
+              return t.status === 'completed' && updated >= today;
+            }).length;
 
-            followups = (await db.collection('followups').where('assignedTo', '==', uid).where('status', '==', 'open').get()).size;
-            enquiries = (await db.collection('enquiries').where('assignedTo', '==', uid).where('status', '==', 'open').get()).size;
-            payments = (await db.collection('payments').where('assignedTo', '==', uid).where('paymentStatus', '!=', 'received').get()).size;
-            rgp = (await db.collection('rgp').where('assignedTo', '==', uid).where('status', '==', 'open').get()).size;
+            const allFollowupsSnap = await db
+              .collection('followups')
+              .where('status', '==', 'open')
+              .get();
+            const allEnquiriesSnap = await db
+              .collection('enquiries')
+              .where('status', '==', 'open')
+              .get();
+            const allPaymentsSnap = await db
+              .collection('payments')
+              .where('paymentStatus', '!=', 'received')
+              .get();
+            const allRgpSnap = await db
+              .collection('rgp')
+              .where('status', '==', 'open')
+              .get();
 
-            const summary = `Tasks pending: ${pendingTasks}, Overdue: ${overdueTasks}, Followups: ${followups}, Enquiries: ${enquiries}, Payments: ${payments}, RGP open: ${rgp}`;
-            
-            const result = await sendGeneralMessage(user.whatsapp, user.name, summary);
-            results.push({ name: user.name, template: 'general_message', status: result.success ? 'sent' : 'failed' });
+            summary = `Team tasks open: ${totalPending}, Overdue: ${totalOverdue}, Done today: ${totalDone}, Followups: ${allFollowupsSnap.size}, Enquiries: ${allEnquiriesSnap.size}, Payments: ${allPaymentsSnap.size}, RGP: ${allRgpSnap.size}`;
           }
 
-          await new Promise(r => setTimeout(r, 500));
+          const result = await sendGeneralMessage(user.whatsapp, user.name, summary);
+
+          await db.collection('whatsapp_logs').add({
+            to: user.whatsapp,
+            memberName: user.name,
+            memberUid: user.uid,
+            slot: 'evening',
+            template: 'general_message',
+            summary,
+            status: result.success ? 'sent' : 'failed',
+            msg91Response: result.response,
+            sentAt: new Date()
+          });
+
+          if (result.success) {
+            results.sent++;
+          } else {
+            results.failed++;
+          }
+
+          results.details.push({
+            name: user.name,
+            role: user.role,
+            status: result.success ? 'sent' : 'failed'
+          });
+
+          await new Promise(r => setTimeout(r, 600));
         } catch (err) {
-          console.error(`Error for ${user.name}:`, err.message);
-          results.push({ name: user.name, status: 'error', error: err.message });
+          console.error(`Evening error ${user.name}:`, err.message);
+          results.failed++;
+          results.details.push({ name: user.name, status: 'error', error: err.message });
         }
       }
     }
 
-    // ═══════════════════════════
-    // OVERDUE SLOT
-    // ═══════════════════════════
-    if (slot === 'overdue') {
-      const tasksSnap = await db.collection('tasks').where('status', '!=', 'completed').get();
+    console.log('Cron done:', results);
 
-      for (const taskDoc of tasksSnap.docs) {
-        const task = taskDoc.data();
-        const target = task.targetDate?.toDate?.() || new Date(task.targetDate);
-
-        if (target >= today) continue;
-
-        const overdueDays = Math.floor((today - target) / (1000 * 60 * 60 * 24));
-        const user = allUsers.find(u => u.uid === task.assignedTo);
-
-        if (!user?.whatsapp) continue;
-
-        const projectDoc = await db.doc(`projects/${task.projectId}`).get();
-        const projectName = projectDoc.data()?.name || 'Project';
-
-        try {
-          const result = await sendTaskOverdue(user.whatsapp, user.name, task.title, projectName, overdueDays);
-          results.push({ name: user.name, task: task.title, template: 'task_overdue', status: result.success ? 'sent' : 'failed' });
-          await new Promise(r => setTimeout(r, 500));
-        } catch (e) {
-          console.error('Overdue error:', e.message);
-        }
-      }
-    }
-
-    // ═══════════════════════════
-    // PAYMENT SLOT
-    // ═══════════════════════════
-    if (slot === 'payment') {
-      const paymentsSnap = await db.collection('payments').where('paymentStatus', '!=', 'received').get();
-
-      for (const payDoc of paymentsSnap.docs) {
-        const payment = payDoc.data();
-        const dueDate = payment.targetPaymentDate?.toDate?.() || new Date(payment.targetPaymentDate);
-
-        if (!dueDate || dueDate > today) continue; // Only overdue payments
-
-        const user = allUsers.find(u => u.uid === payment.assignedTo);
-        if (!user?.whatsapp) continue;
-
-        try {
-          const amount = payment.netPending || payment.amount || 0;
-          const result = await sendPaymentReminder(
-            user.whatsapp,
-            user.name,
-            payment.customerName || 'Client',
-            payment.invoiceNumber || 'N/A',
-            amount
-          );
-          results.push({ name: user.name, customer: payment.customerName, template: 'payment_reminder', status: result.success ? 'sent' : 'failed' });
-          await new Promise(r => setTimeout(r, 500));
-        } catch (e) {
-          console.error('Payment cron error:', e.message);
-        }
-      }
-    }
-
-    // ═══════════════════════════
-    // TOOL SLOT
-    // ═══════════════════════════
-    if (slot === 'tool') {
-      const toolsSnap = await db.collection('tools').where('status', '==', 'assigned').get();
-
-      for (const toolDoc of toolsSnap.docs) {
-        const tool = toolDoc.data();
-        const assignedDate = tool.assignedDate?.toDate?.() || new Date(tool.assignedDate);
-        
-        if (!assignedDate) continue;
-
-        const days = Math.floor((today - assignedDate) / (1000 * 60 * 60 * 24));
-        if (days <= 30) continue; // Only if tool > 30 days
-
-        const user = allUsers.find(u => u.uid === tool.assignedTo);
-        if (!user?.whatsapp) continue;
-
-        try {
-          const issuedDateStr = assignedDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-          const result = await sendToolReturn(
-            user.whatsapp,
-            user.name,
-            tool.toolName,
-            issuedDateStr,
-            days
-          );
-          results.push({ name: user.name, tool: tool.toolName, template: 'tool_return', status: result.success ? 'sent' : 'failed' });
-          await new Promise(r => setTimeout(r, 500));
-        } catch (e) {
-          console.error('Tool cron error:', e.message);
-        }
-      }
-    }
-
-    // ═══════════════════════════
-    // RGP SLOT
-    // ═══════════════════════════
-    if (slot === 'rgp') {
-      const rgpSnap = await db.collection('rgp').where('status', '==', 'open').get();
-
-      for (const rgpDoc of rgpSnap.docs) {
-        const rgp = rgpDoc.data();
-        const assignedDate = rgp.assignedDate?.toDate?.() || rgp.createdAt?.toDate?.() || new Date(rgp.createdAt || Date.now());
-        
-        const days = Math.floor((today - assignedDate) / (1000 * 60 * 60 * 24));
-        if (days <= 15) continue; // Only if open > 15 days
-
-        const user = allUsers.find(u => u.uid === rgp.assignedTo);
-        if (!user?.whatsapp) continue;
-
-        try {
-          const result = await sendRgpReminder(
-            user.whatsapp,
-            user.name,
-            rgp.docNumber || 'N/A',
-            rgp.fromCompany || 'N/A',
-            rgp.toCompany || 'N/A',
-            days
-          );
-          results.push({ name: user.name, doc: rgp.docNumber, template: 'rgp_reminder', status: result.success ? 'sent' : 'failed' });
-          await new Promise(r => setTimeout(r, 500));
-        } catch (e) {
-          console.error('RGP cron error:', e.message);
-        }
-      }
-    }
-
-    return res.status(200).json({ success: true, slot, total: results.length, results });
-
+    return res.status(200).json({
+      success: true,
+      slot,
+      time: new Date().toISOString(),
+      sent: results.sent,
+      failed: results.failed,
+      skipped: results.skipped,
+      details: results.details
+    });
   } catch (error) {
-    console.error('Cron error:', error.message);
+    console.error('Cron fatal:', error.message);
     return res.status(500).json({ error: error.message });
   }
 }

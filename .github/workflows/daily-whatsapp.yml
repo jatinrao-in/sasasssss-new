@@ -1,65 +1,61 @@
-name: Daily WhatsApp Notifications
+name: Daily WhatsApp Messages
 
 on:
   schedule:
-    # 7:00 AM IST = 1:30 AM UTC
-    - cron: '30 1 * * *'
-    # 7:00 PM IST = 1:30 PM UTC  
-    - cron: '30 13 * * *'
-  workflow_dispatch: # manual trigger
+    # 8:00 AM IST = 2:30 AM UTC
+    - cron: '30 2 * * *'
+    # 8:00 PM IST = 2:30 PM UTC
+    - cron: '30 14 * * *'
+  workflow_dispatch:
+    inputs:
+      slot:
+        description: 'morning or evening'
+        required: true
+        default: 'morning'
 
 jobs:
-  send-notifications:
+  send-whatsapp:
     runs-on: ubuntu-latest
-    continue-on-error: true
-    
     steps:
-      - name: Determine slot
+      - name: Determine time slot
         id: slot
         run: |
           HOUR=$(date -u +%H)
-          if [ "$HOUR" = "01" ]; then
+          MIN=$(date -u +%M)
+          echo "UTC time: $HOUR:$MIN"
+          if [ "$HOUR" = "02" ]; then
             echo "slot=morning" >> $GITHUB_OUTPUT
           else
             echo "slot=evening" >> $GITHUB_OUTPUT
           fi
 
-      - name: Send morning reminders
-        if: steps.slot.outputs.slot == 'morning'
-        continue-on-error: true
+      - name: Set manual slot
+        if: github.event_name == 'workflow_dispatch'
         run: |
-          echo "Sending morning reminders..."
-          curl -s -w "\nHTTP_STATUS:%{http_code}" \
+          echo "slot=${{ github.event.inputs.slot }}" >> $GITHUB_OUTPUT
+        id: manual_slot
+
+      - name: Send WhatsApp Messages
+        run: |
+          SLOT="${{ steps.slot.outputs.slot || steps.manual_slot.outputs.slot }}"
+          echo "Sending slot: $SLOT"
+          
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
             -X GET \
-            "https://sasasssss.vercel.app/api/cron/send-reminders?slot=morning" \
+            "https://sasasssss.vercel.app/api/cron/send-reminders?slot=$SLOT" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -H "Content-Type: application/json"
-
-      - name: Send evening summary
-        if: steps.slot.outputs.slot == 'evening'
-        continue-on-error: true
-        run: |
-          echo "Sending evening summary..."
-          curl -s -w "\nHTTP_STATUS:%{http_code}" \
-            -X GET \
-            "https://sasasssss.vercel.app/api/cron/send-reminders?slot=evening" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -H "Content-Type: application/json"
-
-      - name: Check overdue tasks
-        continue-on-error: true
-        run: |
-          echo "Checking overdue tasks..."
-          curl -s -w "\nHTTP_STATUS:%{http_code}" \
-            -X GET \
-            "https://sasasssss.vercel.app/api/cron/send-reminders?slot=overdue" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
-
-      - name: Payment followups
-        continue-on-error: true
-        run: |
-          echo "Checking payments..."
-          curl -s -w "\nHTTP_STATUS:%{http_code}" \
-            -X GET \
-            "https://sasasssss.vercel.app/api/cron/send-reminders?slot=payment" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+            -H "Content-Type: application/json" \
+            --max-time 55)
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n-1)
+          
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Response: $BODY"
+          
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "FAILED with status $HTTP_CODE"
+            exit 1
+          fi
+          
+          echo "SUCCESS"
