@@ -42,10 +42,12 @@ export default async function handler(req, res) {
     const usersSnap = await db
       .collection('users')
       .where('status', '==', 'active')
-      .where('isHidden', '!=', true)
       .get();
 
-    const allUsers = usersSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
+    const allUsers = usersSnap.docs
+      .map(d => ({ uid: d.id, ...d.data() }))
+      .filter(u => u.isHidden !== true);
+      
     const members = allUsers.filter(u => u.role === 'member');
 
     console.log(`Users: ${allUsers.length}, Members: ${members.length}`);
