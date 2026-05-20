@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import {
- Plus, X, Search, DollarSign, TrendingUp, Clock,
+ Plus, X, Search, DollarSign, TrendingUp, TrendingDown, Clock,
  AlertTriangle, CheckCircle2, BarChart3,
 } from 'lucide-react';
 import { Timestamp } from 'firebase/firestore';
