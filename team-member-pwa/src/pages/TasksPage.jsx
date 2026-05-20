@@ -13,12 +13,24 @@ import { useAuth } from '../hooks/useAuth';
 import { useTasks } from '../hooks/useTasks';
 import { useProjects } from '../hooks/useProjects';
 import { useToast } from '../hooks/useToast';
-import { formatDate } from '../lib/formatters';
+
 import { db } from '../lib/firebase';
 import { COLLECTIONS, addDocument } from '../lib/firestore-helpers';
 import { notify } from '../lib/notify';
 import { formatDate as fmtDate } from '../lib/helpers';
 import { logInfo } from '../lib/firestoreDebug';
+
+const formatDate = (timestamp) => {
+  if (!timestamp) return 'N/A';
+  const date = timestamp?.toDate?.()
+    ? timestamp.toDate()
+    : new Date(timestamp);
+  return date.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+};
 
 export default function TasksPage() {
   const { userData } = useAuth();
@@ -376,6 +388,7 @@ export default function TasksPage() {
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400 mb-2">
                           <span>Start: {formatDate(task.startDate)}</span>
                           <span>Due: {formatDate(task.targetDate)}</span>
+                          <span>Assigned: {formatDate(task.assignedDate || task.createdAt)}</span>
                         </div>
 
                         {task.rescheduleCount > 0 && (

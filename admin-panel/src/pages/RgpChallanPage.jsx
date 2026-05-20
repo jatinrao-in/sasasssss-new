@@ -9,7 +9,7 @@ import { useRgpChallans } from '../hooks/useRgpChallans';
 import { useTeam } from '../hooks/useTeam';
 import { useToast } from '../hooks/useToast';
 import useDelete from '../hooks/useDelete';
-import { formatDate, formatCurrency } from '../lib/formatters';
+import { formatCurrency } from '../lib/formatters';
 import { notifyRgpAssigned } from '../lib/notify';
 import { SkeletonTable } from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
@@ -19,6 +19,18 @@ import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
 import DeleteButton from '../components/DeleteButton';
 import BulkDeleteBar from '../components/BulkDeleteBar';
 import { compressImage, uploadToImgbb } from '../lib/imageUtils';
+
+const formatDate = (timestamp) => {
+  if (!timestamp) return 'N/A';
+  const date = timestamp?.toDate?.()
+    ? timestamp.toDate()
+    : new Date(timestamp);
+  return date.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+};
 
 const RGP_TYPES = ['RGP', 'Challan'];
 const RGP_STATUSES = ['open', 'in_transit', 'delivered', 'returned', 'closed'];
@@ -467,7 +479,7 @@ export default function RgpChallanPage() {
  title="Select all records"
  />
  </th>
- <th className="table-header">Type</th><th className="table-header">Company</th><th className="table-header">Challan No.</th>
+ <th className="table-header">Type</th><th className="table-header">Company</th><th className="table-header">Assigned Date</th><th className="table-header">Challan No.</th>
  <th className="table-header">Description</th><th className="table-header">Attachments</th><th className="table-header">Sent Date</th>
  <th className="table-header">Doc Stage</th><th className="table-header">Status</th><th className="table-header">Actions</th>
  </tr></thead>
@@ -488,6 +500,7 @@ export default function RgpChallanPage() {
  </td>
  <td className="table-cell"><span className={`badge ${r.type === 'RGP' ? 'badge-blue' : 'badge-yellow'}`}>{r.type}</span></td>
  <td className="table-cell font-medium text-gray-900">{r.companyName}</td>
+ <td className="table-cell text-gray-600 text-xs">{formatDate(r.assignedDate || r.createdAt)}</td>
  <td className="table-cell text-[var(--text-muted)] text-xs">{r.challanNumber || '-'}</td>
   <td className="table-cell text-[var(--text-muted)] text-xs max-w-[200px] truncate">{r.description || '-'}</td>
   <td className="table-cell">

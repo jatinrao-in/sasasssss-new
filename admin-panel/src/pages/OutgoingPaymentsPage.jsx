@@ -1,6 +1,6 @@
-﻿import { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
- Plus, X, Search, DollarSign, TrendingDown, Clock,
+ Plus, X, Search, DollarSign, TrendingUp, Clock,
  AlertTriangle, CheckCircle2, BarChart3,
 } from 'lucide-react';
 import { Timestamp } from 'firebase/firestore';
@@ -10,7 +10,7 @@ import { usePayments } from '../hooks/usePayments';
 import { useTeam } from '../hooks/useTeam';
 import { useToast } from '../hooks/useToast';
 import useDelete from '../hooks/useDelete';
-import { formatDate, formatCurrency } from '../lib/formatters';
+import { formatCurrency } from '../lib/formatters';
 import { notifyPaymentAssigned } from '../lib/notify';
 
 import { SkeletonTable } from '../components/ui/Skeleton';
@@ -19,6 +19,18 @@ import CountUpNumber from '../components/ui/CountUpNumber';
 import ExportButton from '../components/ui/ExportButton';
 import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
 import DeleteButton from '../components/DeleteButton';
+
+const formatDate = (timestamp) => {
+  if (!timestamp) return 'N/A';
+  const date = timestamp?.toDate?.()
+    ? timestamp.toDate()
+    : new Date(timestamp);
+  return date.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+};
 
 const APPROVAL_STATUSES = ['draft', 'pending', 'approved', 'paid'];
 
@@ -295,7 +307,7 @@ export default function OutgoingPaymentsPage() {
  <div className="card p-0 overflow-hidden">
  <table className="w-full" data-export-table>
  <thead><tr className="bg-gray-50">
- <th className="table-header">Vendor</th><th className="table-header">Invoice</th><th className="table-header">Category</th>
+ <th className="table-header">Vendor</th><th className="table-header">Assigned Date</th><th className="table-header">Invoice</th><th className="table-header">Category</th>
  <th className="table-header text-right">Amount</th><th className="table-header text-right">Paid</th>
  <th className="table-header">Due Date</th><th className="table-header">Approval</th><th className="table-header">Status</th>
  <th className="table-header">Actions</th>
@@ -304,6 +316,7 @@ export default function OutgoingPaymentsPage() {
  {filtered.map(p => (
  <tr key={p.id} className="group hover:bg-gray-50 transition-colors">
  <td className="table-cell font-medium text-gray-900">{p.vendorName}</td>
+ <td className="table-cell text-gray-600 text-xs">{formatDate(p.assignedDate || p.createdAt)}</td>
  <td className="table-cell text-[var(--text-muted)] text-xs">{p.invoiceNumber || '-'}</td>
  <td className="table-cell text-[var(--text-muted)] text-xs">{p.category || '-'}</td>
  <td className="table-cell text-right font-medium">{formatCurrency(p.amount)}</td>

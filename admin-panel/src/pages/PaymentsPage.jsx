@@ -1,4 +1,4 @@
-﻿import { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
  Plus, X, Search, DollarSign, TrendingUp, Clock, AlertTriangle,
  FileText, Download, Eye, CheckCircle2, BarChart3,
@@ -9,7 +9,7 @@ import { usePayments } from '../hooks/usePayments';
 import { useTeam } from '../hooks/useTeam';
 import { useToast } from '../hooks/useToast';
 import useDelete from '../hooks/useDelete';
-import { formatDate, formatCurrency } from '../lib/formatters';
+import { formatCurrency } from '../lib/formatters';
 import { notifyPaymentAssigned } from '../lib/notify';
 
 import { exportCSV, exportExcel, flattenForExport } from '../lib/exportUtils';
@@ -19,6 +19,18 @@ import CountUpNumber from '../components/ui/CountUpNumber';
 import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
 import DeleteButton from '../components/DeleteButton';
 import BulkDeleteBar from '../components/BulkDeleteBar';
+
+const formatDate = (timestamp) => {
+  if (!timestamp) return 'N/A';
+  const date = timestamp?.toDate?.()
+    ? timestamp.toDate()
+    : new Date(timestamp);
+  return date.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+};
 
 const PAYMENT_COLUMNS = [
  { key: 'customerName', label: 'Customer' },
@@ -461,57 +473,63 @@ export default function PaymentsPage() {
  ) : (
  <div className="card p-0 overflow-hidden">
  <table className="w-full" data-export-table>
- <thead><tr className="bg-gray-50">
- <th className="table-header w-10">
- <input
- type="checkbox"
- checked={allVisibleSelected}
- onChange={toggleAllVisiblePayments}
- className="rounded accent-teal-600"
- title="Select all payments"
- />
- </th>
- <th className="table-header">Customer</th><th className="table-header">Invoice</th>
- <th className="table-header text-right">Amount</th><th className="table-header text-right">Paid</th>
- <th className="table-header text-right">Pending</th><th className="table-header">Due Date</th>
- <th className="table-header">Status</th><th className="table-header">Actions</th>
- </tr></thead>
+  <thead><tr className="bg-gray-50">
+  <th className="table-header w-10">
+  <input
+  type="checkbox"
+  checked={allVisibleSelected}
+  onChange={toggleAllVisiblePayments}
+  className="rounded accent-teal-600"
+  title="Select all payments"
+  />
+  </th>
+  <th className="table-header">Customer</th>
+  <th className="table-header">Assigned Date</th>
+  <th className="table-header">Invoice</th>
+  <th className="table-header text-right">Amount</th>
+  <th className="table-header text-right">Paid</th>
+  <th className="table-header text-right">Pending</th>
+  <th className="table-header">Due Date</th>
+  <th className="table-header">Status</th>
+  <th className="table-header">Actions</th>
+  </tr></thead>
  <tbody>
- {filtered.map(p => {
- const pending = Number(p.amount || 0) - Number(p.totalPaid || 0);
- return (
- <tr key={p.id} className="group hover:bg-gray-50 transition-colors">
- <td className="table-cell">
- <input
- type="checkbox"
- checked={selectedPaymentSet.has(p.id)}
- onChange={() => togglePaymentSelection(p.id)}
- className="rounded accent-teal-600"
- title="Select payment"
- />
- </td>
- <td className="table-cell font-medium text-gray-900">{p.customerName}</td>
- <td className="table-cell text-[var(--text-muted)] text-xs">{p.invoiceNumber || '-'}</td>
- <td className="table-cell text-right font-medium">{formatCurrency(p.amount)}</td>
- <td className="table-cell text-right text-green-600 font-medium">{formatCurrency(p.totalPaid || 0)}</td>
- <td className="table-cell text-right text-red-500 font-medium">{formatCurrency(pending)}</td>
- <td className="table-cell text-[var(--text-muted)] text-xs">
- {formatDate(p.targetPaymentDate)}
- {(p.overdueDays || 0) > 0 && <span className="text-red-400 ml-1">({p.overdueDays}d)</span>}
- </td>
- <td className="table-cell"><span className={`badge ${statusColors[p.paymentStatus] || 'badge-gray'}`}>{p.paymentStatus}</span></td>
- <td className="table-cell">
- <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
- <button onClick={() => setShowReceipt(p)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400" title="Receipt">
- <FileText className="w-3.5 h-3.5" />
- </button>
- <button onClick={() => { setEditing(p); setShowModal(true); }} className="text-xs text-teal-600 hover:bg-teal-50 px-2 py-1 rounded font-medium">Edit</button>
- <DeleteButton onClick={() => deletePaymentRecord(p.id, p.customerName)} />
- </div>
- </td>
- </tr>
- );
- })}
+  {filtered.map(p => {
+  const pending = Number(p.amount || 0) - Number(p.totalPaid || 0);
+  return (
+  <tr key={p.id} className="group hover:bg-gray-50 transition-colors">
+  <td className="table-cell">
+  <input
+  type="checkbox"
+  checked={selectedPaymentSet.has(p.id)}
+  onChange={() => togglePaymentSelection(p.id)}
+  className="rounded accent-teal-600"
+  title="Select payment"
+  />
+  </td>
+  <td className="table-cell font-medium text-gray-900">{p.customerName}</td>
+  <td className="table-cell text-gray-600 text-xs">{formatDate(p.assignedDate || p.createdAt)}</td>
+  <td className="table-cell text-[var(--text-muted)] text-xs">{p.invoiceNumber || '-'}</td>
+  <td className="table-cell text-right font-medium">{formatCurrency(p.amount)}</td>
+  <td className="table-cell text-right text-green-600 font-medium">{formatCurrency(p.totalPaid || 0)}</td>
+  <td className="table-cell text-right text-red-500 font-medium">{formatCurrency(pending)}</td>
+  <td className="table-cell text-[var(--text-muted)] text-xs">
+  {formatDate(p.targetPaymentDate)}
+  {(p.overdueDays || 0) > 0 && <span className="text-red-400 ml-1">({p.overdueDays}d)</span>}
+  </td>
+  <td className="table-cell"><span className={`badge ${statusColors[p.paymentStatus] || 'badge-gray'}`}>{p.paymentStatus}</span></td>
+  <td className="table-cell">
+  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+  <button onClick={() => setShowReceipt(p)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400" title="Receipt">
+  <FileText className="w-3.5 h-3.5" />
+  </button>
+  <button onClick={() => { setEditing(p); setShowModal(true); }} className="text-xs text-teal-600 hover:bg-teal-50 px-2 py-1 rounded font-medium">Edit</button>
+  <DeleteButton onClick={() => deletePaymentRecord(p.id, p.customerName)} />
+  </div>
+  </td>
+  </tr>
+  );
+  })}
  </tbody>
  </table>
  </div>

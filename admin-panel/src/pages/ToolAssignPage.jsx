@@ -7,7 +7,7 @@ import { useTools } from '../hooks/useTools';
 import { useTeam } from '../hooks/useTeam';
 import { useToast } from '../hooks/useToast';
 import useDelete from '../hooks/useDelete';
-import { formatDate } from '../lib/formatters';
+
 import { notifyToolAssigned } from '../lib/notify';
 import { SkeletonTable } from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
@@ -16,6 +16,18 @@ import ExportButton from '../components/ui/ExportButton';
 import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
 import DeleteButton from '../components/DeleteButton';
 import BulkDeleteBar from '../components/BulkDeleteBar';
+
+const formatDate = (timestamp) => {
+  if (!timestamp) return 'N/A';
+  const date = timestamp?.toDate?.()
+    ? timestamp.toDate()
+    : new Date(timestamp);
+  return date.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+};
 
 const CONDITIONS = ['Good', 'Fair', 'Poor', 'Damaged'];
 
@@ -483,6 +495,7 @@ export default function ToolAssignPage() {
                   </th>
                   <th className="table-header">Tool Name</th>
                   <th className="table-header">Assigned To</th>
+                  <th className="table-header">Assigned Date</th>
                   <th className="table-header">Handed Over</th>
                   <th className="table-header">Days Since Issue</th>
                   <th className="table-header">Condition</th>
@@ -517,6 +530,7 @@ export default function ToolAssignPage() {
                           <span className="text-sm text-gray-700">{item.assignedToName || '-'}</span>
                         </div>
                       </td>
+                      <td className="table-cell text-gray-600 text-xs">{formatDate(item.assignedDate || item.createdAt)}</td>
                       <td className="table-cell text-[var(--text-muted)] text-xs">{formatDate(item.handedOverDate)}</td>
                       <td className="table-cell text-center">
                         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${

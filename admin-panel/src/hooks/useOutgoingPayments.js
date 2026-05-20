@@ -61,10 +61,11 @@ export function useOutgoingPayments(filterByUser = null) {
  else if ((Number(data.paidAmount) || 0) > 0) paymentStatus = 'partial';
 
  const paymentRef = await addDocument(db, COLLECTIONS.outgoing_payments, {
- ...data,
- netPendingAmount,
- paymentStatus,
- createdAt: serverTimestamp(),
+  ...data,
+  assignedDate: data.assignedDate || serverTimestamp(),
+  netPendingAmount,
+  paymentStatus,
+  createdAt: serverTimestamp(),
  }, 'save outgoing payment');
  await log('outgoing_payment_created', {
   paymentId: paymentRef.id,

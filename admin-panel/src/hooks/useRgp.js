@@ -40,9 +40,10 @@ export function useRgp() {
 
  const addRgp = async (rgpData) => {
   const rgpRef = await addDocument(db, COLLECTIONS.rgp, {
-   ...rgpData,
-   createdAt: serverTimestamp(),
-   status: 'open',
+    ...rgpData,
+    assignedDate: rgpData.assignedDate || serverTimestamp(),
+    createdAt: serverTimestamp(),
+    status: 'open',
   }, 'save rgp');
 
   await log('rgp_created', {

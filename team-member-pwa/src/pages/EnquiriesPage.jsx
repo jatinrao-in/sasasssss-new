@@ -11,8 +11,19 @@ import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
 import { useAuth } from '../hooks/useAuth';
 import { useEnquiries } from '../hooks/useEnquiries';
 import { useToast } from '../hooks/useToast';
-import { formatDate } from '../lib/formatters';
 import { logInfo } from '../lib/firestoreDebug';
+
+const formatDate = (timestamp) => {
+  if (!timestamp) return 'N/A';
+  const date = timestamp?.toDate?.()
+    ? timestamp.toDate()
+    : new Date(timestamp);
+  return date.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+};
 
 const FILTERS = [
   { value: 'all', label: 'All' },

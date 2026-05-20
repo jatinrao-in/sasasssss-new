@@ -75,6 +75,7 @@ export function useTasks(filterByUser = null) {
  const addTask = async (taskData) => {
   const taskRef = await addDocument(db, COLLECTIONS.tasks, {
    ...taskData,
+   assignedDate: taskData.assignedDate || serverTimestamp(),
    completionPercent: Number(taskData.completionPercent || 0),
    createdAt: serverTimestamp(),
    startDate: serverTimestamp(),

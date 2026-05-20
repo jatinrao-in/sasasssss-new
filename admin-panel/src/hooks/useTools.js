@@ -40,10 +40,11 @@ export function useTools() {
 
  const assignTool = async (data) => {
   const toolRef = await addDocument(db, COLLECTIONS.tools, {
-   ...data,
-   returnStatus: 'pending',
-   returnDate: null,
-   createdAt: serverTimestamp(),
+    ...data,
+    assignedDate: data.assignedDate || serverTimestamp(),
+    returnStatus: 'pending',
+    returnDate: null,
+    createdAt: serverTimestamp(),
   }, 'save tool assignment');
 
   await log('tool_assigned', {

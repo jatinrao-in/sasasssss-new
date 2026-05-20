@@ -56,9 +56,10 @@ export function usePayments(filterByUser = null) {
 
  const addPayment = async (paymentData) => {
   const paymentRef = await addDocument(db, COLLECTIONS.payments, {
-   ...paymentData,
-   createdAt: serverTimestamp(),
-   paymentStatus: 'pending',
+    ...paymentData,
+    assignedDate: paymentData.assignedDate || serverTimestamp(),
+    createdAt: serverTimestamp(),
+    paymentStatus: 'pending',
   }, 'save payment');
 
   await log('payment_created', {

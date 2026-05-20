@@ -11,12 +11,24 @@ import { useTeam } from '../hooks/useTeam';
 import { useToast } from '../hooks/useToast';
 import useAuditLog from '../hooks/useAuditLog';
 import useDelete from '../hooks/useDelete';
-import { formatDate, formatCurrency, formatLakhs } from '../lib/formatters';
+import { formatCurrency, formatLakhs } from '../lib/formatters';
 import { deleteExpenseAndRecalculate, deleteTaskCascade } from '../lib/deleteActions';
 import { notifyTaskAssigned } from '../lib/notify';
 import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
 import DeleteButton from '../components/DeleteButton';
 import BulkDeleteBar from '../components/BulkDeleteBar';
+
+const formatDate = (timestamp) => {
+  if (!timestamp) return 'N/A';
+  const date = timestamp?.toDate?.()
+    ? timestamp.toDate()
+    : new Date(timestamp);
+  return date.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+};
 
 
 function AddTaskModal({ onClose, onSubmit, members, projectId }) {
@@ -704,6 +716,7 @@ export default function ProjectDetailPage() {
                 </th>
                 <th className="table-header">Task</th>
                 <th className="table-header">Assigned To</th>
+                <th className="table-header">Assigned Date</th>
                 <th className="table-header">Priority</th>
                 <th className="table-header">Target Date</th>
                 <th className="table-header">Completion</th>
@@ -725,6 +738,7 @@ export default function ProjectDetailPage() {
                   </td>
                   <td className="table-cell font-medium">{task.title}</td>
                   <td className="table-cell text-gray-600">{task.assignedToName || '-'}</td>
+                  <td className="table-cell text-gray-600">{formatDate(task.assignedDate || task.createdAt)}</td>
                   <td className="table-cell">
                     {task.priority && (
                       <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${

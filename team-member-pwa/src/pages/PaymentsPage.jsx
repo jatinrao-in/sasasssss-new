@@ -10,8 +10,20 @@ import { ChevronDown, ChevronLeft, CreditCard } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { usePayments } from '../hooks/usePayments';
 import { useToast } from '../hooks/useToast';
-import { formatDate, formatCurrency } from '../lib/formatters';
+import { formatCurrency } from '../lib/formatters';
 import { logInfo } from '../lib/firestoreDebug';
+
+const formatDate = (timestamp) => {
+  if (!timestamp) return 'N/A';
+  const date = timestamp?.toDate?.()
+    ? timestamp.toDate()
+    : new Date(timestamp);
+  return date.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+};
 
 function getTodayInputDate() {
   return new Date().toISOString().slice(0, 10);
@@ -222,6 +234,9 @@ export default function PaymentsPage() {
                   <p className="text-sm font-semibold text-gray-900">{payment.customerName}</p>
                   <p className="mt-0.5 text-xs text-[var(--text-muted)]">
                     {payment.invoiceNumber || 'No invoice'} | {formatDate(payment.invoiceDate)}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-gray-500">
+                    Assigned: {formatDate(payment.assignedDate || payment.createdAt)}
                   </p>
                 </div>
                 {getPaymentStatusBadge(payment.paymentStatus)}

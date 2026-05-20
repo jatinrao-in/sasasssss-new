@@ -9,7 +9,7 @@ import { useEnquiries } from '../hooks/useEnquiries';
 import { useTeam } from '../hooks/useTeam';
 import { useToast } from '../hooks/useToast';
 import useDelete from '../hooks/useDelete';
-import { formatDate, formatCurrency } from '../lib/formatters';
+import { formatCurrency } from '../lib/formatters';
 import { notifyEnquiryAssigned } from '../lib/notify';
 import { SkeletonTable, SkeletonKanban } from '../components/ui/Skeleton';
 import KanbanBoard from '../components/ui/KanbanBoard';
@@ -19,6 +19,18 @@ import ExportButton from '../components/ui/ExportButton';
 import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
 import DeleteButton from '../components/DeleteButton';
 import BulkDeleteBar from '../components/BulkDeleteBar';
+
+const formatDate = (timestamp) => {
+  if (!timestamp) return 'N/A';
+  const date = timestamp?.toDate?.()
+    ? timestamp.toDate()
+    : new Date(timestamp);
+  return date.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+};
 
 const PIPELINE_STAGES = [
  { id: 'new', label: 'New' },
@@ -587,7 +599,7 @@ export default function EnquiryPage() {
  />
  </th>
  <th className="table-header">Company</th><th className="table-header">Task Type</th>
- <th className="table-header">Assigned</th><th className="table-header">Target Date</th>
+ <th className="table-header">Assigned</th><th className="table-header">Assigned Date</th><th className="table-header">Target Date</th>
  <th className="table-header">Next Followup</th><th className="table-header">Status</th><th className="table-header">Actions</th>
  </tr></thead>
  <tbody>
@@ -608,6 +620,7 @@ export default function EnquiryPage() {
  </td>
  <td className="table-cell text-gray-600 text-xs">{e.taskType || '-'}</td>
  <td className="table-cell text-gray-600 text-xs">{e.assignedToName || '-'}</td>
+ <td className="table-cell text-gray-600 text-xs">{formatDate(e.assignedDate || e.createdAt)}</td>
  <td className="table-cell text-[var(--text-muted)] text-xs">{formatDate(e.targetDate)}</td>
  <td className="table-cell text-[var(--text-muted)] text-xs">{formatDate(e.nextFollowupDate)}</td>
  <td className="table-cell">

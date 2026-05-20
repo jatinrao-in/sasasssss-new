@@ -10,8 +10,19 @@ import { Label } from '../components/ui/label';
 import { useAuth } from '../hooks/useAuth';
 import { useFollowUps } from '../hooks/useFollowUps';
 import { useToast } from '../hooks/useToast';
-import { formatDate } from '../lib/formatters';
 import { logInfo } from '../lib/firestoreDebug';
+
+const formatDate = (timestamp) => {
+  if (!timestamp) return 'N/A';
+  const date = timestamp?.toDate?.()
+    ? timestamp.toDate()
+    : new Date(timestamp);
+  return date.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+};
 
 const FILTERS = [
   { value: 'all', label: 'All' },
@@ -97,6 +108,7 @@ function FollowUpCard({
         </div>
 
         <div className="mt-4 space-y-1.5 text-xs text-[var(--text-secondary)]">
+          <p><span className="font-medium text-[var(--text-primary)]">Assigned:</span> {formatDate(item.assignedDate || item.createdAt)}</p>
           <p><span className="font-medium text-[var(--text-primary)]">Target:</span> {formatDate(item.targetDate)}</p>
           <p><span className="font-medium text-[var(--text-primary)]">Next Followup:</span> {formatDate(item.nextFollowupDate || item.targetDate)}</p>
           <p><span className="font-medium text-[var(--text-primary)]">Rescheduled:</span> {item.rescheduleCount || 0} time{item.rescheduleCount === 1 ? '' : 's'}</p>

@@ -79,11 +79,11 @@ export function useFollowUps(filterByUser = null) {
 
  const addFollowUp = async (followupData) => {
   const followUpRef = await addDocument(db, COLLECTIONS.followups, {
-   ...followupData,
-   assignedDate: serverTimestamp(),
-   createdAt: serverTimestamp(),
-   status: 'open',
-   rescheduleCount: Number(followupData.rescheduleCount || 0),
+    ...followupData,
+    assignedDate: followupData.assignedDate || serverTimestamp(),
+    createdAt: serverTimestamp(),
+    status: 'open',
+    rescheduleCount: Number(followupData.rescheduleCount || 0),
    outcome: followupData.outcome ?? null,
   }, 'save follow-up');
 

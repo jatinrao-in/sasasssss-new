@@ -79,11 +79,11 @@ export function useEnquiries(filterByUser = null) {
 
  const addEnquiry = async (enquiryData) => {
   const enquiryRef = await addDocument(db, COLLECTIONS.enquiries, {
-   ...enquiryData,
-   assignedDate: serverTimestamp(),
-   createdAt: serverTimestamp(),
-   status: 'open',
-   overdueDays: 0,
+    ...enquiryData,
+    assignedDate: enquiryData.assignedDate || serverTimestamp(),
+    createdAt: serverTimestamp(),
+    status: 'open',
+    overdueDays: 0,
   }, 'save enquiry');
 
   await log('enquiry_created', {

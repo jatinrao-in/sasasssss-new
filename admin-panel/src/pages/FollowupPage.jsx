@@ -10,7 +10,6 @@ import { useFollowups } from '../hooks/useFollowUps';
 import { useTeam } from '../hooks/useTeam';
 import { useToast } from '../hooks/useToast';
 import useDelete from '../hooks/useDelete';
-import { formatDate } from '../lib/formatters';
 import { notifyFollowupAssigned } from '../lib/notify';
 import { SkeletonTable, SkeletonCalendar } from '../components/ui/Skeleton';
 import CalendarView from '../components/ui/CalendarView';
@@ -20,6 +19,18 @@ import ExportButton from '../components/ui/ExportButton';
 import DeleteConfirmDialog from '../components/DeleteConfirmDialog';
 import DeleteButton from '../components/DeleteButton';
 import BulkDeleteBar from '../components/BulkDeleteBar';
+
+const formatDate = (timestamp) => {
+  if (!timestamp) return 'N/A';
+  const date = timestamp?.toDate?.()
+    ? timestamp.toDate()
+    : new Date(timestamp);
+  return date.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+};
 
 const FOLLOWUP_TYPES = ['Quotation', 'Visit', 'Costing'];
 const OUTCOMES = [
@@ -554,6 +565,7 @@ export default function FollowupPage() {
  <th className="table-header">Company</th>
  <th className="table-header">Task Type</th>
  <th className="table-header">Assigned</th>
+ <th className="table-header">Assigned Date</th>
  <th className="table-header">Target Date</th>
  <th className="table-header">Next Followup</th>
  <th className="table-header">Reschedules</th>
@@ -580,6 +592,7 @@ export default function FollowupPage() {
  </td>
  <td className="table-cell text-gray-600 text-xs">{f.taskType || '-'}</td>
  <td className="table-cell text-gray-600 text-xs">{f.assignedToName || '-'}</td>
+ <td className="table-cell text-gray-600 text-xs">{formatDate(f.assignedDate || f.createdAt)}</td>
  <td className="table-cell text-[var(--text-muted)] text-xs">{formatDate(f.nextFollowupDate || f.targetDate)}</td>
  <td className="table-cell text-center">
  {(f.rescheduleCount || 0) > 0 ? (
