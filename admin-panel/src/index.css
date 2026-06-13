@@ -945,6 +945,92 @@
   border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
+/* ======================================= */
+/* CLAYMORPHISM SOFT 3D STYLES             */
+/* ======================================= */
+
+.clay-card {
+  background: rgba(255, 255, 255, 0.88);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 
+    0 8px 20px -4px rgba(0, 0, 0, 0.04),
+    0 4px 6px -2px rgba(0, 0, 0, 0.02),
+    inset -3px -3px 8px rgba(0, 0, 0, 0.02),
+    inset 3px 3px 8px rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.clay-card:hover {
+  box-shadow: 
+    0 16px 30px -4px rgba(0, 0, 0, 0.06),
+    0 8px 12px -4px rgba(0, 0, 0, 0.02),
+    inset -2px -2px 6px rgba(0, 0, 0, 0.01),
+    inset 2px 2px 6px rgba(255, 255, 255, 0.95);
+  transform: translateY(-2px);
+  border-color: rgba(26, 115, 232, 0.25);
+}
+
+.clay-stat-card {
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 
+    0 6px 16px -4px rgba(0, 0, 0, 0.03),
+    inset -3px -3px 6px rgba(0, 0, 0, 0.015),
+    inset 3px 3px 6px rgba(255, 255, 255, 0.95);
+  transition: all 0.25s ease;
+}
+
+.clay-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 10px 22px -4px rgba(0, 0, 0, 0.05),
+    inset -2px -2px 4px rgba(0, 0, 0, 0.01),
+    inset 2px 2px 4px rgba(255, 255, 255, 0.95);
+}
+
+.clay-input {
+  background: rgba(255, 255, 255, 0.75) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  border-radius: 10px !important;
+  box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.02), inset -1px -1px 3px rgba(255, 255, 255, 0.8);
+  transition: all 0.2s ease;
+}
+
+.clay-input:focus {
+  background: #ffffff !important;
+  border-color: #1a73e8 !important;
+  box-shadow: 
+    0 0 0 3px rgba(26, 115, 232, 0.15),
+    inset 1px 1px 2px rgba(0, 0, 0, 0.02) !important;
+}
+
+.clay-btn {
+  box-shadow: 
+    0 4px 10px rgba(26, 115, 232, 0.12),
+    inset -2px -2px 4px rgba(0, 0, 0, 0.08),
+    inset 2px 2px 4px rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease;
+}
+
+.clay-btn:hover {
+  box-shadow: 
+    0 6px 14px rgba(26, 115, 232, 0.18),
+    inset -1px -1px 2px rgba(0, 0, 0, 0.08),
+    inset 1px 1px 2px rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.clay-btn:active {
+  transform: translateY(0);
+  box-shadow: 
+    0 2px 6px rgba(26, 115, 232, 0.12),
+    inset 1px 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+
 
 
 /* ======================================= */
