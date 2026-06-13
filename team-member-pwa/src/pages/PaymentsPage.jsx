@@ -236,7 +236,7 @@ export default function PaymentsPage() {
                     {payment.invoiceNumber || 'No invoice'} | {formatDate(payment.invoiceDate)}
                   </p>
                   <p className="mt-0.5 text-[11px] text-gray-500">
-                    Assigned: {formatDate(payment.assignedDate || payment.createdAt)}
+                    Assigned: {formatDate(payment.assignedDate || payment.createdAt || payment.updatedAt)}
                   </p>
                 </div>
                 {getPaymentStatusBadge(payment.paymentStatus)}

@@ -553,7 +553,7 @@ export default function RgpPage() {
                     fontWeight: '500',
                     color: 'var(--text-primary)'
                   }}>
-                    {formatDate(item.assignedDate || item.createdAt)}
+                    {formatDate(item.assignedDate || item.createdAt || item.updatedAt)}
                   </p>
                 </div>
 

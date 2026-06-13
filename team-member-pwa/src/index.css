@@ -24,7 +24,7 @@
   --text-secondary: #475569;
   --text-muted: #94A3B8;
   --text-inverse: #FFFFFF;
-  --text-link: #0D9488;
+  --text-link: #DC2626;
   --text-danger: #DC2626;
   --text-success: #16A34A;
   --text-warning: #D97706;
@@ -33,12 +33,12 @@
   --border-primary: #E2E8F0;
   --border-secondary: #CBD5E1;
   --border-input: #CBD5E1;
-  --border-focus: #0D9488;
+  --border-focus: #DC2626;
 
-  /* Accent (Teal - same in both modes) */
-  --accent-primary: #0D9488;
-  --accent-hover: #0F766E;
-  --accent-light: #CCFBF1;
+  /* Accent (Red - same in both modes) */
+  --accent-primary: #DC2626;
+  --accent-hover: #B91C1C;
+  --accent-light: #FEE2E2;
   --accent-text: #FFFFFF;
 
   /* Status Colors */
@@ -61,11 +61,11 @@
   /* Sidebar */
   --sidebar-bg: #FFFFFF;
   --sidebar-text: #475569;
-  --sidebar-active-bg: #CCFBF1;
-  --sidebar-active-text: #0D9488;
+  --sidebar-active-bg: #FEE2E2;
+  --sidebar-active-text: #DC2626;
   --sidebar-hover-bg: #F1F5F9;
   --sidebar-icon: #94A3B8;
-  --sidebar-active-icon: #0D9488;
+  --sidebar-active-icon: #DC2626;
 
   /* Charts */
   --chart-grid: #E2E8F0;
@@ -94,7 +94,7 @@
   --text-secondary: #CBD5E1;
   --text-muted: #64748B;
   --text-inverse: #0F172A;
-  --text-link: #2DD4BF;
+  --text-link: #F87171;
   --text-danger: #F87171;
   --text-success: #4ADE80;
   --text-warning: #FCD34D;
@@ -103,12 +103,12 @@
   --border-primary: #334155;
   --border-secondary: #475569;
   --border-input: #475569;
-  --border-focus: #0D9488;
+  --border-focus: #DC2626;
 
-  /* Accent (Teal) */
-  --accent-primary: #0D9488;
-  --accent-hover: #14B8A6;
-  --accent-light: #134E4A;
+  /* Accent (Red) */
+  --accent-primary: #DC2626;
+  --accent-hover: #EF4444;
+  --accent-light: #7F1D1D;
   --accent-text: #FFFFFF;
 
   /* Status Colors (dark adjusted) */
@@ -131,11 +131,11 @@
   /* Sidebar */
   --sidebar-bg: #0F172A;
   --sidebar-text: #94A3B8;
-  --sidebar-active-bg: #134E4A;
-  --sidebar-active-text: #2DD4BF;
+  --sidebar-active-bg: #7F1D1D;
+  --sidebar-active-text: #FCA5A5;
   --sidebar-hover-bg: #1E293B;
   --sidebar-icon: #64748B;
-  --sidebar-active-icon: #2DD4BF;
+  --sidebar-active-icon: #FCA5A5;
 
   /* Charts */
   --chart-grid: #334155;
@@ -165,7 +165,7 @@
   --text-secondary: #475569;
   --text-muted: #94A3B8;
   --text-inverse: #FFFFFF;
-  --text-link: #0D9488;
+  --text-link: #DC2626;
   --text-danger: #DC2626;
   --text-success: #16A34A;
   --text-warning: #D97706;
@@ -174,12 +174,12 @@
   --border-primary: #E2E8F0;
   --border-secondary: #CBD5E1;
   --border-input: #CBD5E1;
-  --border-focus: #0D9488;
+  --border-focus: #DC2626;
 
-  /* Accent (Teal - same in both modes) */
-  --accent-primary: #0D9488;
-  --accent-hover: #0F766E;
-  --accent-light: #CCFBF1;
+  /* Accent (Red - same in both modes) */
+  --accent-primary: #DC2626;
+  --accent-hover: #B91C1C;
+  --accent-light: #FEE2E2;
   --accent-text: #FFFFFF;
 
   /* Status Colors */
@@ -202,11 +202,11 @@
   /* Sidebar */
   --sidebar-bg: #FFFFFF;
   --sidebar-text: #475569;
-  --sidebar-active-bg: #CCFBF1;
-  --sidebar-active-text: #0D9488;
+  --sidebar-active-bg: #FEE2E2;
+  --sidebar-active-text: #DC2626;
   --sidebar-hover-bg: #F1F5F9;
   --sidebar-icon: #94A3B8;
-  --sidebar-active-icon: #0D9488;
+  --sidebar-active-icon: #DC2626;
 
   /* Charts */
   --chart-grid: #E2E8F0;
@@ -235,7 +235,7 @@
   --text-secondary: #CBD5E1;
   --text-muted: #64748B;
   --text-inverse: #0F172A;
-  --text-link: #2DD4BF;
+  --text-link: #F87171;
   --text-danger: #F87171;
   --text-success: #4ADE80;
   --text-warning: #FCD34D;
@@ -244,12 +244,12 @@
   --border-primary: #334155;
   --border-secondary: #475569;
   --border-input: #475569;
-  --border-focus: #0D9488;
+  --border-focus: #DC2626;
 
-  /* Accent (Teal) */
-  --accent-primary: #0D9488;
-  --accent-hover: #14B8A6;
-  --accent-light: #134E4A;
+  /* Accent (Red) */
+  --accent-primary: #DC2626;
+  --accent-hover: #EF4444;
+  --accent-light: #7F1D1D;
   --accent-text: #FFFFFF;
 
   /* Status Colors (dark adjusted) */
@@ -272,11 +272,11 @@
   /* Sidebar */
   --sidebar-bg: #0F172A;
   --sidebar-text: #94A3B8;
-  --sidebar-active-bg: #134E4A;
-  --sidebar-active-text: #2DD4BF;
+  --sidebar-active-bg: #7F1D1D;
+  --sidebar-active-text: #FCA5A5;
   --sidebar-hover-bg: #1E293B;
   --sidebar-icon: #64748B;
-  --sidebar-active-icon: #2DD4BF;
+  --sidebar-active-icon: #FCA5A5;
 
   /* Charts */
   --chart-grid: #334155;
@@ -598,7 +598,7 @@ td {
   width: 100vw;
   height: 100vh;
   z-index: 9999;
-  background: linear-gradient(135deg, #0D9488 0%, #065F5B 100%);
+  background: linear-gradient(135deg, #dc2626 0%, #7f1d1d 100%);
   display: flex;
   justify-content: center;
   align-items: center;

@@ -355,7 +355,7 @@ export default function EnquiriesPage() {
               </div>
 
               <div className="mt-4 space-y-1.5 text-xs text-[var(--text-secondary)]">
-                <p><span className="font-medium text-[var(--text-primary)]">Assigned:</span> {formatDate(enquiry.assignedDate || enquiry.createdAt)}</p>
+                <p><span className="font-medium text-[var(--text-primary)]">Assigned:</span> {formatDate(enquiry.assignedDate || enquiry.createdAt || enquiry.updatedAt)}</p>
                 <p><span className="font-medium text-[var(--text-primary)]">Target:</span> {formatDate(enquiry.targetDate)}</p>
                 <p><span className="font-medium text-[var(--text-primary)]">Next Followup:</span> {formatDate(enquiry.nextFollowupDate)}</p>
                 {enquiry.overdueDays > 0 && !enquiry.isClosed && (

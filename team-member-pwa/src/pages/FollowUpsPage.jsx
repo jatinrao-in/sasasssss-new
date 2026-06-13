@@ -108,7 +108,7 @@ function FollowUpCard({
         </div>
 
         <div className="mt-4 space-y-1.5 text-xs text-[var(--text-secondary)]">
-          <p><span className="font-medium text-[var(--text-primary)]">Assigned:</span> {formatDate(item.assignedDate || item.createdAt)}</p>
+          <p><span className="font-medium text-[var(--text-primary)]">Assigned:</span> {formatDate(item.assignedDate || item.createdAt || item.updatedAt)}</p>
           <p><span className="font-medium text-[var(--text-primary)]">Target:</span> {formatDate(item.targetDate)}</p>
           <p><span className="font-medium text-[var(--text-primary)]">Next Followup:</span> {formatDate(item.nextFollowupDate || item.targetDate)}</p>
           <p><span className="font-medium text-[var(--text-primary)]">Rescheduled:</span> {item.rescheduleCount || 0} time{item.rescheduleCount === 1 ? '' : 's'}</p>

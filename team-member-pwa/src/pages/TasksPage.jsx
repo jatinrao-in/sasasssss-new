@@ -388,7 +388,7 @@ export default function TasksPage() {
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400 mb-2">
                           <span>Start: {formatDate(task.startDate)}</span>
                           <span>Due: {formatDate(task.targetDate)}</span>
-                          <span>Assigned: {formatDate(task.assignedDate || task.createdAt)}</span>
+                          <span>Assigned: {formatDate(task.assignedDate || task.createdAt || task.startDate)}</span>
                         </div>
 
                         {task.rescheduleCount > 0 && (

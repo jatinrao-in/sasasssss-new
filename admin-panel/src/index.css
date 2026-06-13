@@ -1,4 +1,4 @@
-﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 
@@ -22,7 +22,7 @@
   --text-secondary: #475569;
   --text-muted: #94A3B8;
   --text-inverse: #FFFFFF;
-  --text-link: #0D9488;
+  --text-link: #DC2626;
   --text-danger: #DC2626;
   --text-success: #16A34A;
   --text-warning: #D97706;
@@ -31,12 +31,12 @@
   --border-primary: #E2E8F0;
   --border-secondary: #CBD5E1;
   --border-input: #CBD5E1;
-  --border-focus: #0D9488;
+  --border-focus: #DC2626;
 
-  /* Accent (Teal - same in both modes) */
-  --accent-primary: #0D9488;
-  --accent-hover: #0F766E;
-  --accent-light: #CCFBF1;
+  /* Accent (Red - same in both modes) */
+  --accent-primary: #DC2626;
+  --accent-hover: #B91C1C;
+  --accent-light: #FEE2E2;
   --accent-text: #FFFFFF;
 
   /* Status Colors */
@@ -59,11 +59,11 @@
   /* Sidebar */
   --sidebar-bg: #FFFFFF;
   --sidebar-text: #475569;
-  --sidebar-active-bg: #CCFBF1;
-  --sidebar-active-text: #0D9488;
+  --sidebar-active-bg: #FEE2E2;
+  --sidebar-active-text: #DC2626;
   --sidebar-hover-bg: #F1F5F9;
   --sidebar-icon: #94A3B8;
-  --sidebar-active-icon: #0D9488;
+  --sidebar-active-icon: #DC2626;
 
   /* Charts */
   --chart-grid: #E2E8F0;
@@ -92,7 +92,7 @@
   --text-secondary: #CBD5E1;
   --text-muted: #64748B;
   --text-inverse: #0F172A;
-  --text-link: #2DD4BF;
+  --text-link: #F87171;
   --text-danger: #F87171;
   --text-success: #4ADE80;
   --text-warning: #FCD34D;
@@ -101,12 +101,12 @@
   --border-primary: #334155;
   --border-secondary: #475569;
   --border-input: #475569;
-  --border-focus: #0D9488;
+  --border-focus: #DC2626;
 
-  /* Accent (Teal) */
-  --accent-primary: #0D9488;
-  --accent-hover: #14B8A6;
-  --accent-light: #134E4A;
+  /* Accent (Red) */
+  --accent-primary: #DC2626;
+  --accent-hover: #EF4444;
+  --accent-light: #7F1D1D;
   --accent-text: #FFFFFF;
 
   /* Status Colors (dark adjusted) */
@@ -129,11 +129,11 @@
   /* Sidebar */
   --sidebar-bg: #0F172A;
   --sidebar-text: #94A3B8;
-  --sidebar-active-bg: #134E4A;
-  --sidebar-active-text: #2DD4BF;
+  --sidebar-active-bg: #7F1D1D;
+  --sidebar-active-text: #FCA5A5;
   --sidebar-hover-bg: #1E293B;
   --sidebar-icon: #64748B;
-  --sidebar-active-icon: #2DD4BF;
+  --sidebar-active-icon: #FCA5A5;
 
   /* Charts */
   --chart-grid: #334155;
@@ -163,7 +163,7 @@
   --text-secondary: #475569;
   --text-muted: #94A3B8;
   --text-inverse: #FFFFFF;
-  --text-link: #0D9488;
+  --text-link: #DC2626;
   --text-danger: #DC2626;
   --text-success: #16A34A;
   --text-warning: #D97706;
@@ -172,12 +172,12 @@
   --border-primary: #E2E8F0;
   --border-secondary: #CBD5E1;
   --border-input: #CBD5E1;
-  --border-focus: #0D9488;
+  --border-focus: #DC2626;
 
-  /* Accent (Teal - same in both modes) */
-  --accent-primary: #0D9488;
-  --accent-hover: #0F766E;
-  --accent-light: #CCFBF1;
+  /* Accent (Red - same in both modes) */
+  --accent-primary: #DC2626;
+  --accent-hover: #B91C1C;
+  --accent-light: #FEE2E2;
   --accent-text: #FFFFFF;
 
   /* Status Colors */
@@ -200,11 +200,11 @@
   /* Sidebar */
   --sidebar-bg: #FFFFFF;
   --sidebar-text: #475569;
-  --sidebar-active-bg: #CCFBF1;
-  --sidebar-active-text: #0D9488;
+  --sidebar-active-bg: #FEE2E2;
+  --sidebar-active-text: #DC2626;
   --sidebar-hover-bg: #F1F5F9;
   --sidebar-icon: #94A3B8;
-  --sidebar-active-icon: #0D9488;
+  --sidebar-active-icon: #DC2626;
 
   /* Charts */
   --chart-grid: #E2E8F0;
@@ -233,7 +233,7 @@
   --text-secondary: #CBD5E1;
   --text-muted: #64748B;
   --text-inverse: #0F172A;
-  --text-link: #2DD4BF;
+  --text-link: #F87171;
   --text-danger: #F87171;
   --text-success: #4ADE80;
   --text-warning: #FCD34D;
@@ -242,12 +242,12 @@
   --border-primary: #334155;
   --border-secondary: #475569;
   --border-input: #475569;
-  --border-focus: #0D9488;
+  --border-focus: #DC2626;
 
-  /* Accent (Teal) */
-  --accent-primary: #0D9488;
-  --accent-hover: #14B8A6;
-  --accent-light: #134E4A;
+  /* Accent (Red) */
+  --accent-primary: #DC2626;
+  --accent-hover: #EF4444;
+  --accent-light: #7F1D1D;
   --accent-text: #FFFFFF;
 
   /* Status Colors (dark adjusted) */
@@ -270,11 +270,11 @@
   /* Sidebar */
   --sidebar-bg: #0F172A;
   --sidebar-text: #94A3B8;
-  --sidebar-active-bg: #134E4A;
-  --sidebar-active-text: #2DD4BF;
+  --sidebar-active-bg: #7F1D1D;
+  --sidebar-active-text: #FCA5A5;
   --sidebar-hover-bg: #1E293B;
   --sidebar-icon: #64748B;
-  --sidebar-active-icon: #2DD4BF;
+  --sidebar-active-icon: #FCA5A5;
 
   /* Charts */
   --chart-grid: #334155;
@@ -284,16 +284,16 @@
 }
 
 @theme {
-  --color-teal-50: #f0fdfa;
-  --color-teal-100: #ccfbf1;
-  --color-teal-200: #99f6e4;
-  --color-teal-300: #5eead4;
-  --color-teal-400: #2dd4bf;
-  --color-teal-500: #14b8a6;
-  --color-teal-600: #0d9488;
-  --color-teal-700: #0f766e;
-  --color-teal-800: #115e59;
-  --color-teal-900: #134e4a;
+  --color-teal-50: #fef2f2;
+  --color-teal-100: #fee2e2;
+  --color-teal-200: #fecaca;
+  --color-teal-300: #fca5a5;
+  --color-teal-400: #f87171;
+  --color-teal-500: #ef4444;
+  --color-teal-600: #dc2626;
+  --color-teal-700: #b91c1c;
+  --color-teal-800: #991b1b;
+  --color-teal-900: #7f1d1d;
   --font-family-sans: 'Inter', sans-serif;
 }
 
@@ -342,12 +342,12 @@
     font-weight: 500;
   }
   .sidebar-link:hover {
-    background-color: #f0fdfa;
-    color: #0f766e;
+    background-color: var(--sidebar-hover-bg);
+    color: var(--sidebar-active-text);
   }
   .sidebar-link.active {
-    background-color: #f0fdfa;
-    color: #0f766e;
+    background-color: var(--sidebar-active-bg);
+    color: var(--sidebar-active-text);
     font-weight: 600;
   }
   
@@ -366,7 +366,7 @@
 
   /* --- Buttons --- */
   .btn-primary {
-    background-color: #0d9488;
+    background-color: var(--accent-primary);
     color: white;
     padding: 8px 16px;
     border-radius: 8px;
@@ -380,7 +380,7 @@
     cursor: pointer;
   }
   .btn-primary:hover {
-    background-color: #0f766e;
+    background-color: var(--accent-hover);
     transform: scale(0.98);
   }
   .btn-primary:active {
@@ -452,7 +452,7 @@
   .badge-red { background-color: #fee2e2; color: #dc2626; }
   .badge-yellow { background-color: #fef9c3; color: #a16207; }
   .badge-blue { background-color: #dbeafe; color: #1d4ed8; }
-  .badge-teal { background-color: #ccfbf1; color: #0f766e; }
+  .badge-teal { background-color: var(--accent-light); color: var(--accent-primary); }
   .badge-gray { background-color: #f3f4f6; color: #4b5563; }
   .badge-purple { background-color: #f3e8ff; color: #7c3aed; }
   .badge-orange { background-color: #ffedd5; color: #c2410c; }
@@ -480,8 +480,8 @@
     color: #111827;
   }
   .input-field:focus {
-    border-color: #0d9488;
-    box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.15);
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.15);
   }
   
   
@@ -784,10 +784,10 @@
 }
 
 .heatmap-0 { background-color: #f1f5f9; }
-.heatmap-1 { background-color: #ccfbf1; }
-.heatmap-2 { background-color: #5eead4; }
-.heatmap-3 { background-color: #14b8a6; }
-.heatmap-4 { background-color: #0d9488; }
+.heatmap-1 { background-color: #fee2e2; }
+.heatmap-2 { background-color: #fca5a5; }
+.heatmap-3 { background-color: #ef4444; }
+.heatmap-4 { background-color: #dc2626; }
 
 /* ======================================= */
 /* VIEW TOGGLE TABS                       */
