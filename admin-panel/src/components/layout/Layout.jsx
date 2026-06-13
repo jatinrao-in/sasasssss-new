@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import BottomNavigation from './BottomNavigation';
 import KeyboardShortcuts from '../ui/KeyboardShortcuts';
 import { DarkModeProvider } from '../../hooks/useDarkMode';
 import MaintenanceAlert from '../MaintenanceAlert';
@@ -31,7 +32,7 @@ export default function Layout({ maintenanceReady = false }) {
           onMenuToggle={() => setMobileSidebarOpen((current) => !current)}
         />
         <main
-          className={`min-h-screen pt-16 transition-all duration-300 ${
+          className={`min-h-screen pt-16 pb-16 lg:pb-0 transition-all duration-300 ${
             collapsed ? 'lg:pl-16' : 'lg:pl-60'
           }`}
         >
@@ -39,6 +40,7 @@ export default function Layout({ maintenanceReady = false }) {
             <Outlet context={{ shortcutAction }} />
           </div>
         </main>
+        <BottomNavigation onMenuToggle={() => setMobileSidebarOpen((current) => !current)} />
         <MaintenanceAlert enabled={maintenanceReady} />
         <KeyboardShortcuts onShortcut={handleShortcut} />
       </div>

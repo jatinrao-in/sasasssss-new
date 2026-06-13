@@ -460,7 +460,7 @@ export default function DashboardPage() {
 
    {/* ── SPARKLINES ───────────────────────────────────────── */}
    {widgetConfig.sparklines && (
-    <div className="grid grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
      {[
       { label: 'Tasks This Week', value: <CountUpNumber end={weeklyData.reduce((s, d) => s + d.completed, 0)} />, dataKey: 'completed', data: weeklyData, stroke: '#1a73e8', fill: '#e8f0fe' },
       { label: 'Total Received', value: <CountUpNumber end={totalReceived} formatter={v => formatCurrency(Math.round(v))} />, dataKey: 'completed', data: monthlyTrend, stroke: '#34a853', fill: '#e6f4ea' },
@@ -485,7 +485,7 @@ export default function DashboardPage() {
 
    {/* ── CHARTS ROW ───────────────────────────────────────── */}
    {widgetConfig.charts && (
-    <div className="grid grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
      <Widget title="Monthly Tasks" subtitle="Created vs Completed">
       <ResponsiveContainer width="100%" height={220}>
        <BarChart data={monthlyTrend} barSize={10}>
@@ -542,17 +542,18 @@ export default function DashboardPage() {
    )}
 
    {/* ── TEAM OVERVIEW + DEADLINES ────────────────────────── */}
-   <div className="grid grid-cols-3 gap-4">
+   <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
     {widgetConfig.teamOverview && (
      <Widget
       title="Team Performance"
-      className="col-span-2"
+      className="col-span-1 lg:col-span-2"
       action={
        <button onClick={() => navigate('/team')} className="flex items-center gap-1 text-xs text-[#1a73e8] font-medium hover:underline">
         View All <ArrowUpRight className="w-3 h-3" />
        </button>
       }
      >
+      <div className="overflow-x-auto">
       <table className="w-full">
        <thead>
         <tr className="border-b border-gray-50">
@@ -606,6 +607,7 @@ export default function DashboardPage() {
         ))}
        </tbody>
       </table>
+      </div>
      </Widget>
     )}
 
@@ -655,7 +657,7 @@ export default function DashboardPage() {
 
    {/* ── WEEKLY TREND + PO VALUE ──────────────────────────── */}
    {widgetConfig.weeklyTrend && (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
      <Widget title="Weekly Task Trend" subtitle="This week's activity">
       <ResponsiveContainer width="100%" height={200}>
        <AreaChart data={weeklyData}>
@@ -752,7 +754,7 @@ export default function DashboardPage() {
    )}
 
    {/* ── FINANCIAL SUMMARY ────────────────────────────────── */}
-   <div className="grid grid-cols-4 gap-3">
+   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
     {[
      { label: 'Total PO Value', value: formatLakhs(totalPOValue), icon: Briefcase, color: '#1a73e8', bg: '#e8f0fe' },
      { label: 'Total Expenses', value: formatLakhs(totalExpense), icon: Receipt, color: '#f9ab00', bg: '#fef9e0' },
@@ -777,7 +779,7 @@ export default function DashboardPage() {
    {/* ── TOP PERFORMERS ───────────────────────────────────── */}
    {widgetConfig.performance && memberStats.length > 0 && (
     <Widget title="Top Performers" subtitle="This month's best">
-     <div className="grid grid-cols-3 gap-4">
+     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       {memberStats.slice(0, 3).map((m, i) => (
        <div
         key={m.id}
