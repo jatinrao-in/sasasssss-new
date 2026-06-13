@@ -13,8 +13,7 @@ import {
  Zap, Settings, Eye, EyeOff, Timer, ArrowUpRight, Activity,
  Briefcase, Receipt, BarChart3, Sparkles, Loader2, ArrowRight
 } from 'lucide-react';
-import { useAIManager } from '../hooks/useAIManager';
-import { getDashboardInsights } from '../lib/api';
+
 import { useProjects } from '../hooks/useProjects';
 import { useTasks } from '../hooks/useTasks';
 import { useTeam } from '../hooks/useTeam';
@@ -77,54 +76,7 @@ function normalizeDate(val) {
  return isNaN(d.getTime()) ? null : d;
 }
 
-function AIInsightsWidget({ data }) {
-  const { generateInsights, isProcessing } = useAIManager();
-  const [insights, setInsights] = useState(null);
-  const fetchInsights = async () => {
-    const res = await generateInsights(data);
-    setInsights(res);
-  };
-  return (
-    <div className="bg-gradient-to-r from-[#e8f0fe] via-[#f3e8fd] to-[#e8f0fe] border border-[#c5d7fb] rounded-2xl p-5 mb-5">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-[#1a73e8] flex items-center justify-center shadow-sm">
-            <Sparkles className="w-4 h-4 text-white" />
-          </div>
-          <div>
-            <h3 className="text-[13px] font-semibold text-gray-900">AI Business Insights</h3>
-            <p className="text-[11px] text-gray-500">Powered by Gemini</p>
-          </div>
-        </div>
-        <button
-          onClick={fetchInsights}
-          disabled={isProcessing}
-          className="text-xs bg-white border border-gray-200 text-[#1a73e8] font-medium px-3 py-1.5 rounded-lg hover:bg-[#e8f0fe] flex items-center gap-1.5 transition-all shadow-sm"
-        >
-          {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-          {insights ? 'Refresh' : 'Generate Insights'}
-        </button>
-      </div>
-      {isProcessing && (
-        <div className="animate-pulse space-y-2 py-2">
-          <div className="h-3.5 bg-blue-200/60 rounded-full w-3/4" />
-          <div className="h-3.5 bg-blue-200/60 rounded-full w-5/6" />
-          <div className="h-3.5 bg-blue-200/60 rounded-full w-2/3" />
-        </div>
-      )}
-      {insights && !isProcessing && (
-        <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap bg-white/70 p-4 rounded-xl border border-white/80 shadow-sm">
-          {insights}
-        </div>
-      )}
-      {!insights && !isProcessing && (
-        <p className="text-xs text-gray-500 italic">
-          Click "Generate Insights" to get an AI analysis of your projects, tasks, and payments.
-        </p>
-      )}
-    </div>
-  );
-}
+
 
 export default function DashboardPage() {
  const navigate = useNavigate();
@@ -139,20 +91,18 @@ export default function DashboardPage() {
  const [widgetConfig, setWidgetConfig] = useState(() => {
   try {
    return JSON.parse(localStorage.getItem('dashboard_widgets') || 'null') || {
-    quickActions: true, aiInsights: true, alerts: true, teamOverview: true,
+    quickActions: true, alerts: true, teamOverview: true,
     timeline: true, sparklines: true, upcomingDeadlines: true,
     performance: true, charts: true, weeklyTrend: true,
    };
   } catch { return {
-   quickActions: true, aiInsights: true, alerts: true, teamOverview: true,
+   quickActions: true, alerts: true, teamOverview: true,
    timeline: true, sparklines: true, upcomingDeadlines: true,
    performance: true, charts: true, weeklyTrend: true,
   }; }
  });
  const [showCustomize, setShowCustomize] = useState(false);
  const [popup, setPopup] = useState(null);
- const [businessSummary, setBusinessSummary] = useState(null);
- const [isExplaining, setIsExplaining] = useState(false);
 
  const toggleWidget = (key) => {
   const next = { ...widgetConfig, [key]: !widgetConfig[key] };
@@ -268,28 +218,6 @@ export default function DashboardPage() {
   }));
  }, [memberStats]);
 
- const handleExplainBusiness = async () => {
-  setIsExplaining(true);
-  const payload = {
-   activeProjects: activeProjects.length,
-   poValue: formatLakhs(totalPOValue),
-   openTasks: openTasks.length,
-   overdueTasks: overdueTasks.length,
-   overduePayments: overduePayments.length,
-   totalReceivable,
-   teamPerformance: memberStats.map(m => ({ name: m.name, completed: m.completed, open: m.open }))
-  };
-  try {
-   const result = await getDashboardInsights(payload);
-   setBusinessSummary(result.summary || '');
-   setPopup('businessSummary');
-  } catch (err) {
-   console.error(err);
-  } finally {
-   setIsExplaining(false);
-  }
- };
-
  if (loading) return <SkeletonDashboard />;
 
  /* ------------------------------------------------------------------ */
@@ -334,14 +262,6 @@ export default function DashboardPage() {
       >
        <Settings className="w-3.5 h-3.5" /> Customize
       </button>
-      <button
-       onClick={handleExplainBusiness}
-       disabled={isExplaining}
-       className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-white text-[#1a73e8] shadow hover:shadow-md hover:bg-blue-50 transition-all disabled:opacity-50"
-      >
-       {isExplaining ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-       {isExplaining ? 'Analyzing...' : 'AI Insights'}
-      </button>
       <LiveClock />
      </div>
     </div>
@@ -357,7 +277,6 @@ export default function DashboardPage() {
      <div className="flex flex-wrap gap-2">
       {[
        { key: 'quickActions', label: 'Quick Actions' },
-       { key: 'aiInsights', label: 'AI Insights' },
        { key: 'alerts', label: 'Smart Alerts' },
        { key: 'teamOverview', label: 'Team Overview' },
        { key: 'timeline', label: 'Activity' },
@@ -491,18 +410,7 @@ export default function DashboardPage() {
     </div>
    )}
 
-   {/* ── AI INSIGHTS ──────────────────────────────────────── */}
-   {widgetConfig.aiInsights && (
-    <AIInsightsWidget data={{
-     activeProjects: activeProjects.length,
-     openTasks: openTasks.length,
-     overdueTasks: overdueTasks.length,
-     receivables: totalReceivable,
-     overduePayments: overduePayments.length,
-     totalPOValue,
-     totalExpense
-    }} />
-   )}
+
 
    {/* ── SMART ALERTS ─────────────────────────────────────── */}
    {widgetConfig.alerts && (overdueTasks.length > 0 || overduePayments.length > 0 || overdueEnquiries.length > 0 || pendingFollowups.length > 0) && (
