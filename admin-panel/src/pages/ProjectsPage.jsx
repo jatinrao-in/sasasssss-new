@@ -454,68 +454,113 @@ export default function ProjectsPage() {
     'Critical': 'from-red-400 to-red-500',
   };
   const accentClass = accentColors[health.label] || 'from-gray-400 to-gray-500';
+
+  const healthBlobColors = {
+    'On Track': 'from-green-100/40 to-emerald-100/5',
+    'At Risk': 'from-yellow-100/40 to-amber-100/5',
+    'Critical': 'from-red-100/40 to-rose-100/5',
+  };
+  const healthBlobClass = healthBlobColors[health.label] || 'from-gray-100/30 to-gray-200/5';
+
   return (
-  <div key={project.id} onClick={() => navigate(`/projects/${project.id}`)}
-  className="clay-card p-5 cursor-pointer group stagger-item overflow-hidden mt-1 relative pt-7">
-  <div className={`absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r ${accentClass}`} />
-  <div className="flex items-start justify-between mb-4">
-  <div className="flex items-center gap-2">
-  <input
-  type="checkbox"
-  checked={selectedProjectSet.has(project.id)}
-  onClick={(event) => event.stopPropagation()}
-  onChange={() => toggleProjectSelection(project.id)}
-  className="rounded accent-teal-600"
-  title="Select project"
-  />
-  <StatusPill
-  label={health.label}
-  color={health.color}
-  background={health.background}
-  borderColor={health.border}
-  className={health.label === 'Critical' ? 'animate-pulse' : ''}
-  />
-  <span className={`badge ${statusColors[project.status] || 'badge-gray'} text-[10px] uppercase font-bold tracking-wider px-2 py-0.5`}>
-  {(project.status || '').replace('_', ' ')}
-  </span>
-  </div>
-  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(event) => event.stopPropagation()}>
-  <button
-  onClick={() => { setEditing(project); setShowModal(true); }}
-  className="p-1.5 rounded-lg text-gray-400 hover:text-teal-600 hover:bg-teal-50 transition-all"
-  title="Edit"
+  <div 
+    key={project.id} 
+    onClick={() => navigate(`/projects/${project.id}`)}
+    className="clay-card p-5 cursor-pointer group stagger-item overflow-hidden mt-1 relative pt-5 flex flex-col justify-between"
+    style={{ minHeight: '270px' }}
   >
-  <Edit3 className="w-4 h-4" />
-  </button>
-  <DeleteButton onClick={() => deleteProject(project.id, project.name)} showLabel={false} />
-  </div>
-  </div>
-  <h3 className="font-bold text-[var(--text-primary)] text-[15px] mb-1 truncate group-hover:text-teal-700 transition-colors">{project.name}</h3>
-  <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-5">
-  <Users className="w-3.5 h-3.5" />
-  <span className="truncate font-medium">{project.client || 'No client assigned'}</span>
-  </div>
-  <div className="space-y-2 mb-5">
-  <div className="flex items-center justify-between text-xs">
-  <span className="font-semibold text-gray-700">Progress</span>
-  <span className="font-bold text-teal-600">{project.completionPercent || 0}%</span>
-  </div>
-  <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden shadow-inner">
-  <div className="h-full bg-gradient-to-r from-teal-400 to-teal-500 rounded-full transition-all duration-500 relative" style={{ width: `${project.completionPercent || 0}%` }}>
-  <div className="absolute inset-0 bg-white/20" style={{ animation: 'shimmer 2s infinite' }} />
-  </div>
-  </div>
-  </div>
-  <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-50">
-  <div className="bg-white/60 backdrop-blur-sm rounded-xl p-2.5 border border-white/80 shadow-[inset_1px_1px_3px_rgba(0,0,0,0.02)]">
-  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide mb-0.5">PO Value</p>
-  <p className="text-xs font-bold text-teal-700">{formatLakhs(project.poValue)}</p>
-  </div>
-  <div className="bg-white/60 backdrop-blur-sm rounded-xl p-2.5 border border-white/80 shadow-[inset_1px_1px_3px_rgba(0,0,0,0.02)]">
-  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide mb-0.5">Expense</p>
-  <p className={`text-xs font-bold ${project.totalExpense > project.poValue ? 'text-red-600' : 'text-gray-700'}`}>{formatLakhs(project.totalExpense)}</p>
-  </div>
-  </div>
+    {/* Status indicator top bar */}
+    <div className={`absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r ${accentClass}`} />
+    
+    {/* Soft glowing corner orb corresponding to health */}
+    <div className={`absolute -right-12 -bottom-12 w-36 h-36 rounded-full blur-3xl opacity-60 bg-gradient-to-br ${healthBlobClass} pointer-events-none`} />
+
+    {/* Top action row */}
+    <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-100/50">
+      <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
+        <input
+          type="checkbox"
+          checked={selectedProjectSet.has(project.id)}
+          onChange={() => toggleProjectSelection(project.id)}
+          className="w-3.5 h-3.5 rounded border-gray-300 text-[#1a73e8] focus:ring-[#1a73e8]/20 transition-all cursor-pointer"
+          title="Select project"
+        />
+        <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Select</span>
+      </div>
+      
+      <div className="flex items-center gap-1.5" onClick={(event) => event.stopPropagation()}>
+        <button
+          onClick={() => { setEditing(project); setShowModal(true); }}
+          className="p-1 rounded-md text-gray-400 hover:text-[#1a73e8] hover:bg-blue-50 transition-all"
+          title="Edit Project"
+        >
+          <Edit3 className="w-3.5 h-3.5" />
+        </button>
+        <DeleteButton onClick={() => deleteProject(project.id, project.name)} showLabel={false} className="p-1 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all" />
+      </div>
+    </div>
+
+    {/* Project Header Info */}
+    <div className="flex items-start gap-3 mb-3.5">
+      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100/60 flex items-center justify-center border border-blue-100 flex-shrink-0 shadow-[inset_1px_1px_2px_rgba(255,255,255,0.8)]">
+        <FolderOpen className="w-5 h-5 text-[#1a73e8]" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <h3 className="font-bold text-gray-900 text-[14.5px] truncate leading-snug group-hover:text-[#1a73e8] transition-colors">{project.name}</h3>
+        <p className="text-[11px] text-gray-400 font-medium truncate flex items-center gap-1 mt-0.5">
+          <Users className="w-3.5 h-3.5 text-gray-300" /> {project.client || 'No client assigned'}
+        </p>
+      </div>
+    </div>
+
+    {/* Status and Health pills */}
+    <div className="flex items-center justify-between gap-2 mb-4">
+      <StatusPill
+        label={health.label}
+        color={health.color}
+        background={health.background}
+        borderColor={health.border}
+        className={health.label === 'Critical' ? 'animate-pulse font-bold' : 'font-bold'}
+      />
+      <span className={`badge ${statusColors[project.status] || 'badge-gray'} text-[9px] uppercase font-extrabold tracking-wider px-2 py-0.5 rounded-full`}>
+        {(project.status || '').replace('_', ' ')}
+      </span>
+    </div>
+
+    {/* Progress bar container */}
+    <div className="space-y-1.5 mb-4 bg-gray-50/50 p-2.5 rounded-xl border border-gray-100/50">
+      <div className="flex items-center justify-between text-[11px]">
+        <span className="font-semibold text-gray-500">Progress</span>
+        <span className="font-bold text-[#1a73e8] bg-blue-50 px-1.5 py-0.5 rounded text-[10px]">{project.completionPercent || 0}%</span>
+      </div>
+      <div className="w-full h-1.5 bg-gray-200/60 rounded-full overflow-hidden shadow-[inset_0_1px_1px_rgba(0,0,0,0.05)]">
+        <div 
+          className="h-full bg-gradient-to-r from-[#1a73e8] to-[#4285f4] rounded-full transition-all duration-500 relative" 
+          style={{ width: `${project.completionPercent || 0}%` }}
+        >
+          <div className="absolute inset-0 bg-white/20" style={{ animation: 'shimmer 2s infinite' }} />
+        </div>
+      </div>
+    </div>
+
+    {/* Financial indicators */}
+    <div className="grid grid-cols-2 gap-2.5 pt-3.5 border-t border-gray-100">
+      <div className="bg-gradient-to-br from-white to-[#f8fafc] rounded-xl p-2.5 border border-gray-100/70 shadow-[0_2px_4px_rgba(0,0,0,0.02),inset_0_2px_4px_rgba(255,255,255,0.95)] text-left">
+        <div className="flex items-center gap-1 mb-1">
+          <DollarSign className="w-3.5 h-3.5 text-[#34a853]" />
+          <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">PO Value</span>
+        </div>
+        <p className="text-xs font-bold text-gray-800">{formatLakhs(project.poValue)}</p>
+      </div>
+      
+      <div className="bg-gradient-to-br from-white to-[#f8fafc] rounded-xl p-2.5 border border-gray-100/70 shadow-[0_2px_4px_rgba(0,0,0,0.02),inset_0_2px_4px_rgba(255,255,255,0.95)] text-left">
+        <div className="flex items-center gap-1 mb-1">
+          <TrendingUp className={`w-3.5 h-3.5 ${project.totalExpense > project.poValue ? 'text-red-500 animate-bounce' : 'text-orange-400'}`} />
+          <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Expenses</span>
+        </div>
+        <p className={`text-xs font-bold ${project.totalExpense > project.poValue ? 'text-red-600' : 'text-gray-800'}`}>{formatLakhs(project.totalExpense)}</p>
+      </div>
+    </div>
   </div>
   );
   })}
