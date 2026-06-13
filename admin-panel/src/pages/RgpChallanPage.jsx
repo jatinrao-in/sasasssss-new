@@ -468,6 +468,7 @@ export default function RgpChallanPage() {
  <EmptyState icon="noData" title="No RGP/Challan entries found" actionLabel="Add Record" onAction={() => { setEditing(null); setShowModal(true); }} />
  ) : (
  <div className="card p-0 overflow-hidden">
+ <div className="overflow-x-auto w-full">
  <table className="w-full" data-export-table>
  <thead><tr className="bg-gray-50">
  <th className="table-header w-10">
@@ -581,6 +582,7 @@ export default function RgpChallanPage() {
  })}
  </tbody>
  </table>
+ </div>
  </div>
  )}
 

@@ -551,6 +551,7 @@ export default function FollowupPage() {
  </div>
  ) : (
  <div className="card p-0 overflow-hidden">
+ <div className="overflow-x-auto w-full">
  <table className="w-full" data-export-table>
  <thead><tr className="bg-gray-50">
  <th className="table-header w-10">
@@ -623,6 +624,7 @@ export default function FollowupPage() {
  ))}
  </tbody>
  </table>
+ </div>
  </div>
  )}
 

@@ -52,7 +52,7 @@ function LiveClock() {
 /* Google-style widget card */
 function Widget({ title, subtitle, children, className = '', action, noPad }) {
  return (
-  <div className={`bg-white rounded-2xl border border-gray-100 shadow-[0_1px_4px_rgba(0,0,0,0.06)] ${noPad ? '' : 'p-5'} ${className}`}>
+  <div className={`card ${noPad ? '' : 'p-5'} ${className}`}>
    {(title || action) && (
     <div className={`flex items-center justify-between ${noPad ? 'px-5 pt-5 pb-4' : 'mb-4'}`}>
      <div>
@@ -272,7 +272,7 @@ export default function DashboardPage() {
 
    {/* ── CUSTOMIZE PANEL ──────────────────────────────────── */}
    {showCustomize && (
-    <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+    <div className="card p-4">
      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Toggle Widgets</h3>
      <div className="flex flex-wrap gap-2">
       {[
@@ -357,7 +357,7 @@ export default function DashboardPage() {
       <div
        key={i}
        onClick={stat.onClick}
-       className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_4px_rgba(0,0,0,0.06)] p-5 cursor-pointer hover:shadow-[0_4px_16px_rgba(0,0,0,0.1)] transition-all duration-200 hover:-translate-y-0.5 stagger-item"
+       className="card p-5 cursor-pointer stagger-item"
       >
        <div className="flex items-start justify-between mb-3">
         <div
@@ -466,7 +466,7 @@ export default function DashboardPage() {
       { label: 'Total Received', value: <CountUpNumber end={totalReceived} formatter={v => formatCurrency(Math.round(v))} />, dataKey: 'completed', data: monthlyTrend, stroke: '#34a853', fill: '#e6f4ea' },
       { label: 'Open Enquiries', value: <CountUpNumber end={openEnquiries.length} />, dataKey: 'created', data: monthlyTrend, stroke: '#f9ab00', fill: '#fef9e0' },
      ].map((s, i) => (
-      <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_4px_rgba(0,0,0,0.06)] p-4 flex items-center gap-4">
+      <div key={i} className="card p-4 flex items-center gap-4">
        <div>
         <p className="text-[11px] text-gray-400 font-medium">{s.label}</p>
         <p className="text-xl font-semibold text-gray-900 mt-0.5">{s.value}</p>
@@ -763,7 +763,7 @@ export default function DashboardPage() {
     ].map((item, i) => {
      const Icon = item.icon;
      return (
-      <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_4px_rgba(0,0,0,0.06)] p-4 flex items-center gap-3 stagger-item">
+      <div key={i} className="card p-4 flex items-center gap-3 stagger-item">
        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: item.bg }}>
         <Icon className="w-4 h-4" style={{ color: item.color }} />
        </div>

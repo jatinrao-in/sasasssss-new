@@ -656,3 +656,144 @@ td {
   from { opacity: 1; }
   to { opacity: 0; pointer-events: none; }
 }
+
+/* ======================================= */
+/* 60% CLAYMORPHISM + 40% NEOBRUTALISM    */
+/* ======================================= */
+
+.card {
+  background-color: rgba(255, 255, 255, 0.92);
+  border-radius: 16px;
+  border: 2px solid #0f172a;
+  box-shadow: 
+    4px 4px 0px #0f172a,
+    inset -3px -3px 8px rgba(0, 0, 0, 0.03),
+    inset 3px 3px 8px rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.card:hover {
+  border-color: #0f172a;
+  box-shadow: 
+    6px 6px 0px #dc2626,
+    inset -2px -2px 6px rgba(0, 0, 0, 0.02),
+    inset 2px 2px 6px rgba(255, 255, 255, 0.95);
+  transform: translate(-2px, -2px);
+}
+
+.btn-primary {
+  background-color: #dc2626;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 2px solid #0f172a;
+  box-shadow: 
+    3px 3px 0px #0f172a,
+    inset -2px -2px 4px rgba(0, 0, 0, 0.15),
+    inset 2px 2px 4px rgba(255, 255, 255, 0.2);
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.btn-primary:hover {
+  background-color: #b91c1c;
+  transform: translate(-1px, -1px);
+  box-shadow: 
+    4px 4px 0px #0f172a,
+    inset -1px -1px 2px rgba(0, 0, 0, 0.15),
+    inset 1px 1px 2px rgba(255, 255, 255, 0.2);
+}
+.btn-primary:active {
+  transform: translate(1px, 1px);
+  box-shadow: 
+    1px 1px 0px #0f172a,
+    inset 1px 1px 3px rgba(0, 0, 0, 0.25);
+}
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-secondary {
+  background-color: white;
+  color: #0f172a;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 2px solid #0f172a;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 
+    2.5px 2.5px 0px #0f172a,
+    inset -2px -2px 4px rgba(0, 0, 0, 0.02),
+    inset 2px 2px 4px rgba(255, 255, 255, 0.95);
+}
+.btn-secondary:hover {
+  background-color: #f9fafb;
+  border-color: #0f172a;
+  transform: translate(-1px, -1px);
+  box-shadow: 
+    3.5px 3.5px 0px #0f172a,
+    inset -1px -1px 2px rgba(0, 0, 0, 0.02),
+    inset 1px 1px 2px rgba(255, 255, 255, 0.95);
+}
+.btn-secondary:active {
+  transform: translate(1px, 1px);
+  box-shadow: 
+    1px 1px 0px #0f172a,
+    inset 1px 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.input-field {
+  width: 100%;
+  border: 2px solid #0f172a;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  background-color: rgba(255, 255, 255, 0.85);
+  color: #1e293b;
+  box-shadow: 
+    inset 2px 2px 4px rgba(0, 0, 0, 0.03),
+    inset -2px -2px 4px rgba(255, 255, 255, 0.8);
+}
+.input-field:focus {
+  background-color: #ffffff;
+  border-color: #dc2626;
+  box-shadow: 
+    3px 3px 0px #0f172a,
+    inset 1px 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.clay-stat-card {
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 16px;
+  border: 2px solid #0f172a;
+  box-shadow: 
+    3px 3px 0px #0f172a,
+    inset -3px -3px 6px rgba(0, 0, 0, 0.02),
+    inset 3px 3px 6px rgba(255, 255, 255, 0.95);
+  transition: all 0.2s ease;
+}
+.clay-stat-card:hover {
+  transform: translate(-1.5px, -1.5px);
+  border-color: #0f172a;
+  box-shadow: 
+    4.5px 4.5px 0px #dc2626,
+    inset -2px -2px 4px rgba(0, 0, 0, 0.01),
+    inset 2px 2px 4px rgba(255, 255, 255, 0.95);
+}

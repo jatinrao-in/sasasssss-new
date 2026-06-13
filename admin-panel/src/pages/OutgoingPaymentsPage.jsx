@@ -305,6 +305,7 @@ export default function OutgoingPaymentsPage() {
  <EmptyState icon="noData" title="No payment records found" actionLabel="New Payment" onAction={() => { setEditing(null); setShowModal(true); }} />
  ) : (
  <div className="card p-0 overflow-hidden">
+ <div className="overflow-x-auto w-full">
  <table className="w-full" data-export-table>
  <thead><tr className="bg-gray-50">
  <th className="table-header">Vendor</th><th className="table-header">Assigned Date</th><th className="table-header">Invoice</th><th className="table-header">Category</th>
@@ -330,6 +331,7 @@ export default function OutgoingPaymentsPage() {
  ))}
  </tbody>
  </table>
+ </div>
  </div>
  )}
 

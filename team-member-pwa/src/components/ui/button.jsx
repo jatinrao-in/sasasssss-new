@@ -2,13 +2,13 @@ import * as React from 'react';
 import { cn } from '../../lib/utils';
 
 const buttonVariants = {
- default: 'bg-teal-600 text-white hover:bg-teal-700 active:bg-teal-800',
- destructive: 'bg-red-500 text-white hover:bg-red-600 active:bg-red-700',
- outline: 'border border-[var(--border-primary)] bg-[var(--bg-card)] text-gray-700 hover:bg-gray-50 active:bg-gray-100',
- 'outline-destructive': 'border border-red-300 text-red-600 hover:bg-red-50 active:bg-red-100',
- secondary: 'bg-teal-50 text-teal-700 hover:bg-teal-100 active:bg-teal-200',
+ default: 'btn-primary',
+ destructive: 'bg-red-500 text-white hover:bg-red-600 active:bg-red-700 border-2 border-[#0f172a] shadow-[2px_2px_0px_#0f172a]',
+ outline: 'btn-secondary',
+ 'outline-destructive': 'border-2 border-red-500 text-red-600 hover:bg-red-50 active:bg-red-100 shadow-[2px_2px_0px_#0f172a]',
+ secondary: 'btn-secondary',
  ghost: 'text-gray-700 hover:bg-gray-100 active:bg-gray-200',
- link: 'text-teal-600 underline-offset-4 hover:underline',
+ link: 'text-red-600 underline-offset-4 hover:underline font-bold',
 };
 
 const buttonSizes = {
@@ -23,7 +23,7 @@ const Button = React.forwardRef(
  return (
  <button
  className={cn(
- 'inline-flex items-center justify-center whitespace-nowrap rounded-lg font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+ 'inline-flex items-center justify-center whitespace-nowrap font-medium transition-all duration-150 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50',
  buttonVariants[variant],
  buttonSizes[size],
  className

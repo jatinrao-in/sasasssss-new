@@ -472,6 +472,7 @@ export default function PaymentsPage() {
  <EmptyState icon="noData" title="No payment records found" actionLabel="New Payment" onAction={() => { setEditing(null); setShowModal(true); }} />
  ) : (
  <div className="card p-0 overflow-hidden">
+ <div className="overflow-x-auto w-full">
  <table className="w-full" data-export-table>
   <thead><tr className="bg-gray-50">
   <th className="table-header w-10">
@@ -532,6 +533,7 @@ export default function PaymentsPage() {
   })}
  </tbody>
  </table>
+ </div>
  </div>
  )}
 
