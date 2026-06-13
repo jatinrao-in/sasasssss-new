@@ -5,6 +5,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useNotifications } from '../../hooks/useNotifications';
 import { getAccessiblePages } from '../../lib/accessControl';
 import UserAvatar from '../UserAvatar';
+import logoImg from '../../assets/logo.jpg';
 
 const NotificationBell = () => {
   const { unreadCount } = useNotifications();
@@ -112,7 +113,7 @@ export default function MobileLayout() {
     >
       <header className="flex h-14 flex-shrink-0 items-center justify-between border-b border-gray-100 bg-[var(--bg-card)] px-4">
         <div className="flex items-center gap-2">
-          <img src="/logo.jpg" alt="Logo" className="h-8 w-8 rounded-lg object-cover" />
+          <img src={logoImg} alt="Logo" className="h-8 w-8 rounded-lg object-cover" />
           <span className="text-base font-semibold text-[var(--text-primary)]">Saya Industrial</span>
         </div>
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import logoImg from '../assets/logo.jpg';
 
 export default function SplashScreen() {
   const { loading } = useAuth();
@@ -30,7 +31,7 @@ export default function SplashScreen() {
     <div className={`splash-overlay ${isFadingOut ? 'splash-fade-out' : ''}`}>
       <div className="splash-content">
         <img
-          src="/logo.jpg"
+          src={logoImg}
           alt="Logo"
           className="splash-logo"
           style={{ width: '80px', height: '80px', borderRadius: '16px', objectFit: 'cover', animation: 'pulse 2s ease-in-out infinite' }}

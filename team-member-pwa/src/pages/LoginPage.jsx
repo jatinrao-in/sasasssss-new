@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import logoImg from '../assets/logo.jpg';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
@@ -103,7 +104,7 @@ export default function LoginPage() {
  {/* Logo */}
  <div className="mb-8 flex flex-col items-center">
  <div className="h-20 w-20 rounded-2xl flex items-center justify-center mb-4">
- <img src="/logo.jpg" alt="Logo" className="h-20 w-20 rounded-2xl object-cover shadow-lg shadow-gray-200" />
+ <img src={logoImg} alt="Logo" className="h-20 w-20 rounded-2xl object-cover shadow-lg shadow-gray-200" />
  </div>
  <h1 className="text-2xl font-bold text-gray-900">Enterprise</h1>
  <p className="text-sm text-gray-400 mt-1">Team Member Portal</p>

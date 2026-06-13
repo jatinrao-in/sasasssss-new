@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import logoImg from '../assets/logo.jpg';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
@@ -88,7 +89,7 @@ export default function LoginPage() {
           <div className="px-8 py-10">
             <div className="mb-8 text-center">
               <div className="mb-4 inline-flex h-16 w-16 items-center justify-center">
-                <img src="/logo.jpg" alt="Logo" className="h-16 w-16 rounded-2xl object-cover shadow-lg" />
+                <img src={logoImg} alt="Logo" className="h-16 w-16 rounded-2xl object-cover shadow-lg" />
               </div>
               <h1 className="text-2xl font-bold text-gray-900">Welcome Back</h1>
               <p className="mt-1 text-sm text-gray-500">Sign in to your admin account</p>

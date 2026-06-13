@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import logoImg from '../../assets/logo.jpg';
 import {
   ArrowUpRight,
   ChevronLeft,
@@ -75,7 +76,7 @@ export default function Sidebar({
       >
       <div className={`flex h-16 items-center border-b border-[var(--border-primary)] px-4 ${collapsed ? 'lg:justify-center' : 'gap-3'}`}>
         <img
-          src="/logo.jpg"
+          src={logoImg}
           alt="Logo"
           className="h-8 w-8 flex-shrink-0 rounded-lg object-cover"
         />

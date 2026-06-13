@@ -72,75 +72,7 @@
   --chart-tooltip-border: #E2E8F0;
 }
 
-.dark {
-  /* Backgrounds */
-  --bg-primary: #0F172A;
-  --bg-secondary: #1E293B;
-  --bg-card: #1E293B;
-  --bg-hover: #334155;
-  --bg-input: #1E293B;
-  --bg-modal: #1E293B;
-  --bg-sidebar: #0F172A;
-  --bg-table-header: #1E293B;
-  --bg-table-row-hover: #334155;
-  --bg-badge-grey: #334155;
-  --bg-skeleton: #334155;
-  --bg-skeleton-shine: #475569;
 
-  /* Text */
-  --text-primary: #F1F5F9;
-  --text-secondary: #CBD5E1;
-  --text-muted: #64748B;
-  --text-inverse: #0F172A;
-  --text-link: #F87171;
-  --text-danger: #F87171;
-  --text-success: #4ADE80;
-  --text-warning: #FCD34D;
-
-  /* Borders */
-  --border-primary: #334155;
-  --border-secondary: #475569;
-  --border-input: #475569;
-  --border-focus: #DC2626;
-
-  /* Accent (Red) */
-  --accent-primary: #DC2626;
-  --accent-hover: #EF4444;
-  --accent-light: #7F1D1D;
-  --accent-text: #FFFFFF;
-
-  /* Status Colors (dark adjusted) */
-  --status-open-bg: #14532D;
-  --status-open-text: #4ADE80;
-  --status-closed-bg: #1E293B;
-  --status-closed-text: #94A3B8;
-  --status-overdue-bg: #450A0A;
-  --status-overdue-text: #F87171;
-  --status-pending-bg: #422006;
-  --status-pending-text: #FCD34D;
-  --status-partial-bg: #1E3A5F;
-  --status-partial-text: #60A5FA;
-
-  /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
-  --shadow-md: 0 4px 6px rgba(0,0,0,0.4);
-  --shadow-lg: 0 10px 15px rgba(0,0,0,0.5);
-
-  /* Sidebar */
-  --sidebar-bg: #0F172A;
-  --sidebar-text: #94A3B8;
-  --sidebar-active-bg: #7F1D1D;
-  --sidebar-active-text: #FCA5A5;
-  --sidebar-hover-bg: #1E293B;
-  --sidebar-icon: #64748B;
-  --sidebar-active-icon: #FCA5A5;
-
-  /* Charts */
-  --chart-grid: #334155;
-  --chart-tooltip-bg: #1E293B;
-  --chart-tooltip-text: #F1F5F9;
-  --chart-tooltip-border: #475569;
-}
 
 
 :root {
@@ -213,75 +145,7 @@
   --chart-tooltip-border: #E2E8F0;
 }
 
-.dark {
-  /* Backgrounds */
-  --bg-primary: #0F172A;
-  --bg-secondary: #1E293B;
-  --bg-card: #1E293B;
-  --bg-hover: #334155;
-  --bg-input: #1E293B;
-  --bg-modal: #1E293B;
-  --bg-sidebar: #0F172A;
-  --bg-table-header: #1E293B;
-  --bg-table-row-hover: #334155;
-  --bg-badge-grey: #334155;
-  --bg-skeleton: #334155;
-  --bg-skeleton-shine: #475569;
 
-  /* Text */
-  --text-primary: #F1F5F9;
-  --text-secondary: #CBD5E1;
-  --text-muted: #64748B;
-  --text-inverse: #0F172A;
-  --text-link: #F87171;
-  --text-danger: #F87171;
-  --text-success: #4ADE80;
-  --text-warning: #FCD34D;
-
-  /* Borders */
-  --border-primary: #334155;
-  --border-secondary: #475569;
-  --border-input: #475569;
-  --border-focus: #DC2626;
-
-  /* Accent (Red) */
-  --accent-primary: #DC2626;
-  --accent-hover: #EF4444;
-  --accent-light: #7F1D1D;
-  --accent-text: #FFFFFF;
-
-  /* Status Colors (dark adjusted) */
-  --status-open-bg: #14532D;
-  --status-open-text: #4ADE80;
-  --status-closed-bg: #1E293B;
-  --status-closed-text: #94A3B8;
-  --status-overdue-bg: #450A0A;
-  --status-overdue-text: #F87171;
-  --status-pending-bg: #422006;
-  --status-pending-text: #FCD34D;
-  --status-partial-bg: #1E3A5F;
-  --status-partial-text: #60A5FA;
-
-  /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
-  --shadow-md: 0 4px 6px rgba(0,0,0,0.4);
-  --shadow-lg: 0 10px 15px rgba(0,0,0,0.5);
-
-  /* Sidebar */
-  --sidebar-bg: #0F172A;
-  --sidebar-text: #94A3B8;
-  --sidebar-active-bg: #7F1D1D;
-  --sidebar-active-text: #FCA5A5;
-  --sidebar-hover-bg: #1E293B;
-  --sidebar-icon: #64748B;
-  --sidebar-active-icon: #FCA5A5;
-
-  /* Charts */
-  --chart-grid: #334155;
-  --chart-tooltip-bg: #1E293B;
-  --chart-tooltip-text: #F1F5F9;
-  --chart-tooltip-border: #475569;
-}
 
 @theme {
   --color-teal-50: #fef2f2;
@@ -312,8 +176,8 @@
   }
 
   body {
-    background-color: #f9fafb;
-    color: #111827;
+    background-color: #f8f9fa;
+    color: #202124;
     min-width: 320px;
     overflow-x: hidden;
   }
@@ -333,21 +197,22 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 10px 12px;
-    border-radius: 8px;
-    color: #4b5563;
-    transition: all 0.2s;
+    padding: 8px 12px;
+    border-radius: 0 24px 24px 0;
+    margin-right: 12px;
+    color: #5f6368;
+    transition: all 0.15s;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
   }
   .sidebar-link:hover {
-    background-color: var(--sidebar-hover-bg);
-    color: var(--sidebar-active-text);
+    background-color: #f1f3f4;
+    color: #202124;
   }
   .sidebar-link.active {
-    background-color: var(--sidebar-active-bg);
-    color: var(--sidebar-active-text);
+    background-color: #e8f0fe;
+    color: #1a73e8;
     font-weight: 600;
   }
   
@@ -356,11 +221,14 @@
   /* --- Card --- */
   .card {
     background-color: white;
-    border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    border: 1px solid #f3f4f6;
+    border-radius: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    border: 1px solid #f1f3f4;
     padding: 16px;
-    transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s;
+    transition: box-shadow 0.2s;
+  }
+  .card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
   }
   
 

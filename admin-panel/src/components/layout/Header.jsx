@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { Bell, Search, ChevronDown, X, CheckCheck, LogOut, Sun, Moon, Menu } from 'lucide-react';
+import { Bell, Search, ChevronDown, X, CheckCheck, LogOut, Menu } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useNotifications } from '../../hooks/useNotifications';
-import { useDarkMode } from '../../hooks/useDarkMode';
 import { useToast } from '../../hooks/useToast';
 import useDelete from '../../hooks/useDelete';
 import { getInitials } from '../../lib/formatters';
@@ -29,7 +28,6 @@ export default function Header({ collapsed, onMenuToggle }) {
  deleteNotification,
  clearAllNotifications,
  } = useNotifications(userData?.uid);
- const { dark, toggle } = useDarkMode();
  const [showNotifications, setShowNotifications] = useState(false);
  const [showProfile, setShowProfile] = useState(false);
  const [searchQuery, setSearchQuery] = useState('');
@@ -99,18 +97,6 @@ export default function Header({ collapsed, onMenuToggle }) {
  </div>
 
  <div className="ml-auto flex items-center gap-1.5 sm:gap-3">
- {/* Dark mode toggle */}
- <button
- onClick={toggle}
- className="rounded-lg p-2 transition-colors hover:bg-gray-50"
- title={dark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
- >
- {dark ? (
- <Sun className="w-5 h-5 text-amber-400" />
- ) : (
- <Moon className="w-5 h-5 text-gray-500" />
- )}
- </button>
 
  {/* Notification bell */}
  <button
