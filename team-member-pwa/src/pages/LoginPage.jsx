@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { Label } from '../components/ui/label';
-import { Eye, EyeOff, Building2 } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { redirectToAdminPanel } from '../lib/adminPanel';
 import { getFirstAccessiblePath } from '../lib/accessControl';
@@ -102,8 +102,8 @@ export default function LoginPage() {
  <div className="flex-1 flex flex-col items-center justify-center px-6">
  {/* Logo */}
  <div className="mb-8 flex flex-col items-center">
- <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-teal-500 to-teal-700 flex items-center justify-center shadow-lg shadow-teal-200 mb-4">
- <Building2 className="h-10 w-10 text-white" />
+ <div className="h-20 w-20 rounded-2xl flex items-center justify-center mb-4">
+ <img src="/logo.jpg" alt="Logo" className="h-20 w-20 rounded-2xl object-cover shadow-lg shadow-gray-200" />
  </div>
  <h1 className="text-2xl font-bold text-gray-900">Enterprise</h1>
  <p className="text-sm text-gray-400 mt-1">Team Member Portal</p>

@@ -112,9 +112,7 @@ export default function MobileLayout() {
     >
       <header className="flex h-14 flex-shrink-0 items-center justify-between border-b border-gray-100 bg-[var(--bg-card)] px-4">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-600">
-            <span className="text-sm font-bold text-white">S</span>
-          </div>
+          <img src="/logo.jpg" alt="Logo" className="h-8 w-8 rounded-lg object-cover" />
           <span className="text-base font-semibold text-[var(--text-primary)]">Saya Industrial</span>
         </div>
 

@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   ArrowUpRight,
-  Building2,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
@@ -75,9 +74,11 @@ export default function Sidebar({
         } ${collapsed ? 'lg:w-16' : 'lg:w-60'} w-[min(18rem,85vw)] lg:translate-x-0`}
       >
       <div className={`flex h-16 items-center border-b border-[var(--border-primary)] px-4 ${collapsed ? 'lg:justify-center' : 'gap-3'}`}>
-        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-teal-600">
-          <Building2 className="h-4 w-4 text-white" />
-        </div>
+        <img
+          src="/logo.jpg"
+          alt="Logo"
+          className="h-8 w-8 flex-shrink-0 rounded-lg object-cover"
+        />
         {!collapsed && (
           <div>
             <p className="text-sm font-bold leading-tight text-[var(--text-primary)]">Admin Panel</p>

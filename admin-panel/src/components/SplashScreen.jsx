@@ -29,18 +29,12 @@ export default function SplashScreen() {
   return (
     <div className={`splash-overlay ${isFadingOut ? 'splash-fade-out' : ''}`}>
       <div className="splash-content">
-        <svg className="splash-logo" width="80" height="80" viewBox="0 0 80 80">
-          <polygon 
-            points="40,8 72,68 8,68"
-            fill="none"
-            stroke="white"
-            strokeWidth="3"
-            strokeLinejoin="round"
-            strokeDasharray="300"
-            strokeDashoffset="300"
-            style={{ animation: 'drawTriangle 1s ease-in-out forwards, pulse 2s ease-in-out 1s infinite' }}
-          />
-        </svg>
+        <img
+          src="/logo.jpg"
+          alt="Logo"
+          className="splash-logo"
+          style={{ width: '80px', height: '80px', borderRadius: '16px', objectFit: 'cover', animation: 'pulse 2s ease-in-out infinite' }}
+        />
         <div style={{ display: 'flex', gap: '8px', marginTop: '24px', justifyContent: 'center' }}>
           <div className="splash-dot" style={{ animationDelay: '0ms' }}></div>
           <div className="splash-dot" style={{ animationDelay: '150ms' }}></div>
