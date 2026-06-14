@@ -6,7 +6,7 @@ import { Label } from '../components/ui/label';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../components/ui/sheet';
 import {
   Mail, Phone, MessageCircle, CheckCircle, Clock, AlertTriangle,
-  Lock, LogOut, Wallet, ChevronDown, ChevronUp, Calendar
+  Lock, LogOut, Wallet, ChevronDown, ChevronUp, Calendar, Volume2, VolumeX
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTasks } from '../hooks/useTasks';
@@ -66,7 +66,7 @@ function SalaryCard({ record, month }) {
       {/* Net Salary Amount */}
       <div className="bg-white px-4 py-5 border-b border-gray-100 text-center">
         <span className="block text-sm font-medium text-gray-500 mb-1">Net Salary</span>
-        <span className="text-3xl font-bold text-teal-600">{fmt(net)}</span>
+        <span className="text-3xl font-bold text-[#E23744]">{fmt(net)}</span>
       </div>
 
       {/* Details */}
@@ -146,8 +146,8 @@ function MySalarySection({ uid }) {
     <div className="px-4 mb-5">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-full bg-teal-50 flex items-center justify-center">
-            <Wallet className="h-4 w-4 text-teal-600" />
+          <div className="h-8 w-8 rounded-full bg-rose-50 flex items-center justify-center">
+            <Wallet className="h-4 w-4 text-[#E23744]" />
           </div>
           <h3 className="text-sm font-semibold text-[var(--text-primary)]">My Salary</h3>
         </div>
@@ -156,7 +156,7 @@ function MySalarySection({ uid }) {
           <select
             value={selectedMonth}
             onChange={e => setSelectedMonth(e.target.value)}
-            className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 pr-6 appearance-none bg-white text-gray-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+            className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 pr-6 appearance-none bg-white text-gray-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500/20"
           >
             {monthOptions().map(o => (
               <option key={o.val} value={o.val}>{o.label}</option>
@@ -204,7 +204,7 @@ function MySalarySection({ uid }) {
                         <span className="text-sm text-gray-700">{formatMonthLabel(r.month || r.id)}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-teal-600">{fmt(r.netSalary)}</span>
+                        <span className="text-sm font-semibold text-[#E23744]">{fmt(r.netSalary)}</span>
                         <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${r.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-600'}`}>
                           {r.status === 'paid' ? '✅' : '🟡'}
                         </span>
@@ -239,6 +239,18 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const profileUser = currentUser || userData;
 
+  // Sound configuration
+  const [soundDisabled, setSoundDisabled] = useState(
+    localStorage.getItem('pwa_notification_sound_disabled') === 'true'
+  );
+
+  const toggleSound = () => {
+    const newValue = !soundDisabled;
+    setSoundDisabled(newValue);
+    localStorage.setItem('pwa_notification_sound_disabled', String(newValue));
+    toast.success(newValue ? 'Notification sound muted' : 'Notification sound enabled');
+  };
+
   const myTasks = tasks;
   const completedTasks = myTasks.filter(t => t.status === 'completed');
   const overdueTasks = myTasks.filter(t => t.status === 'overdue');
@@ -246,7 +258,7 @@ export default function ProfilePage() {
 
   const stats = [
     { label: 'Completed', value: completedTasks.length, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
-    { label: 'On-Time %', value: `${onTimePct}%`, icon: Clock, color: 'text-teal-600', bg: 'bg-teal-50' },
+    { label: 'On-Time %', value: `${onTimePct}%`, icon: Clock, color: 'text-[#E23744]', bg: 'bg-rose-50' },
     { label: 'Overdue', value: overdueTasks.length, icon: AlertTriangle, color: 'text-red-500', bg: 'bg-red-50' },
   ];
 
@@ -304,7 +316,7 @@ export default function ProfilePage() {
         <Card>
           <CardContent className="p-0 divide-y divide-gray-50">
             <div className="flex items-center gap-3 px-4 py-3">
-              <div className="h-9 w-9 rounded-full bg-teal-50 flex items-center justify-center"><Mail className="h-4 w-4 text-teal-600" /></div>
+              <div className="h-9 w-9 rounded-full bg-rose-50 flex items-center justify-center"><Mail className="h-4 w-4 text-[#E23744]" /></div>
               <div className="flex-1 min-w-0"><p className="text-xs text-gray-400">Email</p><p className="text-sm text-gray-700 truncate">{userData?.email || '-'}</p></div>
             </div>
             <div className="flex items-center gap-3 px-4 py-3">
@@ -331,6 +343,42 @@ export default function ProfilePage() {
             </CardContent></Card>
           ); })}
         </div>
+      </div>
+
+      {/* App Settings */}
+      <div className="px-4 mb-5">
+        <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3">App Settings</h3>
+        <Card>
+          <CardContent className="p-0 divide-y divide-gray-50">
+            <div className="flex items-center justify-between px-4 py-3.5">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-full bg-rose-50 flex items-center justify-center">
+                  {soundDisabled ? (
+                    <VolumeX className="h-4 w-4 text-[#E23744]" />
+                  ) : (
+                    <Volume2 className="h-4 w-4 text-[#E23744]" />
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">Notification Sound</p>
+                  <p className="text-xs text-gray-500">Play sound for new notifications</p>
+                </div>
+              </div>
+              <button
+                onClick={toggleSound}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                  soundDisabled ? 'bg-gray-200' : 'bg-[#E23744]'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    soundDisabled ? 'translate-x-1' : 'translate-x-6'
+                  }`}
+                />
+              </button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* ── MY SALARY SECTION ── */}

@@ -203,15 +203,15 @@ export default function PaymentsPage() {
       </div>
 
       <div className="px-4 mb-4">
-        <Card className="border-none bg-gradient-to-r from-teal-500 to-teal-600">
+        <Card className="border-none bg-gradient-to-r from-[#E23744] to-[#B91C1C]">
           <CardContent className="flex items-center gap-3 p-4">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/20">
               <CreditCard className="h-5 w-5 text-white" />
             </div>
             <div>
               <p className="text-2xl font-bold text-white">{totals.assigned}</p>
-              <p className="text-sm text-teal-100">Assigned Payments</p>
-              <p className="text-xs text-teal-100/90">Net Pending: {formatCurrency(totals.totalPending)}</p>
+              <p className="text-sm text-rose-100">Assigned Payments</p>
+              <p className="text-xs text-rose-100/90">Net Pending: {formatCurrency(totals.totalPending)}</p>
             </div>
           </CardContent>
         </Card>
@@ -323,7 +323,7 @@ export default function PaymentsPage() {
                   <select
                     value={statusValue}
                     onChange={(event) => setStatusValue(event.target.value)}
-                    className="flex h-12 w-full appearance-none rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-base text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="flex h-12 w-full appearance-none rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-base text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#E23744]"
                   >
                     <option value="pending">Pending</option>
                     <option value="partial">Partial Payment Received</option>
@@ -344,7 +344,7 @@ export default function PaymentsPage() {
                       value={partialAmount}
                       onChange={(event) => setPartialAmount(event.target.value)}
                       placeholder="Enter amount received"
-                      className="flex h-12 w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-base text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      className="flex h-12 w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-base text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#E23744]"
                     />
                   </div>
 
@@ -354,7 +354,7 @@ export default function PaymentsPage() {
                       id="payment-remarks"
                       value={remarks}
                       onChange={(event) => setRemarks(event.target.value)}
-                      className="flex min-h-[96px] w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      className="flex min-h-[96px] w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#E23744]"
                       placeholder="Add remarks for this payment update"
                     />
                   </div>
@@ -372,7 +372,7 @@ export default function PaymentsPage() {
                       value={finalAmount}
                       onChange={(event) => setFinalAmount(event.target.value)}
                       placeholder="Enter final total received"
-                      className="flex h-12 w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-base text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      className="flex h-12 w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-base text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#E23744]"
                     />
                   </div>
 
@@ -383,7 +383,7 @@ export default function PaymentsPage() {
                       type="date"
                       value={receivedDate}
                       onChange={(event) => setReceivedDate(event.target.value)}
-                      className="flex h-12 w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-base text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      className="flex h-12 w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-base text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#E23744]"
                     />
                   </div>
 
@@ -393,7 +393,7 @@ export default function PaymentsPage() {
                       id="received-remarks"
                       value={remarks}
                       onChange={(event) => setRemarks(event.target.value)}
-                      className="flex min-h-[96px] w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      className="flex min-h-[96px] w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#E23744]"
                       placeholder="Optional remarks"
                     />
                   </div>
@@ -407,7 +407,7 @@ export default function PaymentsPage() {
                     id="pending-remarks"
                     value={remarks}
                     onChange={(event) => setRemarks(event.target.value)}
-                    className="flex min-h-[96px] w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    className="flex min-h-[96px] w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#E23744]"
                     placeholder="Optional remarks"
                   />
                 </div>

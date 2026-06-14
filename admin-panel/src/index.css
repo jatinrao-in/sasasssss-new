@@ -1796,10 +1796,14 @@ td {
 }
 
 .pwa-dashboard-container {
-  background-color: #FAF9FF; /* Warm off-white purple */
+  background-color: #F8FAFC; /* Clean off-white slate */
   min-height: calc(100vh - 120px);
   position: relative;
   overflow: hidden;
+}
+
+.scroll-area {
+  background-color: #F8FAFC; /* Clean off-white slate for all PWA scrollable views */
 }
 
 @keyframes slideUp {
@@ -1832,7 +1836,7 @@ td {
 }
 
 .pwa-list-item-open {
-  border-left-color: #2E4BFF !important;
+  border-left-color: #E23744 !important;
 }
 
 .pwa-list-item-pending {

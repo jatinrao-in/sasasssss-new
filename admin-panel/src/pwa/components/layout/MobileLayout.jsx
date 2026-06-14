@@ -152,14 +152,14 @@ export default function MobileLayout() {
                 aria-current={isActive ? 'page' : undefined}
                 aria-label={item.label}
                 className={`flex h-full flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 transition-colors ${
-                  isActive ? 'text-[#2E4BFF]' : hasAccess ? 'text-gray-400' : 'text-gray-300'
+                  isActive ? 'text-[#E23744]' : hasAccess ? 'text-gray-400' : 'text-gray-300'
                 }`}
                 disabled={!hasAccess}
                 onClick={() => navigate(item.path, { replace: true })}
                 type="button"
               >
                 <Icon className={`h-[22px] w-[22px] ${isActive ? 'stroke-[2.5px]' : ''}`} />
-                <span className={`text-[10px] font-medium ${isActive ? 'text-[#2E4BFF]' : hasAccess ? 'text-gray-400' : 'text-gray-300'}`}>
+                <span className={`text-[10px] font-medium ${isActive ? 'text-[#E23744]' : hasAccess ? 'text-gray-400' : 'text-gray-300'}`}>
                   {item.label}
                 </span>
               </button>

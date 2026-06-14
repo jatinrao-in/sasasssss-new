@@ -45,9 +45,9 @@ const ENQUIRY_STATUSES = [
 const CLOSED_STATUSES = new Set(['closed', 'won', 'lost']);
 
 const SUMMARY_CARD_STYLES = [
-  'from-teal-500 to-teal-600',
-  'from-sky-500 to-blue-600',
-  'from-emerald-500 to-green-600',
+  'from-[#E23744] to-[#B91C1C]',
+  'from-[#1E293B] to-[#0F172A]',
+  'from-[#F59E0B] to-[#D97706]',
 ];
 
 function humanizeStatus(status) {
@@ -318,7 +318,7 @@ export default function EnquiriesPage() {
         {!loading && !error && filteredEnquiries.length === 0 && (
           <Card className="border-dashed border-gray-200 bg-[var(--bg-card)]">
             <CardContent className="flex flex-col items-center px-6 py-12 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-teal-50 text-teal-600">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-rose-50 text-[#E23744]">
                 <Search className="h-8 w-8" />
               </div>
               <h2 className="mt-4 text-base font-semibold text-[var(--text-primary)]">No enquiries assigned</h2>
@@ -422,14 +422,14 @@ export default function EnquiriesPage() {
                       onClick={() => setSelectedStatus(statusOption.value)}
                       className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all ${
                         selectedStatus === statusOption.value
-                          ? 'border-teal-300 bg-teal-50 text-teal-700'
+                          ? 'border-rose-300 bg-rose-50 text-[#E23744]'
                           : 'border-[var(--border-primary)] bg-[var(--bg-card)] text-[var(--text-primary)]'
                       }`}
                     >
                       <span
                         className={`h-4 w-4 rounded-full border ${
                           selectedStatus === statusOption.value
-                            ? 'border-teal-600 bg-teal-600'
+                            ? 'border-[#E23744] bg-[#E23744]'
                             : 'border-gray-300'
                         }`}
                       />
@@ -447,7 +447,7 @@ export default function EnquiriesPage() {
                   value={statusRemarks}
                   onChange={(event) => setStatusRemarks(event.target.value)}
                   placeholder="Add a note about this update..."
-                  className="flex min-h-[120px] w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  className="flex min-h-[120px] w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#E23744]"
                 />
               </div>
 
@@ -482,7 +482,7 @@ export default function EnquiriesPage() {
                   value={noteText}
                   onChange={(event) => setNoteText(event.target.value)}
                   placeholder="Write your note here..."
-                  className="flex min-h-[120px] w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  className="flex min-h-[120px] w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#E23744]"
                 />
               </div>
 

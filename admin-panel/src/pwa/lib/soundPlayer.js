@@ -1,5 +1,8 @@
 export const playNotificationSound = () => {
   try {
+    const isMuted = localStorage.getItem('pwa_notification_sound_disabled') === 'true';
+    if (isMuted) return;
+
     const audio = new Audio('/sounds/notification.mp3');
     // Volume control and play
     audio.volume = 1.0;

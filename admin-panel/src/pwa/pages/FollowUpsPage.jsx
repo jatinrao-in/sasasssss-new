@@ -343,7 +343,7 @@ export default function FollowUpsPage() {
 
       <div className="overflow-x-auto px-4 pb-1">
         <div className="flex gap-3">
-          <SummaryCard label="Total" value={summary.total} accentClass="from-teal-500 to-teal-600" />
+          <SummaryCard label="Total" value={summary.total} accentClass="from-[#E23744] to-[#B91C1C]" />
           <SummaryCard label="Due Today" value={summary.dueToday} accentClass="from-orange-400 to-amber-500" />
           <SummaryCard label="Overdue" value={summary.overdue} accentClass="from-rose-500 to-red-600" />
           <SummaryCard label="Closed" value={summary.closed} accentClass="from-emerald-500 to-green-600" />
@@ -379,7 +379,7 @@ export default function FollowUpsPage() {
         {!loading && !error && filteredFollowUps.length === 0 && (
           <Card className="border-dashed border-gray-200 bg-[var(--bg-card)]">
             <CardContent className="flex flex-col items-center px-6 py-12 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-teal-50 text-teal-600">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-rose-50 text-[#E23744]">
                 <RefreshCw className="h-8 w-8" />
               </div>
               <h2 className="mt-4 text-base font-semibold text-[var(--text-primary)]">No followups assigned yet</h2>
@@ -444,7 +444,7 @@ export default function FollowUpsPage() {
                   value={completionNote}
                   onChange={(event) => setCompletionNote(event.target.value)}
                   placeholder="Optional closing note..."
-                  className="flex min-h-[120px] w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  className="flex min-h-[120px] w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#E23744]"
                 />
               </div>
 
@@ -471,7 +471,7 @@ export default function FollowUpsPage() {
                   type="date"
                   value={rescheduleDate}
                   onChange={(event) => setRescheduleDate(event.target.value)}
-                  className="flex h-12 w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-base text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  className="flex h-12 w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-base text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#E23744]"
                 />
               </div>
 
@@ -483,7 +483,7 @@ export default function FollowUpsPage() {
                   value={rescheduleReason}
                   onChange={(event) => setRescheduleReason(event.target.value)}
                   placeholder="Reason for rescheduling..."
-                  className="flex min-h-[120px] w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  className="flex min-h-[120px] w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#E23744]"
                 />
               </div>
 
@@ -518,7 +518,7 @@ export default function FollowUpsPage() {
                   value={noteText}
                   onChange={(event) => setNoteText(event.target.value)}
                   placeholder="Write your note here..."
-                  className="flex min-h-[120px] w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  className="flex min-h-[120px] w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#E23744]"
                 />
               </div>
 

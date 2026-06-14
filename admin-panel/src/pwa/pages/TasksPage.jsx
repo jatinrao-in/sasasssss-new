@@ -275,7 +275,7 @@ export default function TasksPage() {
   const getBorderColor = (status) => {
     if (status === 'completed') return 'border-green-500';
     if (status === 'overdue') return 'border-red-500';
-    return 'border-teal-500';
+    return 'border-[#E23744]';
   };
 
   return (
@@ -349,7 +349,7 @@ export default function TasksPage() {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center gap-2">
-                      <Folder className="h-4 w-4 text-teal-600" />
+                      <Folder className="h-4 w-4 text-[#E23744]" />
                       <span className="font-bold text-gray-900 text-sm">{group.project.name}</span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -371,7 +371,7 @@ export default function TasksPage() {
                   <div>
                     <div className="flex justify-between text-[10px] mb-1">
                       <span className="text-gray-500">My Progress</span>
-                      <span className="font-medium text-teal-600">{group.project.myCompletion}%</span>
+                      <span className="font-medium text-[#E23744]">{group.project.myCompletion}%</span>
                     </div>
                     <Progress value={group.project.myCompletion} className="h-1.5" />
                   </div>
@@ -413,7 +413,7 @@ export default function TasksPage() {
                         <div className="mt-2 mb-3">
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-[10px] text-gray-500">Task Completion</span>
-                            <span className="text-[10px] font-semibold text-teal-600">{task.completionPercent || 0}%</span>
+                            <span className="text-[10px] font-semibold text-[#E23744]">{task.completionPercent || 0}%</span>
                           </div>
                           <Progress value={task.completionPercent || 0} className="h-1.5" />
                         </div>
@@ -465,7 +465,7 @@ export default function TasksPage() {
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <Label>Completion</Label>
-                  <span className="text-xl font-bold text-teal-600">{sliderValue}%</span>
+                  <span className="text-xl font-bold text-[#E23744]">{sliderValue}%</span>
                 </div>
                 
                 <div className="flex gap-2 mb-4">
@@ -486,7 +486,7 @@ export default function TasksPage() {
                   type="range" min="0" max="100" step="5" 
                   value={sliderValue} 
                   onChange={e => setSliderValue(Number(e.target.value))} 
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-teal-600" 
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#E23744]" 
                 />
                 <div className="flex justify-between text-[10px] text-gray-400 mt-1">
                   <span>0%</span><span>50%</span><span>100%</span>
@@ -494,8 +494,8 @@ export default function TasksPage() {
               </div>
               
               {sliderValue === 100 && (
-                <div className="bg-teal-50 border border-teal-100 rounded-lg p-3 text-sm text-teal-800">
-                  <p className="font-medium flex items-center gap-1.5"><AlertTriangle className="h-4 w-4" /> Final Update</p>
+                <div className="bg-rose-50 border border-rose-100 rounded-lg p-3 text-sm text-rose-800">
+                  <p className="font-medium flex items-center gap-1.5"><AlertTriangle className="h-4 w-4 text-[#E23744]" /> Final Update</p>
                   <p className="mt-1 text-xs">This will mark the task as completed. You cannot add expenses to completed tasks.</p>
                 </div>
               )}
@@ -549,7 +549,7 @@ export default function TasksPage() {
               <div className="space-y-2">
                 <Label>Reason</Label>
                 <textarea 
-                  className="w-full min-h-[100px] p-3 text-sm border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  className="w-full min-h-[100px] p-3 text-sm border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#E23744]"
                   placeholder="Why do you need more time?" 
                   value={rescheduleReason} 
                   onChange={e => setRescheduleReason(e.target.value)} 
