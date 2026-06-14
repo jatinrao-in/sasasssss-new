@@ -1770,3 +1770,88 @@ td {
 .notif-badge-pulse {
   animation: notif-badge-pulse 1.8s ease-out infinite;
 }
+
+/* ── PWA Mobile App Optimizations ────────────────────────── */
+.glass-header {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.7) !important;
+}
+
+.glass-nav {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(226, 232, 240, 0.7) !important;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.04) !important;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.6) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.02) !important;
+}
+
+.pwa-dashboard-container {
+  background-color: #FAF9FF; /* Warm off-white purple */
+  min-height: calc(100vh - 120px);
+  position: relative;
+  overflow: hidden;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.pwa-list-item {
+  border-left: 4px solid transparent;
+  transition: all 0.2s ease;
+  border-radius: 12px !important;
+}
+
+.pwa-list-item:hover, .pwa-list-item:active {
+  background-color: rgba(241, 245, 249, 0.7);
+}
+
+.pwa-list-item-overdue {
+  border-left-color: #ef4444 !important;
+}
+
+.pwa-list-item-open {
+  border-left-color: #2E4BFF !important;
+}
+
+.pwa-list-item-pending {
+  border-left-color: #f59e0b !important;
+}
+
+.pwa-list-item-blue {
+  border-left-color: #2563eb !important;
+}
+
+/* Slick Custom scrollbar for horizontal sections */
+.horizontal-scroll {
+  display: flex;
+  overflow-x: auto;
+  gap: 12px;
+  padding-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+}
+.horizontal-scroll::-webkit-scrollbar {
+  display: none; /* Safari and Chrome */
+}
