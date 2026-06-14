@@ -28,7 +28,7 @@ export default function AutoUpdateHandler() {
   const inFlightRef = useRef(false);
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
+    if (typeof window === 'undefined' || import.meta.env.DEV) {
       return undefined;
     }
 

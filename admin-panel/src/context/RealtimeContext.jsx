@@ -59,7 +59,13 @@ export function RealtimeProvider({ children }) {
     const uid = currentUser.uid;
     const isAdmin = currentUser.role === 'admin';
     const monthKey = currentMonthKey();
+    
     const unsubs = [];
+    let projectUnsubs = [];
+    let activeProjectKey = '';
+
+    setState(createInitialState());
+    setLoading(createInitialLoadingState());
 
     const setCollectionState = (key, data) => {
       setState((prev) => ({ ...prev, [key]: data }));
@@ -67,38 +73,152 @@ export function RealtimeProvider({ children }) {
     };
 
     const setCollectionError = (key, error) => {
-      console.error(`Realtime listener error for ${key}:`, error);
+      console.error(`RealtimeProvider error for ${key}:`, error);
       setLoading((prev) => ({ ...prev, [key]: false }));
     };
 
-    const listenToList = ({ key, collectionName, constraints = [] }) => {
+    const listenToList = ({ key, collectionName, constraints = [], onData }) => {
       const ref = query(collection(db, collectionName), ...constraints);
       unsubs.push(onSnapshot(
         ref,
         (snapshot) => {
-          setCollectionState(key, snapshot.docs.map((itemDoc) => ({
+          const data = snapshot.docs.map((itemDoc) => ({
             id: itemDoc.id,
             ...itemDoc.data(),
-          })));
+          }));
+          if (onData) {
+            onData(data, snapshot);
+          } else {
+            setCollectionState(key, data);
+          }
         },
-        (error) => setCollectionError(key, error),
+        (error) => setCollectionError(key, error)
       ));
     };
 
-    const assignedQuery = (collectionName) => (
+    const assignedQuery = () => (
       isAdmin
         ? [orderBy('createdAt', 'desc')]
         : [where('assignedTo', '==', uid), orderBy('createdAt', 'desc')]
     );
 
-    listenToList({ key: 'tasks', collectionName: COLLECTIONS.tasks, constraints: assignedQuery(COLLECTIONS.tasks) });
-    listenToList({ key: 'projects', collectionName: COLLECTIONS.projects, constraints: [orderBy('createdAt', 'desc')] });
-    listenToList({ key: 'enquiries', collectionName: COLLECTIONS.enquiries, constraints: assignedQuery(COLLECTIONS.enquiries) });
-    listenToList({ key: 'followUps', collectionName: COLLECTIONS.followups, constraints: assignedQuery(COLLECTIONS.followups) });
-    listenToList({ key: 'payments', collectionName: COLLECTIONS.payments, constraints: assignedQuery(COLLECTIONS.payments) });
-    listenToList({ key: 'rgp', collectionName: COLLECTIONS.rgp, constraints: assignedQuery(COLLECTIONS.rgp) });
-    listenToList({ key: 'tools', collectionName: COLLECTIONS.tools, constraints: assignedQuery(COLLECTIONS.tools) });
+    // Dynamic project listener setup for members
+    const replaceProjectListeners = (projectIds = []) => {
+      const uniqueProjectIds = [...new Set(projectIds.filter(Boolean))];
+      const nextProjectKey = uniqueProjectIds.join(',');
 
+      if (nextProjectKey === activeProjectKey) {
+        return;
+      }
+
+      activeProjectKey = nextProjectKey;
+      projectUnsubs.forEach((unsubscribe) => unsubscribe());
+      projectUnsubs = [];
+      setLoading((prev) => ({ ...prev, projects: true }));
+
+      if (!uniqueProjectIds.length) {
+        setCollectionState('projects', []);
+        return;
+      }
+
+      const projectMap = new Map();
+
+      projectUnsubs = uniqueProjectIds.map((projectId) => onSnapshot(
+        doc(db, COLLECTIONS.projects, projectId),
+        (snapshot) => {
+          if (snapshot.exists()) {
+            projectMap.set(projectId, { id: snapshot.id, ...snapshot.data() });
+          } else {
+            projectMap.delete(projectId);
+          }
+
+          setCollectionState(
+            'projects',
+            uniqueProjectIds
+              .map((id) => projectMap.get(id))
+              .filter(Boolean)
+          );
+        },
+        (error) => setCollectionError('projects', error)
+      ));
+    };
+
+    // Subscriptions
+    
+    // Tasks
+    listenToList({
+      key: 'tasks',
+      collectionName: COLLECTIONS.tasks,
+      constraints: assignedQuery(),
+      onData: (data) => {
+        setCollectionState('tasks', data);
+        if (!isAdmin) {
+          replaceProjectListeners(data.map((task) => task.projectId));
+        }
+      }
+    });
+
+    // Projects (Admin listens to all; Member listens via task projects listener)
+    if (isAdmin) {
+      listenToList({
+        key: 'projects',
+        collectionName: COLLECTIONS.projects,
+        constraints: [orderBy('createdAt', 'desc')]
+      });
+    }
+
+    // Enquiries
+    listenToList({
+      key: 'enquiries',
+      collectionName: COLLECTIONS.enquiries,
+      constraints: assignedQuery()
+    });
+
+    // Follow-ups
+    listenToList({
+      key: 'followUps',
+      collectionName: COLLECTIONS.followups,
+      constraints: assignedQuery()
+    });
+
+    // Payments
+    listenToList({
+      key: 'payments',
+      collectionName: COLLECTIONS.payments,
+      constraints: assignedQuery()
+    });
+
+    // RGP
+    listenToList({
+      key: 'rgp',
+      collectionName: COLLECTIONS.rgp,
+      constraints: assignedQuery()
+    });
+
+    // Tools (For Member: no orderBy on tools to prevent composite index requirement)
+    if (isAdmin) {
+      listenToList({
+        key: 'tools',
+        collectionName: COLLECTIONS.tools,
+        constraints: [orderBy('createdAt', 'desc')]
+      });
+    } else {
+      listenToList({
+        key: 'tools',
+        collectionName: COLLECTIONS.tools,
+        constraints: [where('assignedTo', '==', uid)],
+        onData: (data) => {
+          const sorted = [...data].sort((a, b) => {
+            const aTime = a.createdAt?.toMillis?.() ?? 0;
+            const bTime = b.createdAt?.toMillis?.() ?? 0;
+            return bTime - aTime;
+          });
+          setCollectionState('tools', sorted);
+        }
+      });
+    }
+
+    // Notifications
     unsubs.push(onSnapshot(
       query(
         collection(db, COLLECTIONS.notifications, uid, 'items'),
@@ -118,9 +238,10 @@ export function RealtimeProvider({ children }) {
         }));
         setLoading((prev) => ({ ...prev, notifications: false }));
       },
-      (error) => setCollectionError('notifications', error),
+      (error) => setCollectionError('notifications', error)
     ));
 
+    // Salary Months
     unsubs.push(onSnapshot(
       doc(db, COLLECTIONS.salary, uid, 'months', monthKey),
       (snapshot) => {
@@ -130,10 +251,11 @@ export function RealtimeProvider({ children }) {
         }));
         setLoading((prev) => ({ ...prev, currentSalary: false }));
       },
-      (error) => setCollectionError('currentSalary', error),
+      (error) => setCollectionError('currentSalary', error)
     ));
 
     return () => {
+      projectUnsubs.forEach((unsubscribe) => unsubscribe());
       unsubs.forEach((unsubscribe) => unsubscribe());
     };
   }, [currentUser?.uid, currentUser?.role]);

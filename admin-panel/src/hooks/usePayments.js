@@ -54,13 +54,13 @@ export function usePayments(filterByUser = null) {
  return () => unsubscribe();
  }, [filterByUser]);
 
- const addPayment = async (paymentData) => {
-  const paymentRef = await addDocument(db, COLLECTIONS.payments, {
-    ...paymentData,
-    assignedDate: paymentData.assignedDate || serverTimestamp(),
-    createdAt: serverTimestamp(),
-    paymentStatus: 'pending',
-  }, 'save payment');
+  const addPayment = async (paymentData) => {
+   const paymentRef = await addDocument(db, COLLECTIONS.payments, {
+     ...paymentData,
+     assignedDate: paymentData.assignedDate || serverTimestamp(),
+     createdAt: serverTimestamp(),
+     paymentStatus: paymentData.paymentStatus || 'pending',
+   }, 'save payment');
 
   await log('payment_created', {
    paymentId: paymentRef.id,

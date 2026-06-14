@@ -16,9 +16,9 @@ const ProtectedRoute = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
 
-  // Logged in but not admin
+  // Logged in but not admin → redirect to member dashboard
   if (currentUser.role !== 'admin') {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   // All good — show page

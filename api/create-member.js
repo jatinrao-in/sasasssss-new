@@ -1,4 +1,5 @@
 import { getAdminApp } from './lib/firebaseAdmin.js';
+import { sendWelcomeMessage } from './lib/msg91.js';
 
 export default async function handler(req, res) {
   // CORS Headers
@@ -110,14 +111,12 @@ export default async function handler(req, res) {
 
     // Send welcome WhatsApp silently
     if (whatsapp?.trim()) {
-      try {
-        // Updated path to consolidated whatsapp logic if needed, 
-        // or just use a helper from server/
-        const { sendViaMsg91 } = await import('../server/whatsapp/msg91.js');
-        await sendViaMsg91(whatsapp.trim(), `Welcome ${name}! Your account is ready. Email: ${email}. Ask admin for password.`);
-      } catch (e) {
-        console.error('WhatsApp:', e.message);
-      }
+       try {
+         const appUrl = process.env.APP_URL || 'https://sasasssss-one.vercel.app';
+         await sendWelcomeMessage(whatsapp.trim(), name, email, password, appUrl);
+       } catch (e) {
+         console.error('WhatsApp Welcome Send failed:', e.message);
+       }
     }
 
     return res.status(200).json({

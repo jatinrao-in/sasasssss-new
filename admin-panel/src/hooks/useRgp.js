@@ -43,7 +43,7 @@ export function useRgp() {
     ...rgpData,
     assignedDate: rgpData.assignedDate || serverTimestamp(),
     createdAt: serverTimestamp(),
-    status: 'open',
+    status: rgpData.status || 'open',
   }, 'save rgp');
 
   await log('rgp_created', {

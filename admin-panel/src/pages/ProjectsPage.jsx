@@ -65,40 +65,40 @@ function AddProjectModal({ onClose, onSubmit, editing }) {
   return (
   <div className="fixed inset-0 z-50 flex items-center justify-center modal-overlay">
   <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-  <div className="relative clay-card w-full max-w-lg mx-4 modal-content max-h-[90vh] flex flex-col p-0" style={{ background: '#ffffff' }}>
+  <div className="relative card w-full max-w-lg mx-4 modal-content max-h-[90vh] flex flex-col p-0" style={{ background: '#ffffff' }}>
   <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
   <h2 className="text-lg font-semibold text-gray-900">{editing ? 'Edit' : 'Add'} Project</h2>
   <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100"><X className="w-4 h-4 text-gray-500" /></button>
   </div>
   <div className="px-6 py-5 space-y-4 overflow-y-auto">
   <div><label className="label">Project Name *</label>
-  <input className="input-field clay-input" placeholder="Enter project name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
+  <input className="input-field" placeholder="Enter project name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
   <div className="grid grid-cols-2 gap-3">
   <div><label className="label">Client</label>
-  <input className="input-field clay-input" placeholder="Client name" value={form.client} onChange={e => setForm({ ...form, client: e.target.value })} /></div>
+  <input className="input-field" placeholder="Client name" value={form.client} onChange={e => setForm({ ...form, client: e.target.value })} /></div>
   <div><label className="label">PO Number</label>
-  <input className="input-field clay-input" placeholder="PO-001" value={form.poNumber} onChange={e => setForm({ ...form, poNumber: e.target.value })} /></div>
+  <input className="input-field" placeholder="PO-001" value={form.poNumber} onChange={e => setForm({ ...form, poNumber: e.target.value })} /></div>
   </div>
   <div className="grid grid-cols-2 gap-3">
   <div><label className="label">PO Value (Rs)</label>
-  <input className="input-field clay-input" type="number" placeholder="0" value={form.poValue} onChange={e => setForm({ ...form, poValue: e.target.value })} /></div>
+  <input className="input-field" type="number" placeholder="0" value={form.poValue} onChange={e => setForm({ ...form, poValue: e.target.value })} /></div>
   <div><label className="label">Status</label>
-  <select className="input-field clay-input" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
+  <select className="input-field" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
   {PROJECT_STATUSES.map(status => <option key={status} value={status}>{status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>)}
   </select></div>
   </div>
   <div className="grid grid-cols-2 gap-3">
   <div><label className="label">Start Date</label>
-  <input className="input-field clay-input" type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} /></div>
+  <input className="input-field" type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} /></div>
   <div><label className="label">Deadline</label>
-  <input className="input-field clay-input" type="date" value={form.deadline} onChange={e => setForm({ ...form, deadline: e.target.value })} /></div>
+  <input className="input-field" type="date" value={form.deadline} onChange={e => setForm({ ...form, deadline: e.target.value })} /></div>
   </div>
   <div><label className="label">Description</label>
-  <textarea className="input-field clay-input resize-none" rows={2} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
+  <textarea className="input-field resize-none" rows={2} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
   </div>
   <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
   <button onClick={onClose} className="btn-secondary">Cancel</button>
-  <button onClick={handleSubmit} disabled={saving} className="btn-primary clay-btn">
+  <button onClick={handleSubmit} disabled={saving} className="btn-primary">
   {saving ? 'Saving...' : <><Plus className="w-4 h-4" /> {editing ? 'Update' : 'Create'} Project</>}
   </button>
   </div>
@@ -260,7 +260,7 @@ export default function ProjectsPage() {
   <h1 className="text-2xl font-bold text-gray-900">Projects</h1>
   <p className="text-sm text-[var(--text-muted)] mt-0.5">{projects.length} projects | {formatLakhs(totalPO)} total PO value</p>
   </div>
-  <button onClick={() => { setEditing(null); setShowModal(true); }} className="btn-primary clay-btn">
+  <button onClick={() => { setEditing(null); setShowModal(true); }} className="btn-primary">
   <Plus className="w-4 h-4" /> New Project
   </button>
   </div>
@@ -274,7 +274,7 @@ export default function ProjectsPage() {
   ].map((stat, index) => {
   const Icon = stat.icon;
   return (
-  <div key={index} className="clay-stat-card flex items-center gap-3 p-5 stagger-item">
+  <div key={index} className="card flex items-center gap-3 p-5 stagger-item">
   <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${stat.color.split(' ')[0]}`}>
   <Icon className={`w-5 h-5 ${stat.color.split(' ')[1]}`} />
   </div>
@@ -287,24 +287,25 @@ export default function ProjectsPage() {
   })}
   </div>
 
-  <div className="clay-card py-3.5 px-4">
+  <div className="card py-3.5 px-4">
   <div className="flex items-center gap-3 flex-wrap">
   <div className="relative flex-1 max-w-xs">
   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-  <input type="text" placeholder="Search projects..." className="input-field clay-input pl-9 w-full"
+  <input type="text" placeholder="Search projects..." className="input-field pl-9 w-full"
   value={search} onChange={e => setSearch(e.target.value)} />
   </div>
-  <select className="input-field clay-input w-36" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+  <select className="input-field w-full lg:w-36" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
   <option value="All">All Status</option>
   {PROJECT_STATUSES.map(status => <option key={status} value={status}>{status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>)}
   </select>
-  <select className="input-field clay-input w-32" value={filterHealth} onChange={e => setFilterHealth(e.target.value)}>
+  <select className="input-field w-full lg:w-32" value={filterHealth} onChange={e => setFilterHealth(e.target.value)}>
   <option value="All">All Health</option>
   <option value="On Track">On Track</option>
   <option value="At Risk">At Risk</option>
   <option value="Critical">Critical</option>
   </select>
-  <span className="text-xs text-gray-400 ml-auto">{filtered.length} results</span>
+  <div className="flex items-center justify-between w-full lg:w-auto lg:ml-auto gap-4 mt-2 lg:mt-0">
+  <span className="text-xs text-gray-400">{filtered.length} results</span>
   <div className="view-toggle">
   {[
   { id: 'grid', icon: LayoutGrid, label: 'Grid' },
@@ -315,13 +316,14 @@ export default function ProjectsPage() {
   return (
   <button key={option.id} onClick={() => setView(option.id)}
   className={`view-toggle-btn ${view === option.id ? 'active' : ''}`}>
- <Icon className="w-3.5 h-3.5" /> {option.label}
- </button>
- );
- })}
- </div>
- </div>
- </div>
+  <Icon className="w-3.5 h-3.5" /> {option.label}
+  </button>
+  );
+  })}
+  </div>
+  </div>
+  </div>
+  </div>
 
  <BulkDeleteBar
  selectedCount={selectedProjectIds.length}
@@ -349,7 +351,7 @@ export default function ProjectsPage() {
  renderCard={(item) => {
  const health = getHealthIndicator(item);
  return (
- <div onClick={() => navigate(`/projects/${item.id}`)} className="group">
+ <div onClick={() => navigate(`/admin/projects/${item.id}`)} className="group">
  <div className="mb-2 flex items-center justify-between gap-2" onClick={(event) => event.stopPropagation()}>
  <input
  type="checkbox"
@@ -383,67 +385,126 @@ export default function ProjectsPage() {
  }}
  />
  ) : view === 'list' ? (
-  <div className="clay-card p-0 overflow-hidden">
+  <>
+  {/* Desktop List Table */}
+  <div className="hidden md:block card p-0 overflow-hidden">
   <div className="overflow-x-auto">
   <table className="w-full min-w-[800px]" data-export-table>
- <thead><tr className="bg-gray-50">
- <th className="table-header w-10">
- <input
- type="checkbox"
- checked={allVisibleSelected}
- onChange={toggleAllVisibleProjects}
- className="rounded accent-teal-600"
- title="Select all projects"
- />
- </th>
- <th className="table-header">Project</th><th className="table-header">Client</th>
- <th className="table-header">PO Value</th><th className="table-header">Expense</th>
- <th className="table-header">Completion</th><th className="table-header">Health</th>
- <th className="table-header">Status</th><th className="table-header">Actions</th>
- </tr></thead>
- <tbody>
- {filtered.map(project => {
- const health = getHealthIndicator(project);
- return (
- <tr key={project.id} className="group hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => navigate(`/projects/${project.id}`)}>
- <td className="table-cell" onClick={(event) => event.stopPropagation()}>
- <input
- type="checkbox"
- checked={selectedProjectSet.has(project.id)}
- onChange={() => toggleProjectSelection(project.id)}
- className="rounded accent-teal-600"
- title="Select project"
- />
- </td>
- <td className="table-cell font-medium text-gray-900">{project.name}</td>
- <td className="table-cell text-gray-500">{project.client || '-'}</td>
- <td className="table-cell font-medium">{formatLakhs(project.poValue)}</td>
- <td className="table-cell text-gray-500">{formatLakhs(project.totalExpense)}</td>
- <td className="table-cell">
- <div className="flex items-center gap-2">
- <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
- <div className="h-full bg-teal-500 rounded-full" style={{ width: `${project.completionPercent || 0}%` }} />
- </div>
- <span className="text-xs font-semibold w-8">{project.completionPercent || 0}%</span>
- </div>
- </td>
- <td className="table-cell">
- <StatusDot label={health.label} color={health.color} style={{ fontSize: '12px', fontWeight: 600 }} />
- </td>
- <td className="table-cell"><span className={`badge ${statusColors[project.status] || 'badge-gray'}`}>{(project.status || '').replace('_', ' ')}</span></td>
- <td className="table-cell" onClick={(event) => event.stopPropagation()}>
- <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
- <button onClick={() => { setEditing(project); setShowModal(true); }} className="text-xs text-teal-600 hover:bg-teal-50 px-2 py-1 rounded font-medium">Edit</button>
- <DeleteButton onClick={() => deleteProject(project.id, project.name)} />
- </div>
- </td>
- </tr>
- );
- })}
- </tbody>
+  <thead><tr className="bg-gray-50">
+  <th className="table-header w-10">
+  <input
+  type="checkbox"
+  checked={allVisibleSelected}
+  onChange={toggleAllVisibleProjects}
+  className="rounded accent-teal-600"
+  title="Select all projects"
+  />
+  </th>
+  <th className="table-header">Project</th><th className="table-header">Client</th>
+  <th className="table-header">PO Value</th><th className="table-header">Expense</th>
+  <th className="table-header">Completion</th><th className="table-header">Health</th>
+  <th className="table-header">Status</th><th className="table-header">Actions</th>
+  </tr></thead>
+  <tbody>
+  {filtered.map(project => {
+  const health = getHealthIndicator(project);
+  return (
+  <tr key={project.id} className="group hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => navigate(`/admin/projects/${project.id}`)}>
+  <td className="table-cell" onClick={(event) => event.stopPropagation()}>
+  <input
+  type="checkbox"
+  checked={selectedProjectSet.has(project.id)}
+  onChange={() => toggleProjectSelection(project.id)}
+  className="rounded accent-teal-600"
+  title="Select project"
+  />
+  </td>
+  <td className="table-cell font-medium text-gray-900">{project.name}</td>
+  <td className="table-cell text-gray-500">{project.client || '-'}</td>
+  <td className="table-cell font-medium">{formatLakhs(project.poValue)}</td>
+  <td className="table-cell text-gray-500">{formatLakhs(project.totalExpense)}</td>
+  <td className="table-cell">
+  <div className="flex items-center gap-2">
+  <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+  <div className="h-full bg-teal-500 rounded-full" style={{ width: `${project.completionPercent || 0}%` }} />
+  </div>
+  <span className="text-xs font-semibold w-8">{project.completionPercent || 0}%</span>
+  </div>
+  </td>
+  <td className="table-cell">
+  <StatusDot label={health.label} color={health.color} style={{ fontSize: '12px', fontWeight: 600 }} />
+  </td>
+  <td className="table-cell"><span className={`badge ${statusColors[project.status] || 'badge-gray'}`}>{(project.status || '').replace('_', ' ')}</span></td>
+  <td className="table-cell" onClick={(event) => event.stopPropagation()}>
+  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+  <button onClick={() => { setEditing(project); setShowModal(true); }} className="text-xs text-teal-600 hover:bg-teal-50 px-2 py-1 rounded font-medium">Edit</button>
+  <DeleteButton onClick={() => deleteProject(project.id, project.name)} />
+  </div>
+  </td>
+  </tr>
+  );
+  })}
+  </tbody>
   </table>
   </div>
   </div>
+
+  {/* Mobile Card List */}
+  <div className="md:hidden space-y-4">
+  {filtered.map(project => {
+  const health = getHealthIndicator(project);
+  return (
+  <div key={project.id} className="card p-4 space-y-3 hover:border-teal-100 transition-colors" onClick={() => navigate(`/admin/projects/${project.id}`)}>
+  <div className="flex justify-between items-start gap-2">
+  <div className="max-w-[70%]">
+  <p className="font-semibold text-gray-900 text-sm break-words">{project.name}</p>
+  <p className="text-xs text-gray-500 truncate mt-0.5">{project.client || 'No client'}</p>
+  </div>
+  <div className="flex flex-col items-end gap-1.5">
+  <span className={`badge ${statusColors[project.status] || 'badge-gray'}`}>{project.status}</span>
+  <StatusDot label={health.label} color={health.color} style={{ fontSize: '10px', fontWeight: 600 }} />
+  </div>
+  </div>
+  <div className="grid grid-cols-2 gap-3 text-xs border-t border-gray-100/60 pt-2.5">
+  <div>
+  <span className="block text-[10px] text-gray-400 uppercase font-medium">PO Value</span>
+  <span className="font-semibold text-gray-700">{formatLakhs(project.poValue)}</span>
+  </div>
+  <div>
+  <span className="block text-[10px] text-gray-400 uppercase font-medium">Total Expense</span>
+  <span className="font-semibold text-gray-700">{formatLakhs(project.totalExpense)}</span>
+  </div>
+  <div className="col-span-2">
+  <span className="block text-[10px] text-gray-400 uppercase font-medium mb-1">Completion</span>
+  <div className="flex items-center gap-2">
+  <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+  <div className="h-full bg-teal-500 rounded-full" style={{ width: `${project.completionPercent || 0}%` }} />
+  </div>
+  <span className="text-xs font-semibold w-8 text-right">{project.completionPercent || 0}%</span>
+  </div>
+  </div>
+  </div>
+  <div className="flex justify-between items-center border-t border-gray-100/60 pt-2.5" onClick={event => event.stopPropagation()}>
+  <div className="flex items-center gap-2">
+  <input
+  type="checkbox"
+  checked={selectedProjectSet.has(project.id)}
+  onChange={() => toggleProjectSelection(project.id)}
+  className="rounded accent-teal-600 w-4 h-4 cursor-pointer"
+  title="Select project"
+  />
+  <span className="text-xs text-gray-400">Select</span>
+  </div>
+  <div className="flex items-center gap-1.5">
+  <button onClick={() => { setEditing(project); setShowModal(true); }} className="text-xs text-teal-600 hover:bg-teal-50 px-3 py-1.5 rounded-lg border border-teal-100 font-medium">Edit</button>
+  <DeleteButton onClick={() => deleteProject(project.id, project.name)} />
+  </div>
+  </div>
+  </div>
+  );
+  })}
+  </div>
+  </>
  ) : (
   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
   {filtered.map(project => {
@@ -465,8 +526,8 @@ export default function ProjectsPage() {
   return (
   <div 
     key={project.id} 
-    onClick={() => navigate(`/projects/${project.id}`)}
-    className="clay-card p-5 cursor-pointer group stagger-item overflow-hidden mt-1 relative pt-5 flex flex-col justify-between"
+    onClick={() => navigate(`/admin/projects/${project.id}`)}
+    className="card p-5 cursor-pointer group stagger-item overflow-hidden mt-1 relative pt-5 flex flex-col justify-between"
     style={{ minHeight: '270px' }}
   >
     {/* Status indicator top bar */}

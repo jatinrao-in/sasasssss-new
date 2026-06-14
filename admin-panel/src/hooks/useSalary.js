@@ -43,7 +43,7 @@ export function useSalaryForMonth(members, month) {
     setLoading(true);
 
     const localData = {};
-    let resolvedCount = 0;
+    const resolvedIds = new Set();
     const total = validMembers.length;
 
     const unsubscribers = validMembers.map((member) => {
@@ -52,16 +52,16 @@ export function useSalaryForMonth(members, month) {
         ref,
         (snap) => {
           localData[member.id] = snap.exists() ? { id: snap.id, ...snap.data() } : null;
-          resolvedCount += 1;
+          resolvedIds.add(member.id);
           setRecords((prev) => ({ ...prev, [member.id]: localData[member.id] }));
-          if (resolvedCount >= total) setLoading(false);
+          if (resolvedIds.size >= total) setLoading(false);
         },
         (err) => {
           console.error(`Salary listener error for ${member.id}:`, err.message);
           localData[member.id] = null;
-          resolvedCount += 1;
+          resolvedIds.add(member.id);
           setRecords((prev) => ({ ...prev, [member.id]: null }));
-          if (resolvedCount >= total) setLoading(false);
+          if (resolvedIds.size >= total) setLoading(false);
         }
       );
     });

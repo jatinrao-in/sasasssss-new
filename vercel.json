@@ -7,26 +7,41 @@
       "config": { "distDir": "dist" }
     },
     {
-      "src": "team-member-pwa/package.json",
-      "use": "@vercel/static-build",
-      "config": { "distDir": "dist" }
-    },
-    {
       "src": "api/**/*.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
-    { "src": "/api/ai/(.*)", "dest": "/api/ai.js?action=$1" },
-    { "src": "/api/whatsapp/(.*)", "dest": "/api/whatsapp.js?action=$1" },
-    { "src": "/api/(.*)", "dest": "/api/$1.js" },
-    { "src": "/admin", "headers": { "Location": "/admin/" }, "status": 308 },
-    { "src": "/admin/version.json", "dest": "/version.json" },
-    { "src": "/admin/assets/(.*)", "dest": "/admin-panel/assets/$1" },
-    { "src": "/admin/(.*\\..*)", "dest": "/admin-panel/$1" },
-    { "src": "/admin/(.*)", "dest": "/admin-panel/index.html" },
-    { "src": "/(.*\\..*)", "dest": "/team-member-pwa/$1" },
-    { "src": "/(.*)", "dest": "/team-member-pwa/index.html" }
+    {
+      "src": "/api/ai/(.*)",
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET,OPTIONS,PATCH,DELETE,POST,PUT",
+        "Access-Control-Allow-Headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization"
+      },
+      "dest": "/api/ai.js?action=$1"
+    },
+    {
+      "src": "/api/whatsapp/(.*)",
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET,OPTIONS,PATCH,DELETE,POST,PUT",
+        "Access-Control-Allow-Headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization"
+      },
+      "dest": "/api/whatsapp.js?action=$1"
+    },
+    {
+      "src": "/api/(.*)",
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET,OPTIONS,PATCH,DELETE,POST,PUT",
+        "Access-Control-Allow-Headers": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization"
+      },
+      "dest": "/api/$1.js"
+    },
+    { "src": "/assets/(.*)", "dest": "/admin-panel/assets/$1" },
+    { "src": "/(.*\\..*)", "dest": "/admin-panel/$1" },
+    { "src": "/(.*)", "dest": "/admin-panel/index.html" }
   ],
   "crons": [
     { "path": "/api/cron?task=daily-tasks", "schedule": "30 2 * * *" },

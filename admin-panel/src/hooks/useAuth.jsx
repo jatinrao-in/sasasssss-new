@@ -1,6 +1,6 @@
-import { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut, updatePassword } from 'firebase/auth';
+import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { COLLECTIONS } from '../lib/firestore-helpers';
 import { resolveUserPermissions } from '../lib/accessControl';
@@ -8,40 +8,60 @@ import { resolveUserPermissions } from '../lib/accessControl';
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState(null);
+  const [user, setUser] = useState(null);
+  const [userData, setUserData] = useState(null);
+  const [mainAdminUid, setMainAdminUid] = useState(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState(null);
-  
-  // Prevent multiple simultaneous Firestore fetches
-  const fetchingRef = useRef(false);
 
+  // 1. Reactively listen to settings/app for mainAdminUid
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(
+    if (!user) {
+      setMainAdminUid(null);
+      return undefined;
+    }
+
+    const unsubscribe = onSnapshot(
+      doc(db, COLLECTIONS.settings, 'app'),
+      (snapshot) => {
+        setMainAdminUid(snapshot.data()?.mainAdminUid || null);
+      },
+      (error) => {
+        console.error('useAuth: Settings subscription failed:', error);
+        setMainAdminUid(null);
+      }
+    );
+
+    return unsubscribe;
+  }, [user]);
+
+  // 2. Listen to Auth state change and user profile
+  useEffect(() => {
+    let unsubscribeProfile = () => {};
+
+    const unsubscribeAuth = onAuthStateChanged(
       auth,
       async (firebaseUser) => {
-        // Prevent duplicate fetches
-        if (fetchingRef.current) return;
-        
+        unsubscribeProfile();
+
         if (!firebaseUser) {
-          setCurrentUser(null);
+          setUser(null);
+          setUserData(null);
           setLoading(false);
           return;
         }
-        
-        fetchingRef.current = true;
-        
-        try {
-          // Get App Settings for mainAdminUid to resolve permissions correctly
-          const appDoc = await getDoc(doc(db, COLLECTIONS.settings, 'app'));
-          const mainAdminUid = appDoc.data()?.mainAdminUid || null;
 
-          // Fetch user data from Firestore
-          const userDoc = await getDoc(doc(db, COLLECTIONS.users, firebaseUser.uid));
-          
-          let userData;
-          if (!userDoc.exists()) {
-            (function(){})('Creating missing user profile...');
-            userData = {
+        setUser(firebaseUser);
+        setLoading(true);
+
+        // Fetch / Create profile if missing, then listen
+        try {
+          const userRef = doc(db, COLLECTIONS.users, firebaseUser.uid);
+          const userSnap = await getDoc(userRef);
+
+          if (!userSnap.exists()) {
+            console.log('Creating missing user profile for admin/owner...');
+            const newProfile = {
               name: firebaseUser.displayName || 'Admin',
               email: firebaseUser.email,
               role: 'admin',
@@ -58,74 +78,118 @@ export const AuthProvider = ({ children }) => {
               createdAt: serverTimestamp(),
               updatedAt: serverTimestamp()
             };
-            await setDoc(doc(db, COLLECTIONS.users, firebaseUser.uid), userData);
-          } else {
-            userData = userDoc.data();
+            await setDoc(userRef, newProfile);
           }
-            
-          // Resolve permissions
-          const { isMainAdmin, permissions, role, status } = resolveUserPermissions(userData, mainAdminUid);
-
-          setCurrentUser({
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            displayName: firebaseUser.displayName,
-            ...userData,
-            role,
-            status,
-            permissions,
-            isMainAdmin
-          });
         } catch (error) {
-          console.error('Auth error:', error);
-          // Don't sign out on error, set basic fallback user data
-          setCurrentUser({
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            role: 'admin',
-            name: 'Admin',
-            permissions: [
-              'dashboard', 'projects', 'enquiry', 'followups',
-              'payments', 'outgoing_payments', 'rgp', 'salary',
-              'tools', 'team', 'settings', 'whatsapp'
-            ]
-          });
-        } finally {
-          fetchingRef.current = false;
-          setLoading(false);
+          console.error('Error verifying/creating user profile:', error);
         }
+
+        // Now setup onSnapshot listener to reactively update permissions, status, role
+        unsubscribeProfile = onSnapshot(
+          doc(db, COLLECTIONS.users, firebaseUser.uid),
+          (snapshot) => {
+            if (snapshot.exists()) {
+              setUserData({
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                ...snapshot.data()
+              });
+            } else {
+              // Fallback if deleted or not resolved
+              setUserData({
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                role: 'member',
+                name: firebaseUser.displayName || firebaseUser.email || 'Unknown User',
+                permissions: []
+              });
+            }
+            setLoading(false);
+          },
+          (error) => {
+            console.error('useAuth: User profile subscription failed:', error);
+            setAuthError(error.message);
+            setLoading(false);
+          }
+        );
       },
       (error) => {
-        console.error('Auth state error:', error);
+        console.error('useAuth: Auth state changed error:', error);
         setAuthError(error.message);
         setLoading(false);
       }
     );
 
-    return unsubscribe;
-  }, []); // Empty deps — run once only
+    return () => {
+      unsubscribeProfile();
+      unsubscribeAuth();
+    };
+  }, []);
+
+  // 3. Resolve permissions on the fly using useMemo
+  const currentUser = useMemo(() => {
+    if (!user) return null;
+
+    const profile = { ...(userData || {}), mainAdminUid };
+    const { isMainAdmin, permissions, role, status } = resolveUserPermissions(profile, mainAdminUid);
+
+    return {
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName,
+      ...profile,
+      role,
+      status,
+      permissions,
+      isMainAdmin
+    };
+  }, [user, userData, mainAdminUid]);
 
   const login = async (email, password) => {
     const credential = await signInWithEmailAndPassword(auth, email, password);
-    return credential.user;
+    const userRef = doc(db, COLLECTIONS.users, credential.user.uid);
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists()) {
+      return {
+        uid: credential.user.uid,
+        email: credential.user.email,
+        ...userSnap.data()
+      };
+    }
+    return {
+      uid: credential.user.uid,
+      email: credential.user.email,
+      role: 'member'
+    };
   };
 
   const logout = async () => {
     try {
       await signOut(auth);
-      setCurrentUser(null);
+      setUser(null);
+      setUserData(null);
     } catch (error) {
       console.error('Logout error:', error);
     }
   };
 
+  const changePassword = async (newPassword) => {
+    if (auth.currentUser) {
+      await updatePassword(auth.currentUser, newPassword);
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
+      user,
+      userData,
       currentUser,
       loading,
       authError,
       login,
       logout,
+      changePassword,
+      mainAdminUid,
       isAdmin: currentUser?.role === 'admin',
       isMember: currentUser?.role === 'member',
       isGhostAdmin: currentUser?.isGhost === true

@@ -36,7 +36,7 @@ export function useOutgoingPayments(filterByUser = null) {
  (snapshot) => {
  const items = snapshot.docs.map((d) => {
  const data = { id: d.id, ...d.data() };
- data.netPendingAmount = (data.amount || 0) - (data.paidAmount || 0);
+ data.netPendingAmount = (data.amount || 0) - (data.totalPaid || 0);
  data.overdueDays = data.paymentStatus === 'paid'
  ? 0
  : calculateOverdueDays(data.paymentDueDate);
@@ -55,10 +55,10 @@ export function useOutgoingPayments(filterByUser = null) {
  }, [filterByUser]);
 
  const addOutgoingPayment = async (data) => {
- const netPendingAmount = (Number(data.amount) || 0) - (Number(data.paidAmount) || 0);
+ const netPendingAmount = (Number(data.amount) || 0) - (Number(data.totalPaid) || 0);
  let paymentStatus = 'pending';
  if (netPendingAmount <= 0 && (Number(data.amount) || 0) > 0) paymentStatus = 'paid';
- else if ((Number(data.paidAmount) || 0) > 0) paymentStatus = 'partial';
+ else if ((Number(data.totalPaid) || 0) > 0) paymentStatus = 'partial';
 
  const paymentRef = await addDocument(db, COLLECTIONS.outgoing_payments, {
   ...data,
@@ -76,10 +76,10 @@ export function useOutgoingPayments(filterByUser = null) {
  };
 
  const updateOutgoingPayment = async (id, updates) => {
- const netPendingAmount = (Number(updates.amount) || 0) - (Number(updates.paidAmount) || 0);
+ const netPendingAmount = (Number(updates.amount) || 0) - (Number(updates.totalPaid) || 0);
  let paymentStatus = updates.paymentStatus || 'pending';
  if (netPendingAmount <= 0 && (Number(updates.amount) || 0) > 0) paymentStatus = 'paid';
- else if ((Number(updates.paidAmount) || 0) > 0) paymentStatus = 'partial';
+ else if ((Number(updates.totalPaid) || 0) > 0) paymentStatus = 'partial';
 
  await updateDocument(db, COLLECTIONS.outgoing_payments, id, {
  ...updates,

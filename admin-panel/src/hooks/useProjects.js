@@ -46,7 +46,7 @@ export function useProjects() {
    ...projectData,
    completionPercent: 0,
    createdAt: serverTimestamp(),
-   status: 'active',
+   status: projectData.status || 'planning',
    totalExpense: 0,
   }, 'save project');
 

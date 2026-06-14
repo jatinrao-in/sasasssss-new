@@ -71,7 +71,7 @@ export default function CalendarView({ items = [], dateField = 'targetDate', onD
  cells.push(
  <div
  key={day}
- onClick={() => onDayClick && onDayClick(day, dayItems)}
+ onClick={() => onDayClick && onDayClick(new Date(year, month, day), dayItems)}
  className={`calendar-cell relative h-24 rounded-lg border p-1.5 transition-all duration-150 cursor-pointer
  ${isToday ? 'border-teal-400 bg-teal-50/50 ring-1 ring-teal-200' : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50/50'}
  ${dayItems.length > 0 ? 'hover:shadow-sm' : ''}

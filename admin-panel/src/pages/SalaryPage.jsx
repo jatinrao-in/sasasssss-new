@@ -110,7 +110,7 @@ function EditModal({ row, month, onClose, onSave }) {
         {/* Fields */}
         <div className="px-5 py-4 space-y-4">
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="label">Working Days</label>
                 <input
@@ -131,7 +131,7 @@ function EditModal({ row, month, onClose, onSave }) {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="label">Basic Salary</label>
                 <input
@@ -152,7 +152,7 @@ function EditModal({ row, month, onClose, onSave }) {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="label">Allowances</label>
                 <input
@@ -220,11 +220,11 @@ function SummaryCards({ rows, loading }) {
   ];
 
   return (
-    <div className="grid grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       {cards.map((c) => (
         <div
           key={c.label}
-          className={`${c.bg || 'bg-[var(--bg-card)]'} rounded-xl px-4 py-3 border border-[var(--border-primary)]`}
+          className={`card px-4 py-3 stagger-item ${c.bg || ''}`}
         >
           {loading ? (
             <div className="space-y-2 animate-pulse">
@@ -378,17 +378,22 @@ export default function SalaryPage() {
       toast.error('No team members found');
       return;
     }
+    const membersToInit = teamMembers.filter((m) => !records[m.id]);
+    if (membersToInit.length === 0) {
+      toast.info('All team members are already initialized for this month');
+      return;
+    }
     setProcessing(true);
     try {
-      await initMonthForAllMembers(teamMembers, month);
-      toast.success(`Payroll initialized for ${formatMonthLabel(month)}`);
+      await initMonthForAllMembers(membersToInit, month);
+      toast.success(`Payroll initialized for ${membersToInit.length} member(s)`);
     } catch (e) {
       console.error('Process payroll error:', e);
       toast.error('Failed: ' + e.message);
     } finally {
       setProcessing(false);
     }
-  }, [teamMembers, month, initMonthForAllMembers, toast]);
+  }, [teamMembers, records, month, initMonthForAllMembers, toast]);
 
   // Bulk: mark all paid.
   const handleBulkMarkPaid = useCallback(async () => {
@@ -428,7 +433,7 @@ export default function SalaryPage() {
   return (
     <div className="space-y-5 page-transition">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">Salary Management</h1>
           <p className="text-sm text-[var(--text-muted)] mt-0.5">
@@ -451,7 +456,7 @@ export default function SalaryPage() {
           </div>
           <button
             onClick={handleProcessPayroll}
-            disabled={processing || teamLoading}
+            disabled={processing || loading}
             className="btn-primary text-sm disabled:opacity-60"
           >
             {processing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Wallet className="w-4 h-4" />}
@@ -465,8 +470,6 @@ export default function SalaryPage() {
 
       {/* Bulk actions */}
       <div className="flex items-center gap-2 flex-wrap">
-
-
         <button
           onClick={handleBulkMarkPaid}
           disabled={processing}
@@ -477,7 +480,8 @@ export default function SalaryPage() {
       </div>
 
       {/* Table */}
-      <div className="card p-0 overflow-hidden">
+      {/* Desktop View */}
+      <div className="card p-0 overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[900px]">
             <thead>
@@ -606,6 +610,104 @@ export default function SalaryPage() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Mobile Cards View */}
+      <div className="md:hidden space-y-4">
+        {loading ? (
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="card p-4 space-y-2 animate-pulse">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-gray-200" />
+                  <div className="h-4 bg-gray-200 rounded w-24" />
+                </div>
+                <div className="h-4 bg-gray-200 rounded w-full" />
+              </div>
+            ))}
+          </div>
+        ) : teamMembers.length === 0 ? (
+          <div className="card p-8 text-center text-gray-500">
+            No team members added yet. Add members from Team page.
+          </div>
+        ) : !hasAnyData ? (
+          <div className="card p-8 text-center text-[var(--text-primary)]">
+            <p className="font-semibold">No salary data for this month.</p>
+            <p className="text-xs text-[var(--text-muted)] mt-1.5">Click "Process Payroll" to initialize records.</p>
+            <button
+              onClick={handleProcessPayroll}
+              disabled={processing}
+              className="btn-primary mt-4 mx-auto text-sm"
+            >
+              <Wallet className="w-4 h-4" /> Initialize Payroll
+            </button>
+          </div>
+        ) : (
+          rows.map((row) => (
+            <div key={row.uid} className={`card p-4 space-y-3 ${!row.hasData ? 'opacity-50' : ''}`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-teal-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                    {getInitials(row.memberName)}
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900 leading-tight">{row.memberName}</h4>
+                    <p className="text-xs text-gray-400">{row.designation || 'Member'}</p>
+                  </div>
+                </div>
+                {row.hasData ? (
+                  <span className={`badge ${row.status === 'paid' ? 'badge-green' : 'badge-yellow'}`}>
+                    {row.status === 'paid' ? 'Paid' : 'Pending'}
+                  </span>
+                ) : (
+                  <span className="text-xs text-gray-400">-</span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs py-2 border-y border-gray-50">
+                <div>
+                  <span className="text-gray-400">Working Days:</span> <span className="font-medium">{row.workingDays}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Present/Paid:</span> <span className="font-medium">{row.presentDays}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Basic:</span> <span className="font-medium text-gray-900">{formatCurrency(row.basicSalary)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Overtime:</span> <span className="font-medium text-gray-900">{formatCurrency(row.overtime)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Allowances:</span> <span className="font-medium text-gray-900">{formatCurrency(row.allowances)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Net Salary:</span> <span className="font-bold text-teal-700">{formatCurrency(row.netSalary)}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-1 text-xs">
+                <span className="text-gray-400">
+                  {row.status === 'paid' && row.paidDate
+                    ? `Paid: ${new Date(row.paidDate.toDate ? row.paidDate.toDate() : row.paidDate).toLocaleDateString('en-IN')}`
+                    : 'Unpaid'}
+                </span>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setEditRow(row)} className="text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg font-medium">
+                    Edit
+                  </button>
+                  {row.hasData && row.status === 'pending' && (
+                    <button onClick={() => handleMarkPaid(row)} disabled={processing} className="text-xs text-green-600 bg-green-50 hover:bg-green-100 px-3 py-1.5 rounded-lg font-medium">
+                      Pay
+                    </button>
+                  )}
+                  {row.hasData && (
+                    <DeleteButton onClick={() => handleDeleteSalary(row)} />
+                  )}
+                </div>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       {/* Edit modal */}

@@ -7,9 +7,12 @@ import {
   Clock3,
   Database,
   Download,
+  Eye,
+  EyeOff,
   FileClock,
   FileText,
   LoaderCircle,
+  RefreshCw,
   RotateCcw,
   Save,
   Settings2,
@@ -246,6 +249,9 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [maintenanceLoading, setMaintenanceLoading] = useState(true);
   const [auditLoading, setAuditLoading] = useState(true);
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [saving, setSaving] = useState({
     company: false,
     preferences: false,
@@ -280,7 +286,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (sectionId && !availableSections.includes(sectionId)) {
-      navigate('/settings', { replace: true });
+      navigate('/admin/settings', { replace: true });
     }
   }, [availableSections, navigate, sectionId]);
 
@@ -423,7 +429,7 @@ export default function SettingsPage() {
   };
 
   const handleSectionChange = (nextSectionId) => {
-    navigate(nextSectionId === 'company' ? '/settings' : `/settings/${nextSectionId}`);
+    navigate(nextSectionId === 'company' ? '/admin/settings' : `/admin/settings/${nextSectionId}`);
   };
 
   const handleSaveCompany = async () => {
@@ -573,8 +579,10 @@ export default function SettingsPage() {
       });
       toast.success('Password updated!');
     } catch (error) {
-      if (error.code === 'auth/wrong-password') {
-        toast.error('Current password wrong');
+      if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        toast.error('Current password is incorrect.');
+      } else if (error.code === 'auth/too-many-requests') {
+        toast.error('Too many attempts. Please wait a moment and try again.');
       } else {
         toast.error(`Update failed: ${error.message}`);
       }
@@ -670,7 +678,6 @@ export default function SettingsPage() {
             id: docSnap.id,
             ...docSnap.data(),
           }));
-          (function(){})(`Backed up ${collectionName}:`, snapshot.size, 'docs');
         } catch (collectionError) {
           console.error(`Error backing up ${collectionName}:`, collectionError.message);
           backup[collectionName] = [];
@@ -852,35 +859,34 @@ export default function SettingsPage() {
     setNotificationSettings(DEFAULT_NOTIFICATION_SETTINGS);
   };
 
-  const handleSyncUsers = async () => {
-    if (!window.confirm(
-      'This will permanently delete all Firestore /users documents that do NOT have a matching Firebase Auth account.\n\nThis cannot be undone. Continue?'
-    )) {
-      return;
-    }
-
-    setSyncing(true);
-    try {
-      const { securePost } = await import('../lib/secureApi');
-      const result = await securePost('/api/admin/cleanup-users', {});
-
-      if (result.success) {
-        const { validDocsKept, orphanDocsDeleted, authUsersCount } = result.summary;
-        toast.success(
-          `Sync complete! Auth: ${authUsersCount} users · Kept: ${validDocsKept} · Removed: ${orphanDocsDeleted} orphan${orphanDocsDeleted !== 1 ? 's' : ''}`
-        );
-        if (orphanDocsDeleted > 0) {
-          (function(){})('[Sync Users] Deleted orphans:', result.deletedUsers);
+  const handleSyncUsers = () => {
+    openConfirmDialog({
+      title: 'Sync Auth & Firestore Users?',
+      description: 'This will permanently delete all /users documents that have NO matching Firebase Auth account. This cannot be undone.',
+      confirmLabel: 'Yes, Sync Now',
+      loadingLabel: 'Syncing...',
+      actionKey: 'sync_users',
+      onConfirm: async () => {
+        setSyncing(true);
+        try {
+          const { securePost } = await import('../lib/secureApi');
+          const result = await securePost('/api/admin/cleanup-users', {});
+          if (result.success) {
+            const { validDocsKept, orphanDocsDeleted, authUsersCount } = result.summary;
+            toast.success(
+              `Sync complete! Auth: ${authUsersCount} · Kept: ${validDocsKept} · Removed: ${orphanDocsDeleted} orphan${orphanDocsDeleted !== 1 ? 's' : ''}`
+            );
+            await log('user_sync_cleanup', result.summary);
+          } else {
+            toast.error(result.error || 'Sync failed');
+          }
+        } catch (error) {
+          toast.error('Sync failed: ' + error.message);
+        } finally {
+          setSyncing(false);
         }
-        await log('user_sync_cleanup', result.summary);
-      } else {
-        toast.error(result.error || 'Sync failed');
-      }
-    } catch (error) {
-      toast.error('Sync failed: ' + error.message);
-    } finally {
-      setSyncing(false);
-    }
+      },
+    });
   };
 
   const renderSectionContent = () => {
@@ -905,6 +911,7 @@ export default function SettingsPage() {
                 className="input-field"
                 value={company.name}
                 disabled={saving.company}
+                autoComplete="new-company-name"
                 onChange={(event) => setCompany((current) => ({ ...current, name: event.target.value }))}
               />
             </div>
@@ -914,6 +921,7 @@ export default function SettingsPage() {
                 className="input-field"
                 value={company.phone}
                 disabled={saving.company}
+                autoComplete="new-company-phone"
                 onChange={(event) => setCompany((current) => ({ ...current, phone: event.target.value }))}
               />
             </div>
@@ -924,6 +932,7 @@ export default function SettingsPage() {
                 type="email"
                 value={company.email}
                 disabled={saving.company}
+                autoComplete="new-company-email"
                 onChange={(event) => setCompany((current) => ({ ...current, email: event.target.value }))}
               />
             </div>
@@ -933,10 +942,11 @@ export default function SettingsPage() {
                 className="input-field"
                 value={company.website}
                 disabled={saving.company}
+                autoComplete="new-company-website"
                 onChange={(event) => setCompany((current) => ({ ...current, website: event.target.value }))}
               />
             </div>
-            <div className="col-span-2">
+            <div className="col-span-1 md:col-span-2">
               <label className="label">Company Address</label>
               <textarea
                 className="input-field min-h-[100px] resize-none"
@@ -956,7 +966,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <button type="button" onClick={handleSaveCompany} disabled={saving.company} className="btn-primary">
+          <button type="button" onClick={handleSaveCompany} disabled={saving.company} className="btn-primary w-full sm:w-auto">
             <Save className="h-4 w-4" />
             {saving.company ? 'Saving...' : 'Save Company Settings'}
           </button>
@@ -1051,7 +1061,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <button type="button" onClick={handleSavePreferences} disabled={saving.preferences} className="btn-primary">
+          <button type="button" onClick={handleSavePreferences} disabled={saving.preferences} className="btn-primary w-full sm:w-auto">
             <Save className="h-4 w-4" />
             {saving.preferences ? 'Saving...' : 'Save Preferences'}
           </button>
@@ -1086,7 +1096,7 @@ export default function SettingsPage() {
           <div className="rounded-[28px] border border-teal-200 bg-gradient-to-br from-teal-50 to-cyan-50 p-6">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">Maintenance Status</p>
 
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <div className="rounded-2xl border border-white/70 bg-white/80 p-5 shadow-sm">
                 <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
                   <Clock3 className="h-4 w-4 text-teal-600" />
@@ -1138,7 +1148,7 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_auto]">
+            <div className="mt-5 flex flex-col gap-4">
               <div className="rounded-2xl border border-white/70 bg-white/80 p-5 shadow-sm">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">Latest Notes</p>
                 <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
@@ -1152,7 +1162,7 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={openMaintenanceDialog}
-                className="inline-flex items-center justify-center gap-2 self-start rounded-2xl bg-teal-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-teal-700"
+                className="inline-flex w-full sm:w-auto items-center justify-center gap-2 self-start rounded-2xl bg-teal-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-teal-700"
               >
                 <Wrench className="h-4 w-4" />
                 Update Maintenance
@@ -1177,10 +1187,11 @@ export default function SettingsPage() {
             </p>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-2.5">
             {NOTIFICATION_FIELDS.map((field) => (
-              <div key={field.key} className="flex items-center justify-between rounded-xl border border-gray-100 px-4 py-3">
-                <div>
+              <div key={field.key} className="flex items-center justify-between rounded-xl border border-gray-100 bg-[var(--bg-secondary)] px-4 py-3.5 transition-colors hover:border-teal-100">
+                <div className="flex items-center gap-3">
+                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${notificationSettings[field.key] ? 'bg-teal-500' : 'bg-gray-300'}`} />
                   <p className="text-sm font-medium text-gray-800">{field.label}</p>
                 </div>
                 <Toggle
@@ -1191,6 +1202,11 @@ export default function SettingsPage() {
               </div>
             ))}
           </div>
+          {saving.notifications && (
+            <p className="text-xs text-teal-600 font-medium flex items-center gap-1">
+              <LoaderCircle className="w-3 h-3 animate-spin" /> Saving...
+            </p>
+          )}
         </div>
       );
     }
@@ -1206,11 +1222,11 @@ export default function SettingsPage() {
               </p>
             </div>
 
-            <div className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-gray-50 p-5">
-              <UserAvatar user={currentUser || userData} size={64} showRing />
-              <div>
-                <p className="text-base font-semibold text-gray-900">{profile.name || 'Administrator'}</p>
-                <p className="text-sm text-[var(--text-muted)]">{profile.email || 'No email available'}</p>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 rounded-2xl border border-gray-100 bg-gray-50 p-5">
+              <UserAvatar user={currentUser || userData} size={56} showRing />
+              <div className="min-w-0">
+                <p className="text-base font-semibold text-gray-900 truncate">{profile.name || 'Administrator'}</p>
+                <p className="text-sm text-[var(--text-muted)] truncate">{profile.email || 'No email available'}</p>
               </div>
             </div>
 
@@ -1248,7 +1264,7 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <button type="button" onClick={handleSaveProfile} disabled={saving.profile} className="btn-primary">
+            <button type="button" onClick={handleSaveProfile} disabled={saving.profile} className="btn-primary w-full sm:w-auto">
               <Save className="h-4 w-4" />
               {saving.profile ? 'Saving...' : 'Save Profile'}
             </button>
@@ -1258,45 +1274,70 @@ export default function SettingsPage() {
             <div>
               <h3 className="text-base font-semibold text-gray-900">Change Password</h3>
               <p className="mt-1 text-sm text-[var(--text-muted)]">
-                Re-authentication is required before the password can be updated.
+                Re-authentication is required before the password can be updated. Min 8 characters.
               </p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               <div>
                 <label className="label">Current Password</label>
-                <input
-                  className="input-field"
-                  type="password"
-                  value={passwords.currentPassword}
-                  disabled={saving.password}
-                  onChange={(event) => setPasswords((current) => ({ ...current, currentPassword: event.target.value }))}
-                />
+                <div className="relative">
+                  <input
+                    className="input-field pr-10"
+                    type={showCurrentPw ? 'text' : 'password'}
+                    placeholder="Your current password"
+                    value={passwords.currentPassword}
+                    disabled={saving.password}
+                    onChange={(event) => setPasswords((current) => ({ ...current, currentPassword: event.target.value }))}
+                  />
+                  <button type="button" onClick={() => setShowCurrentPw(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    {showCurrentPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="label">New Password</label>
-                <input
-                  className="input-field"
-                  type="password"
-                  value={passwords.newPassword}
-                  disabled={saving.password}
-                  onChange={(event) => setPasswords((current) => ({ ...current, newPassword: event.target.value }))}
-                />
+                <div className="relative">
+                  <input
+                    className="input-field pr-10"
+                    type={showNewPw ? 'text' : 'password'}
+                    placeholder="Min 8 characters"
+                    value={passwords.newPassword}
+                    disabled={saving.password}
+                    onChange={(event) => setPasswords((current) => ({ ...current, newPassword: event.target.value }))}
+                  />
+                  <button type="button" onClick={() => setShowNewPw(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    {showNewPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="label">Confirm New Password</label>
-                <input
-                  className="input-field"
-                  type="password"
-                  value={passwords.confirmPassword}
-                  disabled={saving.password}
-                  onChange={(event) => setPasswords((current) => ({ ...current, confirmPassword: event.target.value }))}
-                />
+                <div className="relative">
+                  <input
+                    className="input-field pr-10"
+                    type={showConfirmPw ? 'text' : 'password'}
+                    placeholder="Repeat new password"
+                    value={passwords.confirmPassword}
+                    disabled={saving.password}
+                    onChange={(event) => setPasswords((current) => ({ ...current, confirmPassword: event.target.value }))}
+                  />
+                  <button type="button" onClick={() => setShowConfirmPw(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    {showConfirmPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
             </div>
 
-            <button type="button" onClick={handlePasswordChange} disabled={saving.password} className="btn-primary">
-              <Shield className="h-4 w-4" />
+            {passwords.newPassword && passwords.confirmPassword && passwords.newPassword !== passwords.confirmPassword && (
+              <p className="text-xs text-red-500 font-medium">⚠ New passwords do not match.</p>
+            )}
+
+            <button type="button" onClick={handlePasswordChange} disabled={saving.password} className="btn-primary w-full sm:w-auto">
+              {saving.password ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
               {saving.password ? 'Updating...' : 'Update Password'}
             </button>
           </div>
@@ -1400,24 +1441,40 @@ export default function SettingsPage() {
     if (activeSection === 'audit') {
       return (
         <div className="space-y-6">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-lg font-semibold text-gray-900">Audit Log</h2>
               <p className="mt-1 text-sm text-[var(--text-muted)]">
-                Review the last 50 admin actions and export the filtered result as CSV.
+                Review the last 50 admin actions. Filter by date range or action type and export as CSV.
               </p>
             </div>
-            <button type="button" onClick={handleExportAuditCsv} className="btn-secondary" disabled={filteredAuditLogs.length === 0}>
-              <Download className="h-4 w-4" />
-              Export CSV
-            </button>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <button type="button" onClick={() => {
+                setAuditLoading(true);
+                const auditQuery = query(
+                  collection(db, COLLECTIONS.audit_logs),
+                  orderBy('timestamp', 'desc'),
+                  limit(50),
+                );
+                getDocs(auditQuery).then(snapshot => {
+                  setAuditLogs(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+                }).catch(err => toast.error(`Refresh failed: ${err.message}`)).finally(() => setAuditLoading(false));
+              }} className="btn-secondary flex-1 sm:flex-none justify-center" disabled={auditLoading}>
+                <RefreshCw className={`h-4 w-4 ${auditLoading ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+              <button type="button" onClick={handleExportAuditCsv} className="btn-secondary flex-1 sm:flex-none justify-center" disabled={filteredAuditLogs.length === 0 || auditLoading}>
+                <Download className="h-4 w-4" />
+                Export CSV
+              </button>
+            </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <div>
               <label className="label">Start Date</label>
               <input
-                className="input-field"
+                className="input-field w-full"
                 type="date"
                 value={auditFilters.startDate}
                 onChange={(event) => setAuditFilters((current) => ({ ...current, startDate: event.target.value }))}
@@ -1426,16 +1483,16 @@ export default function SettingsPage() {
             <div>
               <label className="label">End Date</label>
               <input
-                className="input-field"
+                className="input-field w-full"
                 type="date"
                 value={auditFilters.endDate}
                 onChange={(event) => setAuditFilters((current) => ({ ...current, endDate: event.target.value }))}
               />
             </div>
-            <div>
+            <div className="sm:col-span-2 xl:col-span-1">
               <label className="label">Action Type</label>
               <select
-                className="input-field"
+                className="input-field w-full"
                 value={auditFilters.actionType}
                 onChange={(event) => setAuditFilters((current) => ({ ...current, actionType: event.target.value }))}
               >
@@ -1455,32 +1512,65 @@ export default function SettingsPage() {
               <p className="mt-1 text-sm text-[var(--text-muted)]">Try changing the date range or action filter.</p>
             </div>
           ) : (
-            <div className="overflow-hidden rounded-2xl border border-gray-100">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="table-header">Action</th>
-                    <th className="table-header">Performed By</th>
-                    <th className="table-header">Date &amp; Time</th>
-                    <th className="table-header">Details</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredAuditLogs.map((entry) => (
-                    <tr key={entry.id} className="border-b border-gray-50 align-top">
-                      <td className="table-cell font-medium text-gray-900">{entry.action || '-'}</td>
-                      <td className="table-cell text-gray-600">{entry.performedByName || entry.performedBy || '-'}</td>
-                      <td className="table-cell text-gray-600">{formatDateTime(entry.timestamp)}</td>
-                      <td className="table-cell text-xs text-gray-500">
-                        <pre className="max-w-[420px] whitespace-pre-wrap break-words font-sans">
-                          {JSON.stringify(serializeValue(entry.details || {}), null, 2)}
-                        </pre>
-                      </td>
+            <>
+              {/* Desktop View */}
+              <div className="hidden md:block overflow-hidden rounded-2xl border border-gray-100">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="table-header">Action</th>
+                      <th className="table-header">Performed By</th>
+                      <th className="table-header">Date &amp; Time</th>
+                      <th className="table-header">Details</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {filteredAuditLogs.map((entry) => (
+                      <tr key={entry.id} className="border-b border-gray-50 align-top">
+                        <td className="table-cell font-medium text-gray-900">{entry.action || '-'}</td>
+                        <td className="table-cell text-gray-600">{entry.performedByName || entry.performedBy || '-'}</td>
+                        <td className="table-cell text-gray-600">{formatDateTime(entry.timestamp)}</td>
+                        <td className="table-cell text-xs text-gray-500">
+                          <pre className="max-w-[420px] whitespace-pre-wrap break-words font-sans">
+                            {JSON.stringify(serializeValue(entry.details || {}), null, 2)}
+                          </pre>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile View */}
+              <div className="md:hidden space-y-4">
+                {filteredAuditLogs.map((entry) => (
+                  <div key={entry.id} className="rounded-2xl border border-gray-100 bg-[var(--bg-card)] p-4 space-y-3 shadow-sm">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="inline-flex rounded-full bg-teal-50 px-2.5 py-0.5 text-xs font-semibold text-teal-800">
+                        {entry.action || '-'}
+                      </span>
+                      <span className="text-xs text-[var(--text-muted)]">
+                        {formatDateTime(entry.timestamp)}
+                      </span>
+                    </div>
+                    
+                    <div className="text-sm">
+                      <span className="font-semibold text-gray-900">By: </span>
+                      <span className="text-[var(--text-secondary)]">{entry.performedByName || entry.performedBy || '-'}</span>
+                    </div>
+
+                    {entry.details && Object.keys(entry.details).length > 0 && (
+                      <div className="rounded-xl bg-gray-50 p-2.5">
+                        <p className="text-xs font-semibold text-gray-500 mb-1">Details:</p>
+                        <pre className="text-[11px] text-gray-600 overflow-x-auto whitespace-pre-wrap break-words max-h-[120px] scrollbar-thin">
+                          {JSON.stringify(serializeValue(entry.details), null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       );
@@ -1497,14 +1587,14 @@ export default function SettingsPage() {
           </div>
 
           <div className="space-y-4 rounded-2xl border border-red-200 bg-red-50 p-5">
-            <div className="flex items-center justify-between gap-4 rounded-xl border border-red-100 bg-white px-4 py-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border border-red-100 bg-white px-4 py-4">
               <div>
                 <p className="text-sm font-semibold text-gray-900">Clear All WhatsApp Logs</p>
                 <p className="mt-1 text-sm text-gray-600">Delete every document in `/whatsapp_logs`.</p>
               </div>
               <button
                 type="button"
-                className="btn-secondary border border-red-200 bg-red-100 text-red-700 hover:bg-red-200"
+                className="btn-secondary border border-red-200 bg-red-100 text-red-700 hover:bg-red-200 w-full sm:w-auto justify-center"
                 disabled={Boolean(dangerAction)}
                 onClick={() => openConfirmDialog({
                   title: 'Clear WhatsApp logs?',
@@ -1524,14 +1614,14 @@ export default function SettingsPage() {
               </button>
             </div>
 
-            <div className="flex items-center justify-between gap-4 rounded-xl border border-red-100 bg-white px-4 py-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border border-red-100 bg-white px-4 py-4">
               <div>
                 <p className="text-sm font-semibold text-gray-900">Clear All Notifications</p>
                 <p className="mt-1 text-sm text-gray-600">Delete all member notification items across the app.</p>
               </div>
               <button
                 type="button"
-                className="btn-secondary border border-red-200 bg-red-100 text-red-700 hover:bg-red-200"
+                className="btn-secondary border border-red-200 bg-red-100 text-red-700 hover:bg-red-200 w-full sm:w-auto justify-center"
                 disabled={Boolean(dangerAction)}
                 onClick={() => openConfirmDialog({
                   title: 'Clear notifications?',
@@ -1551,14 +1641,14 @@ export default function SettingsPage() {
               </button>
             </div>
 
-            <div className="flex items-center justify-between gap-4 rounded-xl border border-red-100 bg-white px-4 py-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border border-red-100 bg-white px-4 py-4">
               <div>
                 <p className="text-sm font-semibold text-gray-900">Reset App Settings</p>
                 <p className="mt-1 text-sm text-gray-600">Restore company, preferences, and notifications to defaults.</p>
               </div>
               <button
                 type="button"
-                className="btn-secondary border border-red-200 bg-red-100 text-red-700 hover:bg-red-200"
+                className="btn-secondary border border-red-200 bg-red-100 text-red-700 hover:bg-red-200 w-full sm:w-auto justify-center"
                 disabled={Boolean(dangerAction)}
                 onClick={() => openConfirmDialog({
                   title: 'Reset app settings?',
@@ -1587,7 +1677,7 @@ export default function SettingsPage() {
                 Removes <code className="rounded bg-amber-100 px-1 font-mono text-xs">/users</code> documents that have no matching Firebase Auth account. Safe to run any time.
               </p>
             </div>
-            <div className="flex items-center justify-between gap-4 rounded-xl border border-amber-100 bg-white px-4 py-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border border-amber-100 bg-white px-4 py-4">
               <div>
                 <p className="text-sm font-semibold text-gray-900">Remove Orphan User Documents</p>
                 <p className="mt-1 text-sm text-gray-600">
@@ -1597,7 +1687,7 @@ export default function SettingsPage() {
               <button
                 type="button"
                 disabled={syncing || Boolean(dangerAction)}
-                className="btn-secondary border border-amber-300 bg-amber-100 text-amber-800 hover:bg-amber-200 disabled:opacity-60"
+                className="btn-secondary border border-amber-300 bg-amber-100 text-amber-800 hover:bg-amber-200 disabled:opacity-60 w-full sm:w-auto justify-center"
                 onClick={handleSyncUsers}
               >
                 <RotateCcw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
@@ -1621,8 +1711,29 @@ export default function SettingsPage() {
         </p>
       </div>
 
+      {/* ── Mobile Section Picker ──────────────────── */}
+      <div className="xl:hidden">
+        <div className="card p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Settings2 className="h-4 w-4 text-teal-600" />
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Settings Section</span>
+          </div>
+          <select
+            className="input-field w-full text-sm font-medium"
+            value={activeSection}
+            onChange={(e) => handleSectionChange(e.target.value)}
+          >
+            {settingsSections.map((section) => (
+              <option key={section.id} value={section.id}>{section.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* ── Main Grid ─────────────────────────────── */}
       <div className="grid gap-6 xl:grid-cols-[240px_1fr]">
-        <div className="card h-fit space-y-0.5 p-2">
+        {/* Vertical sidebar — desktop only */}
+        <div className="hidden xl:flex xl:flex-col card xl:h-fit p-2 gap-0.5">
           {settingsSections.map((section) => {
             const Icon = section.icon;
             return (
@@ -1630,20 +1741,21 @@ export default function SettingsPage() {
                 key={section.id}
                 type="button"
                 onClick={() => handleSectionChange(section.id)}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
+                className={`flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${
                   activeSection === section.id
-                    ? 'bg-teal-50 text-teal-700'
+                    ? 'bg-teal-50 text-teal-700 font-semibold'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-4 w-4 shrink-0" />
                 {section.label}
               </button>
             );
           })}
         </div>
 
-        <div className="card">{renderSectionContent()}</div>
+        {/* Section content */}
+        <div className="card p-4 sm:p-6">{renderSectionContent()}</div>
       </div>
 
       <Dialog.Root
@@ -1720,7 +1832,7 @@ export default function SettingsPage() {
                   </Dialog.Description>
                 </div>
 
-                <div className="grid gap-5 md:grid-cols-[220px_1fr]">
+                <div className="grid gap-5 sm:grid-cols-[auto_1fr]">
                   <div>
                     <label className="label">Maintenance Date</label>
                     <input

@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import {
  Plus, X, Search, Calendar, LayoutGrid, Clock,
  CheckCircle2, XCircle, MinusCircle, MessageSquare,
- TrendingUp, BarChart3,
+ TrendingUp, BarChart3, ChevronRight, Eye,
 } from 'lucide-react';
 import { Timestamp } from 'firebase/firestore';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
@@ -230,13 +230,15 @@ export default function FollowupPage() {
  const [search, setSearch] = useState('');
  const [filterStatus, setFilterStatus] = useState('All');
  const [filterType, setFilterType] = useState('All');
- const [filterMember, setFilterMember] = useState('All');
- const [dateRange, setDateRange] = useState({ start: '', end: '' });
- const [selectedFollowup, setSelectedFollowup] = useState(null);
- const [selectedFollowupIds, setSelectedFollowupIds] = useState([]);
+  const [filterMember, setFilterMember] = useState('All');
+  const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  const [selectedFollowup, setSelectedFollowup] = useState(null);
+  const [selectedFollowupIds, setSelectedFollowupIds] = useState([]);
   const [rescheduleItem, setRescheduleItem] = useState(null);
   const [newRescheduleDate, setNewRescheduleDate] = useState('');
   const [rescheduleSaving, setRescheduleSaving] = useState(false);
+  const [selectedDayInfo, setSelectedDayInfo] = useState(null);
+  const [closingFollowup, setClosingFollowup] = useState(null);
 
  const activeMembers = members.filter(m => m.role === 'member' && m.status === 'active');
 
@@ -402,92 +404,111 @@ export default function FollowupPage() {
 
  return (
  <div className="space-y-6 page-transition">
- <div className="flex items-center justify-between">
- <div>
- <h1 className="text-2xl font-bold text-gray-900">Follow-Up Management</h1>
- <p className="text-sm text-[var(--text-muted)] mt-0.5">{followups.length} follow-ups | {open} open | {overdue} overdue</p>
- </div>
- <div className="flex items-center gap-3">
- <ExportButton
- data={filtered}
- columns={[
- { key: 'companyName', label: 'Company' },
- { key: 'contactPerson', label: 'Contact Person' },
- { key: 'contactPhone', label: 'Phone' },
- { key: 'description', label: 'Description' },
- { key: 'taskType', label: 'Task Type' },
- { key: 'assignedToName', label: 'Assigned' },
- { key: 'status', label: 'Status' },
- { key: 'outcome', label: 'Outcome' },
- ]}
- filename="followups"
- />
- <button onClick={() => { setEditing(null); setShowModal(true); }} className="btn-primary">
- <Plus className="w-4 h-4" /> New Follow-Up
- </button>
- </div>
- </div>
+  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+  <div>
+  <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Follow-Up Management</h1>
+  <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-0.5">{followups.length} follow-ups | {open} open | {overdue} overdue</p>
+  </div>
+  <div className="flex items-center gap-2 sm:gap-3">
+  <ExportButton
+  data={filtered}
+  columns={[
+  { key: 'companyName', label: 'Company' },
+  { key: 'contactPerson', label: 'Contact Person' },
+  { key: 'contactPhone', label: 'Phone' },
+  { key: 'description', label: 'Description' },
+  { key: 'taskType', label: 'Task Type' },
+  { key: 'assignedToName', label: 'Assigned' },
+  { key: 'status', label: 'Status' },
+  { key: 'outcome', label: 'Outcome' },
+  ]}
+  filename="followups"
+  />
+  <button onClick={() => { setEditing(null); setShowModal(true); }} className="btn-primary py-2 px-3 text-xs sm:text-sm whitespace-nowrap">
+  <Plus className="w-3.5 h-3.5" /> New Follow-Up
+  </button>
+  </div>
+  </div>
 
- {/* Stats + Today */}
- <div className="grid grid-cols-4 gap-4">
- <div className="card stat-card flex items-center gap-3 py-3 stagger-item">
- <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center"><MessageSquare className="w-5 h-5 text-blue-600" /></div>
- <div><p className="text-[10px] text-gray-400 uppercase font-medium">Total</p><p className="text-lg font-bold text-gray-900"><CountUpNumber end={followups.length} /></p></div>
- </div>
- <div className="card stat-card flex items-center gap-3 py-3 stagger-item">
- <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center"><Clock className="w-5 h-5 text-amber-600" /></div>
- <div><p className="text-[10px] text-gray-400 uppercase font-medium">Today</p><p className="text-lg font-bold text-amber-600"><CountUpNumber end={todayFollowups.length} /></p></div>
- </div>
- <div className="card stat-card flex items-center gap-3 py-3 stagger-item">
- <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center"><XCircle className="w-5 h-5 text-red-600" /></div>
- <div><p className="text-[10px] text-gray-400 uppercase font-medium">Overdue</p><p className="text-lg font-bold text-red-600"><CountUpNumber end={overdue} /></p></div>
- </div>
- <div className="card stat-card flex items-center gap-3 py-3 stagger-item">
- <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center"><TrendingUp className="w-5 h-5 text-green-600" /></div>
- <div><p className="text-[10px] text-gray-400 uppercase font-medium">Positive Rate</p>
- <p className="text-lg font-bold text-green-600">{outcomeStats.total > 0 ? Math.round((outcomeStats.positive / outcomeStats.total) * 100) : 0}%</p></div>
- </div>
- </div>
+  {/* Stats + Today */}
+  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+  <div className="card stat-card flex items-center gap-2 sm:gap-3 py-2.5 sm:py-3 px-3 sm:px-4 stagger-item">
+  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+  <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+  </div>
+  <div className="min-w-0">
+  <p className="text-[9px] sm:text-[10px] text-gray-400 uppercase font-medium truncate">Total</p>
+  <p className="text-base sm:text-lg font-bold text-gray-900"><CountUpNumber end={followups.length} /></p>
+  </div>
+  </div>
+  <div className="card stat-card flex items-center gap-2 sm:gap-3 py-2.5 sm:py-3 px-3 sm:px-4 stagger-item">
+  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+  <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600" />
+  </div>
+  <div className="min-w-0">
+  <p className="text-[9px] sm:text-[10px] text-gray-400 uppercase font-medium truncate">Today</p>
+  <p className="text-base sm:text-lg font-bold text-amber-600"><CountUpNumber end={todayFollowups.length} /></p>
+  </div>
+  </div>
+  <div className="card stat-card flex items-center gap-2 sm:gap-3 py-2.5 sm:py-3 px-3 sm:px-4 stagger-item">
+  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-red-50 flex items-center justify-center shrink-0">
+  <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600" />
+  </div>
+  <div className="min-w-0">
+  <p className="text-[9px] sm:text-[10px] text-gray-400 uppercase font-medium truncate">Overdue</p>
+  <p className="text-base sm:text-lg font-bold text-red-600"><CountUpNumber end={overdue} /></p>
+  </div>
+  </div>
+  <div className="card stat-card flex items-center gap-2 sm:gap-3 py-2.5 sm:py-3 px-3 sm:px-4 stagger-item">
+  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-green-50 flex items-center justify-center shrink-0">
+  <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
+  </div>
+  <div className="min-w-0">
+  <p className="text-[9px] sm:text-[10px] text-gray-400 uppercase font-medium truncate">Positive Rate</p>
+  <p className="text-base sm:text-lg font-bold text-green-600">{outcomeStats.total > 0 ? Math.round((outcomeStats.positive / outcomeStats.total) * 100) : 0}%</p>
+  </div>
+  </div>
+  </div>
 
- {/* Today's Follow-ups Banner */}
- {todayFollowups.length > 0 && (
- <div className="alert-banner alert-banner-orange">
- <Clock className="w-5 h-5" />
- <div className="flex-1">
- <p className="font-semibold">{todayFollowups.length} Follow-up{todayFollowups.length > 1 ? 's' : ''} Due Today</p>
- <p className="text-xs opacity-75 mt-0.5">
- {todayFollowups.slice(0, 3).map(f => f.companyName || 'Untitled').join(', ')}
- {todayFollowups.length > 3 && ` +${todayFollowups.length - 3} more`}
- </p>
- </div>
- </div>
- )}
+  {/* Today's Follow-ups Banner */}
+  {todayFollowups.length > 0 && (
+  <div className="alert-banner alert-banner-orange">
+  <Clock className="w-5 h-5" />
+  <div className="flex-1">
+  <p className="font-semibold">{todayFollowups.length} Follow-up{todayFollowups.length > 1 ? 's' : ''} Due Today</p>
+  <p className="text-xs opacity-75 mt-0.5">
+  {todayFollowups.slice(0, 3).map(f => f.companyName || 'Untitled').join(', ')}
+  {todayFollowups.length > 3 && ` +${todayFollowups.length - 3} more`}
+  </p>
+  </div>
+  </div>
+  )}
 
- {/* Outcome Stats (mini) */}
- {outcomeStats.total > 0 && (
- <div className="card flex items-center gap-6 py-3">
- <div className="w-16 h-16">
- <ResponsiveContainer width="100%" height="100%">
- <PieChart><Pie data={outcomeStats.data} cx="50%" cy="50%" innerRadius={16} outerRadius={28} paddingAngle={3} dataKey="value">
- {outcomeStats.data.map((d, i) => <Cell key={i} fill={d.color} />)}
- </Pie></PieChart>
- </ResponsiveContainer>
- </div>
- <div className="flex gap-6">
- {OUTCOMES.map(o => {
- const count = outcomeStats[o.value] || 0;
- const Icon = o.icon;
- return (
- <div key={o.value} className="flex items-center gap-2">
- <Icon className={`w-4 h-4 ${o.color.split(' ')[0]}`} />
- <span className="text-sm font-semibold text-gray-700">{count}</span>
- <span className="text-xs text-gray-400">{o.label}</span>
- </div>
- );
- })}
- </div>
- </div>
- )}
+  {/* Outcome Stats (mini) */}
+  {outcomeStats.total > 0 && (
+  <div className="card flex flex-col sm:flex-row items-center gap-4 sm:gap-6 py-3 px-4 sm:px-6 stagger-item">
+  <div className="w-16 h-16 shrink-0">
+  <ResponsiveContainer width="100%" height="100%">
+  <PieChart><Pie data={outcomeStats.data} cx="50%" cy="50%" innerRadius={16} outerRadius={28} paddingAngle={3} dataKey="value">
+  {outcomeStats.data.map((d, i) => <Cell key={i} fill={d.color} />)}
+  </Pie></PieChart>
+  </ResponsiveContainer>
+  </div>
+  <div className="flex flex-wrap gap-4 sm:gap-6 justify-center">
+  {OUTCOMES.map(o => {
+  const count = outcomeStats[o.value] || 0;
+  const Icon = o.icon;
+  return (
+  <div key={o.value} className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+  <Icon className={`w-4 h-4 ${o.color.split(' ')[0]}`} />
+  <span className="text-sm font-semibold text-gray-700">{count}</span>
+  <span className="text-xs text-gray-400">{o.label}</span>
+  </div>
+  );
+  })}
+  </div>
+  </div>
+  )}
 
  {/* Filters + View Toggle */}
  <div className="card py-3 px-4">
@@ -510,11 +531,11 @@ export default function FollowupPage() {
  <option value="All">All Members</option>
  {activeMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
  </select>
- <div className="flex items-center gap-2">
- <input type="date" className="input-field w-32" value={dateRange.start} onChange={e => setDateRange({...dateRange, start: e.target.value})} title="Next Followup Start Date" />
- <span className="text-gray-400">-</span>
- <input type="date" className="input-field w-32" value={dateRange.end} onChange={e => setDateRange({...dateRange, end: e.target.value})} title="Next Followup End Date" />
- </div>
+  <div className="flex items-center gap-2 w-full lg:w-auto">
+  <input type="date" className="input-field flex-1 min-w-0 lg:w-32" value={dateRange.start} onChange={e => setDateRange({...dateRange, start: e.target.value})} title="Next Followup Start Date" />
+  <span className="text-gray-400">-</span>
+  <input type="date" className="input-field flex-1 min-w-0 lg:w-32" value={dateRange.end} onChange={e => setDateRange({...dateRange, end: e.target.value})} title="Next Followup End Date" />
+  </div>
  <span className="text-xs text-gray-400 ml-auto">{filtered.length} results</span>
  <div className="view-toggle">
  <button onClick={() => setView('table')} className={`view-toggle-btn ${view === 'table' ? 'active' : ''}`}>
@@ -544,13 +565,16 @@ export default function FollowupPage() {
  <CalendarView
  items={filtered}
  dateField="dueDate"
- onDayClick={(day, items) => {
- if (items.length === 1) { setEditing(items[0]); setShowModal(true); }
+ onDayClick={(date, items) => {
+ if (items.length > 0) {
+ setSelectedDayInfo({ date, items });
+ }
  }}
  />
  </div>
  ) : (
- <div className="card p-0 overflow-hidden">
+ <>
+ <div className="hidden md:block card p-0 overflow-hidden">
  <div className="overflow-x-auto w-full">
  <table className="w-full" data-export-table>
  <thead><tr className="bg-gray-50">
@@ -577,8 +601,8 @@ export default function FollowupPage() {
  </tr></thead>
  <tbody>
  {filtered.map(f => (
- <tr key={f.id} className="group hover:bg-gray-50 transition-colors">
- <td className="table-cell">
+ <tr key={f.id} className="group hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => setSelectedFollowup(f)}>
+ <td className="table-cell" onClick={e => e.stopPropagation()}>
  <input
  type="checkbox"
  checked={selectedFollowupSet.has(f.id)}
@@ -594,11 +618,15 @@ export default function FollowupPage() {
  <td className="table-cell text-gray-600 text-xs">{f.taskType || '-'}</td>
  <td className="table-cell text-gray-600 text-xs">{f.assignedToName || '-'}</td>
  <td className="table-cell text-gray-600 text-xs">{formatDate(f.assignedDate || f.createdAt)}</td>
- <td className="table-cell text-[var(--text-muted)] text-xs">{formatDate(f.nextFollowupDate || f.targetDate)}</td>
+ <td className="table-cell text-[var(--text-muted)] text-xs">{formatDate(f.targetDate)}</td>
+ <td className="table-cell text-blue-600 font-semibold text-xs">{formatDate(f.nextFollowupDate || f.targetDate)}</td>
  <td className="table-cell text-center">
  {(f.rescheduleCount || 0) > 0 ? (
  <span className="text-xs font-medium text-amber-500">x{f.rescheduleCount}</span>
  ) : <span className="text-gray-300">-</span>}
+ </td>
+ <td className="table-cell text-xs text-gray-500 max-w-[150px] truncate" title={f.remarks || ''}>
+ {f.remarks || '-'}
  </td>
  <td className="table-cell">
  {f.outcome ? (
@@ -611,11 +639,14 @@ export default function FollowupPage() {
  <span className={`badge ${statusColors[f.status] || 'badge-gray'}`}>{f.status}</span>
  {(f.overdueDays || 0) > 0 && <span className="text-[10px] text-red-400 ml-1">{f.overdueDays}d</span>}
  </td>
- <td className="table-cell">
+ <td className="table-cell" onClick={e => e.stopPropagation()}>
  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
  <button onClick={() => { setEditing(f); setShowModal(true); }} className="text-xs text-teal-600 hover:bg-teal-50 px-2 py-1 rounded font-medium">Edit</button>
  {!f.isClosed && (
+ <>
  <button onClick={() => openReschedule(f)} className="text-xs text-amber-600 hover:bg-amber-50 px-2 py-1 rounded font-medium">Reschedule</button>
+ <button onClick={() => setClosingFollowup(f)} className="text-xs text-green-600 hover:bg-green-50 px-2 py-1 rounded font-medium">Close</button>
+ </>
  )}
  <DeleteButton onClick={() => deleteFollowupRecord(f.id)} />
  </div>
@@ -626,38 +657,210 @@ export default function FollowupPage() {
  </table>
  </div>
  </div>
+
+ {/* Mobile View Cards */}
+ <div className="md:hidden space-y-4">
+ {filtered.map(f => (
+ <div key={f.id} className="card p-4 space-y-3 hover:border-teal-100 transition-colors" onClick={() => setSelectedFollowup(f)}>
+ <div className="flex justify-between items-start gap-2">
+ <div className="max-w-[70%]">
+ <p className="font-semibold text-gray-900 text-sm break-words">{f.companyName || 'Untitled follow-up'}</p>
+ <p className="text-xs text-gray-400 truncate mt-0.5">{f.contactPerson ? `${f.contactPerson} | ` : ''}{f.contactPhone || 'No phone'}</p>
+ </div>
+ <div className="flex flex-col items-end gap-1">
+ <span className={`badge ${statusColors[f.status] || 'badge-gray'}`}>{f.status}</span>
+ {(f.overdueDays || 0) > 0 && <span className="text-[10px] text-red-500 font-medium">{f.overdueDays}d overdue</span>}
+ </div>
+ </div>
+ <div className="grid grid-cols-2 gap-3 text-xs border-t border-gray-100/60 pt-2.5">
+ <div>
+ <span className="block text-[10px] text-gray-400 uppercase font-medium">Type</span>
+ <span className="font-medium text-gray-700">{f.taskType || '-'}</span>
+ </div>
+ <div>
+ <span className="block text-[10px] text-gray-400 uppercase font-medium">Assigned</span>
+ <span className="font-medium text-gray-700">{f.assignedToName || '-'}</span>
+ </div>
+ <div>
+ <span className="block text-[10px] text-gray-400 uppercase font-medium">Next Followup</span>
+ <span className="font-medium text-gray-700">{formatDate(f.nextFollowupDate || f.targetDate)}</span>
+ </div>
+ <div>
+ <span className="block text-[10px] text-gray-400 uppercase font-medium">Reschedules</span>
+ <span className="font-medium text-gray-700">{(f.rescheduleCount || 0) > 0 ? `x${f.rescheduleCount}` : '-'}</span>
+ </div>
+ </div>
+ {f.outcome && (
+ <div className="border-t border-gray-100/60 pt-2 flex items-center gap-2">
+ <span className="text-[10px] text-gray-400 uppercase font-medium">Outcome</span>
+ <span className={`badge ${f.outcome === 'positive' ? 'badge-green' : f.outcome === 'negative' ? 'badge-red' : 'badge-yellow'}`}>
+ {f.outcome}
+ </span>
+ </div>
+ )}
+ <div className="flex flex-col gap-2 border-t border-gray-100/60 pt-2.5" onClick={event => event.stopPropagation()}>
+ <div className="flex justify-between items-center">
+ <div className="flex items-center gap-2">
+ <input
+ type="checkbox"
+ checked={selectedFollowupSet.has(f.id)}
+ onChange={() => toggleFollowupSelection(f.id)}
+ className="rounded accent-teal-600 w-4 h-4 cursor-pointer"
+ title="Select follow-up"
+ />
+ <span className="text-xs text-gray-400">Select</span>
+ </div>
+ <div className="flex items-center gap-1.5">
+ <button onClick={() => setSelectedFollowup(f)} className="p-2 rounded-lg hover:bg-gray-100 text-slate-500" title="View details">
+ <Eye className="w-4 h-4" />
+ </button>
+ <DeleteButton onClick={() => deleteFollowupRecord(f.id)} />
+ </div>
+ </div>
+ <div className={f.isClosed ? "grid grid-cols-1" : "grid grid-cols-3 gap-1.5"}>
+ <button onClick={() => { setEditing(f); setShowModal(true); }} className="text-xs text-teal-600 hover:bg-teal-50 py-2 rounded-lg border border-teal-100 font-medium text-center bg-teal-50/20">Edit</button>
+ {!f.isClosed && (
+ <>
+ <button onClick={() => openReschedule(f)} className="text-xs text-amber-600 hover:bg-amber-50 py-2 rounded-lg border border-amber-100 font-medium text-center bg-amber-50/20">Reschedule</button>
+ <button onClick={() => setClosingFollowup(f)} className="text-xs text-green-600 hover:bg-green-50 py-2 rounded-lg border border-green-100 font-medium text-center bg-green-50/20">Close</button>
+ </>
+ )}
+ </div>
+ </div>
+ </div>
+ ))}
+ </div>
+ </>
  )}
 
  {showModal && <FollowupModal onClose={() => { setShowModal(false); setEditing(null); }} onSubmit={editing ? handleEdit : handleAdd} members={activeMembers} editing={editing} />}
 
-  {/* Fix P10: Custom reschedule modal */}
-  {rescheduleItem && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center">
-  <div className="absolute inset-0 bg-black/40" onClick={() => setRescheduleItem(null)} />
-  <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6">
-  <h2 className="text-lg font-semibold text-gray-900 mb-1">Reschedule Follow-Up</h2>
-  <p className="text-sm text-gray-500 mb-4">{rescheduleItem.companyName || 'Untitled follow-up'}</p>
-  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1">New Followup Date</label>
-  <input type="date" className="input-field mb-5 w-full" value={newRescheduleDate} onChange={e => setNewRescheduleDate(e.target.value)} />
-  <div className="flex gap-3">
-  <button onClick={() => setRescheduleItem(null)} className="btn-secondary flex-1">Cancel</button>
-  <button onClick={handleReschedule} disabled={rescheduleSaving || !newRescheduleDate} className="btn-primary flex-1">{rescheduleSaving ? 'Saving...' : 'Confirm'}</button>
-  </div>
-  </div>
-  </div>
-  )}
-  <FollowupDetailPanel followup={selectedFollowup} onClose={() => setSelectedFollowup(null)} />
-  <DeleteConfirmDialog
-  isOpen={deleteState.isOpen}
-  onClose={handleClose}
-  onConfirm={handleConfirm}
-  title={deleteState.title}
-  description={deleteState.description}
-  isDeleting={deleteState.isDeleting}
-  />
-  </div>
-  );
+ {/* Fix P10: Custom reschedule modal */}
+ {rescheduleItem && (
+ <div className="fixed inset-0 z-50 flex items-center justify-center modal-overlay">
+ <div className="absolute inset-0 bg-black/40" onClick={() => setRescheduleItem(null)} />
+ <div className="relative bg-[var(--bg-card)] rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6 border border-[var(--border-primary)]">
+ <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-1">Reschedule Follow-Up</h2>
+ <p className="text-sm text-[var(--text-muted)] mb-4">{rescheduleItem.companyName || 'Untitled follow-up'}</p>
+ <label className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide block mb-1">New Followup Date</label>
+ <input type="date" className="input-field mb-5 w-full" value={newRescheduleDate} onChange={e => setNewRescheduleDate(e.target.value)} />
+ <div className="flex gap-3">
+ <button onClick={() => setRescheduleItem(null)} className="btn-secondary flex-1">Cancel</button>
+ <button onClick={handleReschedule} disabled={rescheduleSaving || !newRescheduleDate} className="btn-primary flex-1">{rescheduleSaving ? 'Saving...' : 'Confirm'}</button>
+ </div>
+ </div>
+ </div>
+ )}
+
+ {/* Calendar Day Detail Popup List Modal */}
+ {selectedDayInfo && (
+ <div className="fixed inset-0 z-50 flex items-center justify-center modal-overlay">
+ <div className="absolute inset-0 bg-black/40" onClick={() => setSelectedDayInfo(null)} />
+ <div className="relative bg-[var(--bg-card)] rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 modal-content max-h-[80vh] flex flex-col border border-[var(--border-primary)]" style={{ animation: 'scaleUp 0.2s ease-out' }}>
+ <div className="flex items-center justify-between border-b border-[var(--border-primary)] pb-3 mb-4">
+ <h3 className="text-base font-bold text-[var(--text-primary)] flex items-center gap-2">
+ <Calendar className="w-4 h-4 text-teal-600" />
+ Follow-Ups on {selectedDayInfo.date.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+ </h3>
+ <button onClick={() => setSelectedDayInfo(null)} className="p-1 rounded-lg hover:bg-gray-100 text-[var(--text-muted)]"><X className="w-4 h-4" /></button>
+ </div>
+
+ <div className="space-y-3 overflow-y-auto pr-1 flex-1">
+ {selectedDayInfo.items.map(f => (
+ <div key={f.id} className="p-3.5 rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] hover:border-teal-200 transition-all flex flex-col gap-2" onClick={e => e.stopPropagation()}>
+ <div className="flex justify-between items-start">
+ <div>
+ <p className="font-semibold text-sm text-[var(--text-primary)]">{f.companyName || 'Untitled'}</p>
+ <p className="text-xs text-[var(--text-muted)] mt-0.5">{f.contactPerson ? `${f.contactPerson} | ` : ''}{f.contactPhone || 'No phone'}</p>
+ </div>
+ <span className={`badge ${statusColors[f.status] || 'badge-gray'}`}>{f.status}</span>
+ </div>
+ <p className="text-xs text-[var(--text-muted)] bg-[var(--bg-card)] p-2 rounded-lg border border-[var(--border-primary)]/40 mt-1">{f.description || 'No description'}</p>
+ <div className="flex items-center justify-between text-[11px] text-[var(--text-muted)] mt-1">
+ <span>Assigned: {f.assignedToName || '-'}</span>
+ <span>Type: {f.taskType || '-'}</span>
+ </div>
+ <div className="flex justify-end gap-1.5 border-t border-[var(--border-primary)]/40 pt-2.5 mt-1">
+ <button onClick={() => { setSelectedFollowup(f); setSelectedDayInfo(null); }} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500" title="View Details">
+ <Eye className="w-3.5 h-3.5" />
+ </button>
+ <button onClick={() => { setEditing(f); setShowModal(true); setSelectedDayInfo(null); }} className="text-xs text-teal-600 hover:bg-teal-50 px-2 py-1 rounded font-medium">
+ Edit
+ </button>
+ {!f.isClosed && (
+ <>
+ <button onClick={() => { openReschedule(f); setSelectedDayInfo(null); }} className="text-xs text-amber-600 hover:bg-amber-50 px-2 py-1 rounded font-medium">
+ Reschedule
+ </button>
+ <button onClick={() => { setClosingFollowup(f); setSelectedDayInfo(null); }} className="text-xs text-green-600 hover:bg-green-50 px-2 py-1 rounded font-medium">
+ Close
+ </button>
+ </>
+ )}
+ <DeleteButton onClick={() => { deleteFollowupRecord(f.id); setSelectedDayInfo(null); }} />
+ </div>
+ </div>
+ ))}
+ </div>
+ </div>
+ </div>
+ )}
+
+ {/* Quick Close Outcome Selector Modal */}
+ {closingFollowup && (
+ <div className="fixed inset-0 z-50 flex items-center justify-center modal-overlay">
+ <div className="absolute inset-0 bg-black/40" onClick={() => setClosingFollowup(null)} />
+ <div className="relative bg-[var(--bg-card)] rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6 border border-[var(--border-primary)]" style={{ animation: 'scaleUp 0.15s ease-out' }}>
+ <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-1">Close Follow-Up</h3>
+ <p className="text-sm text-[var(--text-muted)] mb-4">Select the outcome of this follow-up with <strong>{closingFollowup.companyName}</strong>:</p>
+
+ <div className="flex flex-col gap-2 mb-6">
+ {OUTCOMES.map(o => {
+ const Icon = o.icon;
+ return (
+ <button
+ key={o.value}
+ onClick={async () => {
+ try {
+ await updateFollowup(closingFollowup.id, {
+ status: 'closed',
+ outcome: o.value,
+ closedAt: Timestamp.now(),
+ });
+ toast.success('Follow-up closed!');
+ setClosingFollowup(null);
+ } catch (err) {
+ toast.error('Failed to close: ' + err.message);
  }
+ }}
+ className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold border border-[var(--border-primary)] bg-[var(--bg-secondary)] hover:border-teal-500 hover:bg-teal-50/10 transition-all ${o.value === 'positive' ? 'hover:text-green-600' : o.value === 'negative' ? 'hover:text-red-600' : 'hover:text-amber-600'}`}
+ >
+ <div className="flex items-center gap-2">
+ <Icon className="w-4 h-4" />
+ <span>{o.label}</span>
+ </div>
+ <ChevronRight className="w-4 h-4 opacity-50" />
+ </button>
+ );
+ })}
+ </div>
 
+ <div className="flex justify-end">
+ <button onClick={() => setClosingFollowup(null)} className="btn-secondary w-full">Cancel</button>
+ </div>
+ </div>
+ </div>
+ )}
 
-
+ <FollowupDetailPanel followup={selectedFollowup} onClose={() => setSelectedFollowup(null)} />
+ <DeleteConfirmDialog
+ isOpen={deleteState.isOpen}
+ onClose={handleClose}
+ onConfirm={handleConfirm}
+ title={deleteState.title}
+ description={deleteState.description}
+ isDeleting={deleteState.isDeleting}
+ />
+ </div>
+ );
+ }

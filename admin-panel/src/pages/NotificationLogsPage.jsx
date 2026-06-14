@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { collection, onSnapshot, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import {
@@ -124,7 +124,7 @@ export default function NotificationLogsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: 'Total Sent', value: stats.sent, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50', iconBg: 'bg-emerald-100' },
           { label: 'Failed', value: stats.failed, icon: XCircle, color: 'text-red-600', bg: 'bg-red-50', iconBg: 'bg-red-100' },
@@ -173,24 +173,26 @@ export default function NotificationLogsPage() {
 
       {/* Filter Bar */}
       {activeTab === 'logs' && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <Filter className="w-4 h-4 text-gray-400" />
-          <span className="text-xs text-gray-500 font-medium">Filter:</span>
-          {['all', 'sent', 'failed', 'skipped', 'skipped_no_template'].map(s => (
-            <button
-              key={s}
-              onClick={() => setStatusFilter(s)}
-              className={`px-3 py-1 text-xs font-semibold rounded-full border transition-colors ${
-                statusFilter === s
-                  ? 'bg-teal-600 text-white border-teal-600'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-teal-400'
-              }`}
-            >
-              {s === 'all' ? 'All' : STATUS_CONFIG[s]?.label || s}
-            </button>
-          ))}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-2 justify-between">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Filter className="w-4 h-4 text-gray-400" />
+            <span className="text-xs text-gray-500 font-medium">Filter:</span>
+            {['all', 'sent', 'failed', 'skipped', 'skipped_no_template'].map(s => (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={`px-3 py-1 text-xs font-semibold rounded-full border transition-colors ${
+                  statusFilter === s
+                    ? 'bg-teal-600 text-white border-teal-600'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-teal-400'
+                }`}
+              >
+                {s === 'all' ? 'All' : STATUS_CONFIG[s]?.label || s}
+              </button>
+            ))}
+          </div>
           {logs.length > 0 && (
-            <div className="ml-auto">
+            <div className="w-full sm:w-auto flex justify-end">
               <DeleteButton onClick={clearWhatsAppLogs} label="Clear Logs" title="Clear logs" />
             </div>
           )}
@@ -212,54 +214,88 @@ export default function NotificationLogsPage() {
               <p className="text-sm mt-1">WhatsApp delivery logs will appear here</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50">
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">To</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Event / Template</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Sent At</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Error</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredLogs.map(log => (
-                    <tr key={log.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <Phone className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                          <span className="text-sm font-mono text-gray-700">{formatPhone(log.to)}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-xs font-semibold bg-purple-50 text-purple-700 px-2 py-1 rounded-md">
-                          {log.payload?.payload?.template?.name || log.eventName || '-'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <StatusBadge status={log.status} />
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                          <Calendar className="w-3.5 h-3.5" />
-                          {formatTime(log.sentAt)}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        {log.error ? (
-                          <span className="text-xs text-red-600 font-medium truncate max-w-[200px] block" title={log.error}>
-                            {log.error.substring(0, 60)}{log.error.length > 60 ? '...' : ''}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-gray-300">-</span>
-                        )}
-                      </td>
+            <>
+              {/* Desktop View */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-100 bg-gray-50">
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">To</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Event / Template</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Sent At</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Error</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {filteredLogs.map(log => (
+                      <tr key={log.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <Phone className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                            <span className="text-sm font-mono text-gray-700">{formatPhone(log.to)}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-xs font-semibold bg-purple-50 text-purple-700 px-2 py-1 rounded-md">
+                            {log.payload?.payload?.template?.name || log.eventName || '-'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <StatusBadge status={log.status} />
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                            <Calendar className="w-3.5 h-3.5" />
+                            {formatTime(log.sentAt)}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          {log.error ? (
+                            <span className="text-xs text-red-600 font-medium truncate max-w-[200px] block" title={log.error}>
+                              {log.error.substring(0, 60)}{log.error.length > 60 ? '...' : ''}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-300">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile View */}
+              <div className="md:hidden divide-y divide-gray-100">
+                {filteredLogs.map(log => (
+                  <div key={log.id} className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                        <span className="text-sm font-semibold font-mono text-gray-800">{formatPhone(log.to)}</span>
+                      </div>
+                      <StatusBadge status={log.status} />
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 text-xs">
+                      <span className="font-semibold bg-purple-50 text-purple-700 px-2 py-1 rounded-md">
+                        {log.payload?.payload?.template?.name || log.eventName || '-'}
+                      </span>
+                      <div className="flex items-center gap-1 text-gray-500 font-medium">
+                        <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                        {formatTime(log.sentAt)}
+                      </div>
+                    </div>
+
+                    {log.error && (
+                      <div className="rounded-lg bg-red-50/70 border border-red-100 p-2 text-xs text-red-600 font-medium whitespace-pre-wrap break-words">
+                        {log.error}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       )}
@@ -274,50 +310,81 @@ export default function NotificationLogsPage() {
               <p className="text-sm mt-1">All messages have been processed</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50">
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">To</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Event</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Retries</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Created</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {queue.map(item => (
-                    <tr key={item.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <Phone className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                          <span className="text-sm font-mono text-gray-700">{formatPhone(item.to)}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-xs font-semibold bg-indigo-50 text-indigo-700 px-2 py-1 rounded-md">
-                          {item.eventName || '-'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <StatusBadge status={item.status} />
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`text-sm font-bold ${item.retries > 0 ? 'text-amber-600' : 'text-gray-400'}`}>
-                          {item.retries || 0} / 3
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                          <Calendar className="w-3.5 h-3.5" />
+            <>
+              {/* Desktop View */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-100 bg-gray-50">
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">To</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Event</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Retries</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Created</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {queue.map(item => (
+                      <tr key={item.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <Phone className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                            <span className="text-sm font-mono text-gray-700">{formatPhone(item.to)}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-xs font-semibold bg-indigo-50 text-indigo-700 px-2 py-1 rounded-md">
+                            {item.eventName || '-'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <StatusBadge status={item.status} />
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`text-sm font-bold ${item.retries > 0 ? 'text-amber-600' : 'text-gray-400'}`}>
+                            {item.retries || 0} / 3
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                            <Calendar className="w-3.5 h-3.5" />
+                            {formatTime(item.createdAt)}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile View */}
+              <div className="md:hidden divide-y divide-gray-100">
+                {queue.map(item => (
+                  <div key={item.id} className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                        <span className="text-sm font-semibold font-mono text-gray-800">{formatPhone(item.to)}</span>
+                      </div>
+                      <StatusBadge status={item.status} />
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 text-xs">
+                      <span className="font-semibold bg-indigo-50 text-indigo-700 px-2 py-1 rounded-md">
+                        {item.eventName || '-'}
+                      </span>
+                      <div className="flex items-center gap-1 text-gray-500">
+                        <span className="text-gray-400 mr-2 font-medium">Retries: <span className={item.retries > 0 ? 'text-amber-600 font-bold' : 'text-gray-600'}>{item.retries || 0}/3</span></span>
+                        <div className="inline-flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5 text-gray-400" />
                           {formatTime(item.createdAt)}
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       )}

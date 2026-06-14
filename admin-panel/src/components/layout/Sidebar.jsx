@@ -8,9 +8,9 @@ import {
   ClipboardList,
   CreditCard,
   FolderKanban,
+  Globe,
   LayoutDashboard,
   LogOut,
-  MessageCircle,
   MessageSquare,
   Package,
   Settings,
@@ -34,7 +34,6 @@ const iconByKey = {
   tools: Wrench,
   team: Users,
   settings: Settings,
-  whatsapp: MessageCircle,
 };
 
 export default function Sidebar({
@@ -118,7 +117,18 @@ export default function Sidebar({
         })}
       </nav>
 
-      <div className="border-t border-[var(--border-primary)] px-2 py-4">
+      <div className="border-t border-[var(--border-primary)] px-2 py-3 space-y-0.5">
+        {/* Visit Website */}
+        <button
+          onClick={() => { window.location.href = '/?from=panel'; setMobileOpen(false); }}
+          title={collapsed ? 'Visit Website' : ''}
+          className={`sidebar-link w-full text-teal-600 hover:bg-teal-50 hover:text-teal-700 ${collapsed ? 'justify-center px-2' : ''}`}
+        >
+          <Globe className="h-[18px] w-[18px] flex-shrink-0" />
+          {!collapsed && <span>Visit Website</span>}
+        </button>
+
+        {/* Logout */}
         <button
           onClick={handleLogout}
           title={collapsed ? 'Logout' : ''}

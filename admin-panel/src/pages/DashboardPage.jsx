@@ -211,7 +211,7 @@ export default function DashboardPage() {
 
  const radarData = useMemo(() => {
   return memberStats.slice(0, 5).map(m => ({
-   name: m.name.split(' ')[0],
+   name: (m.name || 'Unknown').split(' ')[0],
    completed: m.completed,
    open: m.open,
    overdue: m.overdue,
@@ -225,9 +225,8 @@ export default function DashboardPage() {
   <div className="space-y-5 page-transition" style={{ background: '#f8f9fa', minHeight: '100vh', padding: '0' }}>
 
    {/* ── HERO BANNER ─────────────────────────────────────── */}
-   <div style={{
+   <div className="px-4 py-6 sm:px-8" style={{
     background: 'linear-gradient(135deg, #1a73e8 0%, #0d47a1 60%, #1565c0 100%)',
-    padding: '28px 32px',
     position: 'relative',
     overflow: 'hidden',
    }}>
@@ -268,7 +267,7 @@ export default function DashboardPage() {
    </div>
 
    {/* Content wrapper with padding */}
-   <div className="px-6 pb-6 space-y-5">
+   <div className="px-3 sm:px-6 pb-6 space-y-5">
 
    {/* ── CUSTOMIZE PANEL ──────────────────────────────────── */}
    {showCustomize && (
@@ -304,7 +303,7 @@ export default function DashboardPage() {
    )}
 
    {/* ── STAT CARDS ───────────────────────────────────────── */}
-   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
     {[
      {
       label: 'Active Projects',
@@ -387,10 +386,10 @@ export default function DashboardPage() {
    {widgetConfig.quickActions && (
     <div className="flex gap-2 flex-wrap">
      {[
-      { label: 'New Task', icon: Plus, color: '#1a73e8', bg: '#e8f0fe', onClick: () => navigate('/projects') },
-      { label: 'New Enquiry', icon: FileText, color: '#34a853', bg: '#e6f4ea', onClick: () => navigate('/enquiry') },
-      { label: 'New Payment', icon: CreditCard, color: '#f9ab00', bg: '#fef9e0', onClick: () => navigate('/payments') },
-      { label: 'Follow-Up', icon: MessageSquare, color: '#ea4335', bg: '#fce8e6', onClick: () => navigate('/followup') },
+      { label: 'New Task', icon: Plus, color: '#1a73e8', bg: '#e8f0fe', onClick: () => navigate('/admin/projects') },
+      { label: 'New Enquiry', icon: FileText, color: '#34a853', bg: '#e6f4ea', onClick: () => navigate('/admin/enquiry') },
+      { label: 'New Payment', icon: CreditCard, color: '#f9ab00', bg: '#fef9e0', onClick: () => navigate('/admin/payments') },
+      { label: 'Follow-Up', icon: MessageSquare, color: '#ea4335', bg: '#fce8e6', onClick: () => navigate('/admin/followups') },
      ].map((action, i) => {
       const Icon = action.icon;
       return (
@@ -414,9 +413,9 @@ export default function DashboardPage() {
 
    {/* ── SMART ALERTS ─────────────────────────────────────── */}
    {widgetConfig.alerts && (overdueTasks.length > 0 || overduePayments.length > 0 || overdueEnquiries.length > 0 || pendingFollowups.length > 0) && (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
      {overdueTasks.length > 0 && (
-      <button onClick={() => navigate('/projects')} className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#fce8e6] border border-[#f5c6c2] text-left hover:shadow-md transition-all">
+      <button onClick={() => navigate('/admin/projects')} className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#fce8e6] border border-[#f5c6c2] text-left hover:shadow-md transition-all">
        <AlertTriangle className="w-4 h-4 text-[#d93025] flex-shrink-0" />
        <div className="min-w-0">
         <p className="text-xs font-semibold text-[#d93025]">{overdueTasks.length} Overdue Tasks</p>
@@ -426,7 +425,7 @@ export default function DashboardPage() {
       </button>
      )}
      {overduePayments.length > 0 && (
-      <button onClick={() => navigate('/payments')} className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#fef9e0] border border-[#fde47a] text-left hover:shadow-md transition-all">
+      <button onClick={() => navigate('/admin/payments')} className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#fef9e0] border border-[#fde47a] text-left hover:shadow-md transition-all">
        <DollarSign className="w-4 h-4 text-[#f9ab00] flex-shrink-0" />
        <div className="min-w-0">
         <p className="text-xs font-semibold text-[#f29900]">{overduePayments.length} Overdue Payments</p>
@@ -436,7 +435,7 @@ export default function DashboardPage() {
       </button>
      )}
      {overdueEnquiries.length > 0 && (
-      <button onClick={() => navigate('/enquiry')} className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#fef9e0] border border-[#fde47a] text-left hover:shadow-md transition-all">
+      <button onClick={() => navigate('/admin/enquiry')} className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#fef9e0] border border-[#fde47a] text-left hover:shadow-md transition-all">
        <FileText className="w-4 h-4 text-[#f9ab00] flex-shrink-0" />
        <div className="min-w-0">
         <p className="text-xs font-semibold text-[#f29900]">{overdueEnquiries.length} Overdue Enquiries</p>
@@ -446,7 +445,7 @@ export default function DashboardPage() {
       </button>
      )}
      {pendingFollowups.length > 0 && (
-      <button onClick={() => navigate('/followup')} className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#e8f0fe] border border-[#c5d7fb] text-left hover:shadow-md transition-all">
+      <button onClick={() => navigate('/admin/followups')} className="flex items-center gap-3 p-3.5 rounded-2xl bg-[#e8f0fe] border border-[#c5d7fb] text-left hover:shadow-md transition-all">
        <CalendarDays className="w-4 h-4 text-[#1a73e8] flex-shrink-0" />
        <div className="min-w-0">
         <p className="text-xs font-semibold text-[#1a73e8]">{pendingFollowups.length} Pending Follow-ups</p>
@@ -548,13 +547,13 @@ export default function DashboardPage() {
       title="Team Performance"
       className="col-span-1 lg:col-span-2"
       action={
-       <button onClick={() => navigate('/team')} className="flex items-center gap-1 text-xs text-[#1a73e8] font-medium hover:underline">
+       <button onClick={() => navigate('/admin/team')} className="flex items-center gap-1 text-xs text-[#1a73e8] font-medium hover:underline">
         View All <ArrowUpRight className="w-3 h-3" />
        </button>
       }
      >
-      <div className="overflow-x-auto">
-      <table className="w-full">
+      <div className="overflow-x-auto -mx-5 px-5">
+      <table className="w-full min-w-[480px]">
        <thead>
         <tr className="border-b border-gray-50">
          <th className="text-left text-[11px] font-semibold text-gray-400 pb-2.5 uppercase tracking-wide">Member</th>
@@ -754,7 +753,7 @@ export default function DashboardPage() {
    )}
 
    {/* ── FINANCIAL SUMMARY ────────────────────────────────── */}
-   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
     {[
      { label: 'Total PO Value', value: formatLakhs(totalPOValue), icon: Briefcase, color: '#1a73e8', bg: '#e8f0fe' },
      { label: 'Total Expenses', value: formatLakhs(totalExpense), icon: Receipt, color: '#f9ab00', bg: '#fef9e0' },

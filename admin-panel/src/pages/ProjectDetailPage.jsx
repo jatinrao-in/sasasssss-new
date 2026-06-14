@@ -61,7 +61,7 @@ function AddTaskModal({ onClose, onSubmit, members, projectId }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center modal-overlay">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative clay-card w-full max-w-md mx-4 modal-content p-0" style={{ background: '#ffffff' }}>
+      <div className="relative card w-full max-w-md mx-4 modal-content p-0" style={{ background: '#ffffff' }}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <h2 className="text-lg font-semibold text-gray-900">Add Task</h2>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100">
@@ -72,7 +72,7 @@ function AddTaskModal({ onClose, onSubmit, members, projectId }) {
           <div>
             <label className="label">Task Title</label>
             <input
-              className="input-field clay-input"
+              className="input-field"
               placeholder="Enter task title"
               value={form.title}
               onChange={(event) => setForm({ ...form, title: event.target.value })}
@@ -82,7 +82,7 @@ function AddTaskModal({ onClose, onSubmit, members, projectId }) {
           <div>
             <label className="label">Assign To</label>
             <select
-              className="input-field clay-input"
+              className="input-field"
               value={form.assignedTo}
               onChange={(event) => {
                 const member = members.find((item) => item.id === event.target.value);
@@ -99,7 +99,7 @@ function AddTaskModal({ onClose, onSubmit, members, projectId }) {
           <div>
             <label className="label">Target Date</label>
             <input
-              className="input-field clay-input"
+              className="input-field"
               type="date"
               value={form.targetDate}
               onChange={(event) => setForm({ ...form, targetDate: event.target.value })}
@@ -109,7 +109,7 @@ function AddTaskModal({ onClose, onSubmit, members, projectId }) {
           <div>
             <label className="label">Description</label>
             <textarea
-              className="input-field clay-input resize-none"
+              className="input-field resize-none"
               rows={2}
               value={form.description}
               onChange={(event) => setForm({ ...form, description: event.target.value })}
@@ -118,7 +118,7 @@ function AddTaskModal({ onClose, onSubmit, members, projectId }) {
         </div>
         <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
           <button onClick={onClose} className="btn-secondary">Cancel</button>
-          <button onClick={handleSubmit} disabled={saving} className="btn-primary clay-btn">
+          <button onClick={handleSubmit} disabled={saving} className="btn-primary">
             {saving ? 'Adding...' : <><Plus className="w-4 h-4" /> Add Task</>}
           </button>
         </div>
@@ -154,7 +154,7 @@ function AddExpenseModal({ onClose, onSubmit, projectId }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center modal-overlay">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative clay-card w-full max-w-sm mx-4 modal-content p-0" style={{ background: '#ffffff' }}>
+      <div className="relative card w-full max-w-sm mx-4 modal-content p-0" style={{ background: '#ffffff' }}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <h2 className="text-lg font-semibold text-gray-900">Add Expense</h2>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100">
@@ -165,7 +165,7 @@ function AddExpenseModal({ onClose, onSubmit, projectId }) {
           <div>
             <label className="label">Activity</label>
             <input
-              className="input-field clay-input"
+              className="input-field"
               placeholder="e.g. Server costs"
               value={form.activity}
               onChange={(event) => setForm({ ...form, activity: event.target.value })}
@@ -174,7 +174,7 @@ function AddExpenseModal({ onClose, onSubmit, projectId }) {
           <div>
             <label className="label">Amount (Rs.)</label>
             <input
-              className="input-field clay-input"
+              className="input-field"
               type="number"
               placeholder="0"
               value={form.amount}
@@ -184,7 +184,7 @@ function AddExpenseModal({ onClose, onSubmit, projectId }) {
         </div>
         <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
           <button onClick={onClose} className="btn-secondary">Cancel</button>
-          <button onClick={handleSubmit} disabled={saving} className="btn-primary clay-btn">
+          <button onClick={handleSubmit} disabled={saving} className="btn-primary">
             {saving ? 'Adding...' : <><Plus className="w-4 h-4" /> Add Expense</>}
           </button>
         </div>
@@ -225,7 +225,7 @@ function EditTaskModal({ onClose, onSubmit, members, task, project }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center modal-overlay">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative clay-card w-full max-w-md mx-4 modal-content max-h-[90vh] flex flex-col p-0" style={{ background: '#ffffff' }}>
+      <div className="relative card w-full max-w-md mx-4 modal-content max-h-[90vh] flex flex-col p-0" style={{ background: '#ffffff' }}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
           <h2 className="text-lg font-semibold text-gray-900">Edit Task</h2>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100">
@@ -247,7 +247,7 @@ function EditTaskModal({ onClose, onSubmit, members, task, project }) {
           <div>
             <label className="label">Task Title</label>
             <input
-              className="input-field clay-input"
+              className="input-field"
               placeholder="Enter task title"
               value={form.title}
               onChange={(event) => setForm({ ...form, title: event.target.value })}
@@ -257,7 +257,7 @@ function EditTaskModal({ onClose, onSubmit, members, task, project }) {
           <div>
             <label className="label">Assign To</label>
             <select
-              className="input-field clay-input"
+              className="input-field"
               value={form.assignedTo}
               onChange={(event) => {
                 const member = members.find((item) => item.id === event.target.value);
@@ -274,7 +274,7 @@ function EditTaskModal({ onClose, onSubmit, members, task, project }) {
           <div>
             <label className="label">Priority</label>
             <select
-              className="input-field clay-input"
+              className="input-field"
               value={form.priority}
               onChange={(event) => setForm({ ...form, priority: event.target.value })}
             >
@@ -288,7 +288,7 @@ function EditTaskModal({ onClose, onSubmit, members, task, project }) {
           <div>
             <label className="label">Target Date</label>
             <input
-              className="input-field clay-input"
+              className="input-field"
               type="date"
               value={form.targetDate}
               onChange={(event) => setForm({ ...form, targetDate: event.target.value })}
@@ -298,7 +298,7 @@ function EditTaskModal({ onClose, onSubmit, members, task, project }) {
           <div>
             <label className="label">Status</label>
             <select
-              className="input-field clay-input"
+              className="input-field"
               value={form.status}
               onChange={(event) => setForm({ ...form, status: event.target.value })}
             >
@@ -324,7 +324,7 @@ function EditTaskModal({ onClose, onSubmit, members, task, project }) {
           <div>
             <label className="label">Description</label>
             <textarea
-              className="input-field clay-input resize-none"
+              className="input-field resize-none"
               rows={2}
               value={form.description}
               onChange={(event) => setForm({ ...form, description: event.target.value })}
@@ -333,7 +333,7 @@ function EditTaskModal({ onClose, onSubmit, members, task, project }) {
         </div>
         <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 flex-shrink-0">
           <button onClick={onClose} className="btn-secondary">Cancel</button>
-          <button onClick={handleSubmit} disabled={saving} className="btn-primary clay-btn">
+          <button onClick={handleSubmit} disabled={saving} className="btn-primary">
             {saving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
@@ -369,7 +369,7 @@ function RescheduleModal({ onClose, onSubmit }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center modal-overlay">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative clay-card w-full max-w-sm mx-4 modal-content p-0" style={{ background: '#ffffff' }}>
+      <div className="relative card w-full max-w-sm mx-4 modal-content p-0" style={{ background: '#ffffff' }}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <h2 className="text-lg font-semibold text-gray-900">Reschedule Task</h2>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100">
@@ -380,7 +380,7 @@ function RescheduleModal({ onClose, onSubmit }) {
           <div>
             <label className="label">New Target Date</label>
             <input
-              className="input-field clay-input"
+              className="input-field"
               type="date"
               value={form.targetDate}
               onChange={(event) => setForm({ ...form, targetDate: event.target.value })}
@@ -389,7 +389,7 @@ function RescheduleModal({ onClose, onSubmit }) {
           <div>
             <label className="label">Reason for Reschedule</label>
             <textarea
-              className="input-field clay-input resize-none"
+              className="input-field resize-none"
               rows={3}
               placeholder="Why is this task being rescheduled?"
               value={form.reason}
@@ -399,7 +399,7 @@ function RescheduleModal({ onClose, onSubmit }) {
         </div>
         <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
           <button onClick={onClose} className="btn-secondary">Cancel</button>
-          <button onClick={handleSubmit} disabled={saving || !form.targetDate || !form.reason} className="btn-primary clay-btn">
+          <button onClick={handleSubmit} disabled={saving || !form.targetDate || !form.reason} className="btn-primary">
             {saving ? 'Saving...' : 'Save'}
           </button>
         </div>
@@ -457,7 +457,7 @@ export default function ProjectDetailPage() {
     return (
       <div className="text-center py-16">
         <p className="text-gray-400">Project not found or loading...</p>
-        <button onClick={() => navigate('/projects')} className="btn-primary mt-4">Back to Projects</button>
+        <button onClick={() => navigate('/admin/projects')} className="btn-primary mt-4">Back to Projects</button>
       </div>
     );
   }
@@ -657,7 +657,7 @@ export default function ProjectDetailPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <button onClick={() => navigate('/projects')} className="p-2 rounded-lg border border-[var(--border-primary)] hover:bg-gray-50">
+        <button onClick={() => navigate('/admin/projects')} className="p-2 rounded-lg border border-[var(--border-primary)] hover:bg-gray-50">
           <ArrowLeft className="w-4 h-4 text-gray-600" />
         </button>
         <div>
@@ -666,29 +666,29 @@ export default function ProjectDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="clay-stat-card text-center p-5">
+      <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="card stat-card text-center p-5">
           <p className="text-xs text-gray-400 font-medium">PO Value</p>
           <p className="text-2xl font-bold text-[var(--text-primary)] mt-1">{formatLakhs(project.poValue)}</p>
         </div>
-        <div className="clay-stat-card text-center p-5">
+        <div className="card stat-card text-center p-5">
           <p className="text-xs text-gray-400 font-medium">Total Expense</p>
           <p className="text-2xl font-bold text-[var(--text-primary)] mt-1">{formatLakhs(project.totalExpense)}</p>
         </div>
-        <div className="clay-stat-card text-center p-5">
+        <div className="card stat-card text-center p-5">
           <p className="text-xs text-gray-400 font-medium">Completion</p>
           <p className="text-2xl font-bold text-teal-600 mt-1">{project.completionPercent || 0}%</p>
         </div>
-        <div className="clay-stat-card text-center p-5">
+        <div className="card stat-card text-center p-5">
           <p className="text-xs text-gray-400 font-medium">Tasks</p>
           <p className="text-2xl font-bold text-[var(--text-primary)] mt-1">{projectTasks.length}</p>
         </div>
       </div>
 
-      <div className="clay-card p-5 lg:p-6">
+      <div className="card p-5 lg:p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-semibold text-gray-900">Tasks</h2>
-          <button onClick={() => setShowTaskModal(true)} className="btn-primary clay-btn text-xs">
+          <button onClick={() => setShowTaskModal(true)} className="btn-primary text-xs">
             <Plus className="w-3.5 h-3.5" /> Add Task
           </button>
         </div>
@@ -702,7 +702,9 @@ export default function ProjectDetailPage() {
         ) : projectTasks.length === 0 ? (
           <div className="py-4 text-center text-gray-400 text-sm">No tasks in this project yet. Click Add Task to create one.</div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* Desktop View Table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full min-w-[800px]">
             <thead>
               <tr className="bg-gray-50">
@@ -830,13 +832,100 @@ export default function ProjectDetailPage() {
             </tbody>
           </table>
           </div>
+
+          {/* Mobile Card List */}
+          <div className="md:hidden space-y-4">
+            {projectTasks.map((task) => (
+              <div key={task.id} className="card p-4 space-y-3">
+                <div className="flex justify-between items-start gap-2">
+                  <div className="max-w-[70%]">
+                    <p className="font-semibold text-gray-900 text-sm break-words">{task.title}</p>
+                    <p className="text-xs text-gray-400 truncate mt-0.5">Assigned: {task.assignedToName || '-'}</p>
+                  </div>
+                  <span className={`badge ${statusColors[task.status] || 'badge-gray'}`}>{task.status}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-xs border-t border-gray-100/60 pt-2.5">
+                  <div>
+                    <span className="block text-[10px] text-gray-400 uppercase font-medium">Priority</span>
+                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full inline-block mt-0.5 ${
+                      task.priority === 'Critical' ? 'bg-red-100 text-red-700' :
+                      task.priority === 'High' ? 'bg-orange-100 text-orange-700' :
+                      task.priority === 'Low' ? 'bg-gray-100 text-gray-600' :
+                      'bg-blue-100 text-blue-700'
+                    }`}>
+                      {task.priority || 'Medium'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] text-gray-400 uppercase font-medium">Target Date</span>
+                    <span className="font-semibold text-gray-700 mt-0.5 inline-block">{formatDate(task.targetDate)}</span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="block text-[10px] text-gray-400 uppercase font-medium mb-1">Completion</span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 progress-bar">
+                        <div className="progress-fill bg-teal-500" style={{ width: `${task.completionPercent || 0}%` }} />
+                      </div>
+                      <span className="text-xs font-semibold w-8 text-right">{task.completionPercent || 0}%</span>
+                    </div>
+                  </div>
+                </div>
+                {task.rescheduleCount > 0 && (
+                  <div className="text-[10px] text-orange-600 font-medium flex items-center gap-1 bg-orange-50 w-max px-2 py-0.5 rounded">
+                    <Clock className="w-3.5 h-3.5" /> Rescheduled {task.rescheduleCount}x
+                  </div>
+                )}
+                {task.rescheduleRequest?.status === 'pending' && (
+                  <div className="bg-orange-50/50 border border-orange-100 rounded-xl p-3 text-xs space-y-2">
+                    <p className="font-semibold text-orange-800">Reschedule Requested</p>
+                    <p className="text-gray-600"><span className="font-medium text-gray-500">Date:</span> {formatDate(task.rescheduleRequest.suggestedDate)}</p>
+                    <p className="text-gray-600"><span className="font-medium text-gray-500">Reason:</span> {task.rescheduleRequest.reason}</p>
+                    <div className="flex gap-2 pt-1">
+                      <button onClick={() => handleApproveReschedule(task)} className="flex-1 bg-green-600 hover:bg-green-700 text-white py-1.5 rounded-lg text-[10px] font-semibold transition-colors">Approve</button>
+                      <button onClick={() => handleRejectReschedule(task)} className="flex-1 bg-red-600 hover:bg-red-700 text-white py-1.5 rounded-lg text-[10px] font-semibold transition-colors">Reject</button>
+                    </div>
+                  </div>
+                )}
+                <div className="flex justify-between items-center border-t border-gray-100/60 pt-2.5">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedTaskSet.has(task.id)}
+                      onChange={() => toggleTaskSelection(task.id)}
+                      className="rounded accent-teal-600 w-4 h-4 cursor-pointer"
+                      title="Select task"
+                    />
+                    <span className="text-xs text-gray-400">Select</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button 
+                      onClick={() => { setEditTaskData(task); setShowEditTaskModal(true); }}
+                      className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      title="Edit Task"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => { setRescheduleTaskData(task); setShowRescheduleModal(true); }}
+                      className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                      title="Reschedule Task"
+                    >
+                      <CalendarClock className="w-4 h-4" />
+                    </button>
+                    <DeleteButton onClick={() => deleteTask(task.id, task.title)} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          </>
         )}
       </div>
 
-      <div className="clay-card p-5 lg:p-6">
+      <div className="card p-5 lg:p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-semibold text-gray-900">Expenses</h2>
-          <button onClick={() => setShowExpenseModal(true)} className="btn-primary clay-btn text-xs">
+          <button onClick={() => setShowExpenseModal(true)} className="btn-primary text-xs">
             <Plus className="w-3.5 h-3.5" /> Add Expense
           </button>
         </div>
@@ -845,7 +934,9 @@ export default function ProjectDetailPage() {
         ) : expenses.length === 0 ? (
           <div className="py-4 text-center text-gray-400 text-sm">No expenses yet.</div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* Desktop View Table */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full min-w-[500px]">
             <thead>
               <tr className="bg-gray-50">
@@ -869,6 +960,23 @@ export default function ProjectDetailPage() {
             </tbody>
           </table>
           </div>
+
+          {/* Mobile View Cards */}
+          <div className="sm:hidden space-y-3">
+            {expenses.map((expense) => (
+              <div key={expense.id} className="card p-4 flex justify-between items-center gap-2">
+                <div>
+                  <p className="font-semibold text-gray-900 text-sm">{expense.activity}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">{formatDate(expense.createdAt)}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="font-bold text-gray-900 text-sm">{formatCurrency(expense.amount)}</span>
+                  <DeleteButton onClick={() => deleteExpense(expense.id)} />
+                </div>
+              </div>
+            ))}
+          </div>
+          </>
         )}
       </div>
 
