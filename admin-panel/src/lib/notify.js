@@ -2,7 +2,7 @@ import { auth } from './firebase';
 
 const API = import.meta.env
   .VITE_API_BASE_URL ||
-  'https://sasasssss.vercel.app';
+  'https://sasasssss-one.vercel.app';
 
 const callNotify = async (
   eventType, context

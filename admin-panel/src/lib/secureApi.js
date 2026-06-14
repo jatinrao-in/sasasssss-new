@@ -1,7 +1,7 @@
 import { auth } from './firebase';
 
 // Always call the Vercel API directly — CORS is handled server-side
-const API_BASE = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') || 'https://sasasssss.vercel.app';
+const API_BASE = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') || 'https://sasasssss-one.vercel.app';
 
 const getAuthToken = async () => {
   return new Promise((resolve, reject) => {

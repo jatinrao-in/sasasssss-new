@@ -200,7 +200,7 @@ export default defineConfig({
     host: true,
     proxy: {
       '/api': {
-        target: 'https://sasasssss.vercel.app',
+        target: 'https://sasasssss-one.vercel.app',
         changeOrigin: true,
         secure: true,
       }

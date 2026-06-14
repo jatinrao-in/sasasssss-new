@@ -5,7 +5,7 @@ import { auth } from './firebase';
 const API_BASE = 
   import.meta.env.VITE_API_BASE_URL?.
     replace(/\/$/, '') || 
-  'https://sasasssss.vercel.app';
+  'https://sasasssss-one.vercel.app';
 
 (function(){})('API Base URL:', API_BASE);
 

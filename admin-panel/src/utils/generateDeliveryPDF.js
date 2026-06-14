@@ -182,8 +182,8 @@ const TERMS = [
 ];
 
 const DELIVERY_CHECKLIST = [
-  ['Admin Panel Web Application', 'URL: https://sasasssss.vercel.app/admin'],
-  ['Team Member PWA Application', 'URL: https://sasasssss.vercel.app'],
+  ['Admin Panel Web Application', 'URL: https://sasasssss-one.vercel.app/admin'],
+  ['Team Member PWA Application', 'URL: https://sasasssss-one.vercel.app'],
   ['Firebase Project Setup', 'Database, Authentication configured'],
   ['MSG91 WhatsApp Integration', '8 templates configured and approved'],
   ['Vercel Hosting Setup', 'Both applications live and accessible'],

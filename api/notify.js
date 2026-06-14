@@ -57,7 +57,7 @@ export default async function handler(
           context.memberName,
           context.email,
           'Ask admin for password',
-          'sasasssss.vercel.app'
+          'sasasssss-one.vercel.app'
         );
         break;
 

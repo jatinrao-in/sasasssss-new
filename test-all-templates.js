@@ -21,7 +21,7 @@ async function testAll() {
   console.log('Starting template test to:', phone);
 
   try {
-    responses.push(await sendWelcomeMessage(phone, name, 'test@example.com', 'ask admin', 'sasasssss.vercel.app'));
+    responses.push(await sendWelcomeMessage(phone, name, 'test@example.com', 'ask admin', 'sasasssss-one.vercel.app'));
     responses.push(await sendTaskAssigned(phone, name, 'Test Task', 'Test Project', '31 Dec 2026'));
     responses.push(await sendTaskOverdue(phone, name, 'Test Task', 'Test Project', 5));
     responses.push(await sendSalaryCredited(phone, name, 50000, 'December', '01 Jan 2027'));
