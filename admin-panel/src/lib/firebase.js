@@ -12,6 +12,8 @@ import {
 } from 'firebase/auth';
 import { getMessaging } from 'firebase/messaging';
 
+import { getAnalytics, isSupported } from 'firebase/analytics';
+
 function sanitizeFirebaseEnv(value) {
   return String(value ?? '')
     .replace(/\\[rn]/g, '')
@@ -26,6 +28,8 @@ const firebaseConfig = {
   storageBucket: sanitizeFirebaseEnv(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET),
   messagingSenderId: sanitizeFirebaseEnv(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID),
   appId: sanitizeFirebaseEnv(import.meta.env.VITE_FIREBASE_APP_ID),
+  databaseURL: sanitizeFirebaseEnv(import.meta.env.VITE_FIREBASE_DATABASE_URL) || undefined,
+  measurementId: sanitizeFirebaseEnv(import.meta.env.VITE_FIREBASE_MEASUREMENT_ID) || undefined,
 };
 
 const missingFirebaseConfigKeys = Object.entries(firebaseConfig)
@@ -57,5 +61,6 @@ setPersistence(auth, browserLocalPersistence)
   .catch(err => console.error('Persistence error:', err));
 
 export const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
+export const analytics = typeof window !== 'undefined' && firebaseConfig.measurementId ? getAnalytics(app) : null;
 
 export default app;
