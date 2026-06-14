@@ -28,6 +28,19 @@ export default function LoginPage() {
   const [resetEmail, setResetEmail] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
 
+  // Standalone PWA detection state
+  const [isStandalone, setIsStandalone] = useState(false);
+
+  useEffect(() => {
+    const checkStandalone = () => {
+      const isStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || 
+                               window.navigator.standalone || 
+                               document.referrer.includes('android-app://');
+      setIsStandalone(isStandaloneMode);
+    };
+    checkStandalone();
+  }, []);
+
   // Route authenticated users into the correct app without rendering the wrong dashboard first.
   useEffect(() => {
     if (authLoading || !user) return;
@@ -122,10 +135,10 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen bg-white w-full font-sans text-gray-900">
       
-      {/* Left side: Royal Blue Graphic (Hidden on mobile) */}
-      <div className="hidden md:flex md:w-1/2 lg:w-7/12 relative overflow-hidden bg-[#2E4BFF] text-white flex-col justify-between p-16">
+      {/* Left side: Crimson/Graphite Graphic (Hidden on mobile) */}
+      <div className="hidden md:flex md:w-1/2 lg:w-7/12 relative overflow-hidden bg-[#E23744] text-white flex-col justify-between p-16">
         {/* Abstract background elements */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#2E4BFF] via-[#1E3A8A] to-[#0F172A] z-0 opacity-95" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#E23744] via-[#1E293B] to-[#0F172A] z-0 opacity-95" />
         
         {/* Interactive Grid Background */}
         <InteractiveGrid />
@@ -172,14 +185,16 @@ export default function LoginPage() {
             <img src={logoImg} alt="Logo" className="w-8 h-8 rounded-lg object-cover" />
             Saya CRM
           </span>
-          <button 
-            type="button"
-            onClick={() => navigate('/download')}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#2E4BFF] hover:bg-[#2E4BFF]/10 rounded-lg border border-[#2E4BFF]/20 transition-all cursor-pointer shadow-sm bg-white"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Download App</span>
-          </button>
+          {!isStandalone && (
+            <button 
+              type="button"
+              onClick={() => navigate('/download')}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#E23744] hover:bg-[#E23744]/10 rounded-lg border border-[#E23744]/20 transition-all cursor-pointer shadow-sm bg-white"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Download App</span>
+            </button>
+          )}
         </div>
 
         {/* Center: Main Form Card (Centered on all viewports - z-10) */}
@@ -212,7 +227,7 @@ export default function LoginPage() {
                       placeholder="name@company.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full h-12 pl-12 pr-4 rounded-xl border border-gray-200 focus:border-[#2E4BFF] focus:outline-none focus:ring-4 focus:ring-[#2E4BFF]/10 transition-all text-sm text-gray-800 bg-white"
+                      className="w-full h-12 pl-12 pr-4 rounded-xl border border-gray-200 focus:border-[#E23744] focus:outline-none focus:ring-4 focus:ring-[#E23744]/10 transition-all text-sm text-gray-800 bg-white"
                     />
                   </div>
                 </div>
@@ -232,7 +247,7 @@ export default function LoginPage() {
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full h-12 pl-12 pr-12 rounded-xl border border-gray-200 focus:border-[#2E4BFF] focus:outline-none focus:ring-4 focus:ring-[#2E4BFF]/10 transition-all text-sm text-gray-800 bg-white"
+                      className="w-full h-12 pl-12 pr-12 rounded-xl border border-gray-200 focus:border-[#E23744] focus:outline-none focus:ring-4 focus:ring-[#E23744]/10 transition-all text-sm text-gray-800 bg-white"
                     />
                     <button
                       type="button"
@@ -292,7 +307,7 @@ export default function LoginPage() {
                       placeholder="name@company.com"
                       value={resetEmail}
                       onChange={(e) => setResetEmail(e.target.value)}
-                      className="w-full h-12 pl-12 pr-4 rounded-xl border border-gray-200 focus:border-[#2E4BFF] focus:outline-none focus:ring-4 focus:ring-[#2E4BFF]/10 transition-all text-sm text-gray-800 bg-white"
+                      className="w-full h-12 pl-12 pr-4 rounded-xl border border-gray-200 focus:border-[#E23744] focus:outline-none focus:ring-4 focus:ring-[#E23744]/10 transition-all text-sm text-gray-800 bg-white"
                     />
                   </div>
                 </div>
@@ -344,7 +359,7 @@ export default function LoginPage() {
                   setView('forgot-password');
                   setError('');
                 }}
-                className="text-[#2E4BFF] hover:underline transition-colors font-bold align-baseline"
+                className="text-[#E23744] hover:underline transition-colors font-bold align-baseline"
               >
                 Click here
               </button>

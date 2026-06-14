@@ -49,7 +49,7 @@ function SheetContent({ children, className, side = 'bottom', ...props }) {
  if (!open) return null;
 
  return (
- <div className="fixed inset-0 z-50" style={{ maxWidth: '430px', margin: '0 auto' }}>
+ <div className="fixed inset-0 z-[100]" style={{ maxWidth: '430px', margin: '0 auto' }}>
  {/* Overlay */}
  <div
  className="sheet-overlay absolute inset-0 bg-black/40 backdrop-blur-sm"
@@ -58,7 +58,7 @@ function SheetContent({ children, className, side = 'bottom', ...props }) {
  {/* Sheet */}
  <div
  className={cn(
- 'absolute bottom-0 left-0 right-0 z-50 rounded-t-2xl bg-[var(--bg-card)] shadow-2xl',
+ 'absolute bottom-0 left-0 right-0 z-[100] rounded-t-2xl bg-[var(--bg-card)] shadow-2xl',
  'animate-[slideUp_0.3s_ease-out]',
  className
  )}
