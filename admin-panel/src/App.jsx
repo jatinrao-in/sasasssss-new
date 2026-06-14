@@ -33,6 +33,7 @@ import { MAINTENANCE_CYCLE_DAYS, addDays } from './lib/systemConfig';
 
 // PWA / Member UI Imports
 import MemberPageRoute from './pwa/components/MemberPageRoute';
+import PwaProtectedRoute from './pwa/components/ProtectedRoute';
 import MobileLayout from './pwa/components/layout/MobileLayout';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from './pwa/components/ui/sheet';
 import { Button } from './pwa/components/ui/button';
@@ -55,10 +56,10 @@ const DownloadPage = lazy(() => import('./pwa/pages/DownloadPage'));
 
 function MemberLayout() {
   return (
-    <ProtectedRoute requiredRole="member">
+    <PwaProtectedRoute requiredRole="member">
       <NotificationHandler />
       <MobileLayout />
-    </ProtectedRoute>
+    </PwaProtectedRoute>
   );
 }
 
