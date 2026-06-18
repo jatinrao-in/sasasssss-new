@@ -2,10 +2,8 @@ name: Daily WhatsApp Messages
 
 on:
   schedule:
-    # 8:00 AM IST = 2:30 AM UTC
-    - cron: '30 2 * * *'
-    # 8:00 PM IST = 2:30 PM UTC
-    - cron: '30 14 * * *'
+    - cron: '30 1 * * *'   # 7:00 AM IST
+    - cron: '30 13 * * *'  # 7:00 PM IST
   workflow_dispatch:
     inputs:
       slot:
@@ -17,45 +15,59 @@ jobs:
   send-whatsapp:
     runs-on: ubuntu-latest
     steps:
-      - name: Determine time slot
-        id: slot
+      - name: Determine slot from time
+        id: detect
         run: |
           HOUR=$(date -u +%H)
-          MIN=$(date -u +%M)
-          echo "UTC time: $HOUR:$MIN"
-          if [ "$HOUR" = "02" ]; then
+          if [ "$HOUR" = "01" ]; then
             echo "slot=morning" >> $GITHUB_OUTPUT
-          else
+          elif [ "$HOUR" = "13" ]; then
             echo "slot=evening" >> $GITHUB_OUTPUT
+          else
+            echo "slot=${{ github.event.inputs.slot }}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Set manual slot
-        if: github.event_name == 'workflow_dispatch'
+      - name: Send messages with retry
         run: |
-          echo "slot=${{ github.event.inputs.slot }}" >> $GITHUB_OUTPUT
-        id: manual_slot
-
-      - name: Send WhatsApp Messages
-        run: |
-          SLOT="${{ steps.slot.outputs.slot || steps.manual_slot.outputs.slot }}"
-          echo "Sending slot: $SLOT"
+          SLOT="${{ steps.detect.outputs.slot }}"
+          echo "Sending slot: $SLOT at $(date -u)"
           
-          RESPONSE=$(curl -s -w "\n%{http_code}" \
-            -X GET \
-            "https://sasasssss.vercel.app/api/cron/send-reminders?slot=$SLOT" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+          for i in 1 2 3; do
+            RESPONSE=$(curl -s -w "\n%{http_code}" \
+              -X GET \
+              "https://sasasssss.vercel.app/api/cron/send-reminders?slot=$SLOT" \
+              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+              --max-time 50)
+            
+            HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+            BODY=$(echo "$RESPONSE" | head -n-1)
+            
+            echo "Attempt $i - Status: $HTTP_CODE"
+            echo "Response: $BODY"
+            
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "SUCCESS on attempt $i"
+              exit 0
+            fi
+            
+            echo "Retrying in 10 seconds..."
+            sleep 10
+          done
+          
+          echo "FAILED after 3 attempts"
+          exit 1
+
+      - name: Send failure alert to admin
+        if: failure()
+        run: |
+          curl -s -X POST \
+            "https://sasasssss.vercel.app/api/notify" \
             -H "Content-Type: application/json" \
-            --max-time 55)
-          
-          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-          BODY=$(echo "$RESPONSE" | head -n-1)
-          
-          echo "HTTP Status: $HTTP_CODE"
-          echo "Response: $BODY"
-          
-          if [ "$HTTP_CODE" != "200" ]; then
-            echo "FAILED with status $HTTP_CODE"
-            exit 1
-          fi
-          
-          echo "SUCCESS"
+            -d '{
+              "eventType": "general_message",
+              "context": {
+                "whatsappNumber": "9306018924",
+                "memberName": "Admin",
+                "summary": "Daily cron job failed - please check GitHub Actions logs immediately"
+              }
+            }'

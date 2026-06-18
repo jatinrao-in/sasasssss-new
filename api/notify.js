@@ -122,6 +122,14 @@ export default async function handler(
         );
         break;
 
+      case 'general_message':
+        result = await sendGeneralMessage(
+          context.whatsappNumber,
+          context.memberName || 'Admin',
+          context.summary || '0'
+        );
+        break;
+
       default:
         return res.status(400).json({
           error: 'Unknown eventType: ' +
