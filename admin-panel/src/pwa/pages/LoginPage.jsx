@@ -3,7 +3,7 @@ import logoImg from '../assets/logo.jpg';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Label } from '../components/ui/label';
-import { Eye, EyeOff, Lock, Mail, ArrowRight, Asterisk, ArrowLeft, Download } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, ArrowRight, Asterisk, ArrowLeft, Download, Key } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { redirectToAdminPanel } from '../lib/adminPanel';
 import { getFirstAccessiblePath } from '../lib/accessControl';
@@ -135,10 +135,10 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen bg-white w-full font-sans text-gray-900">
       
-      {/* Left side: Crimson/Graphite Graphic (Hidden on mobile) */}
-      <div className="hidden md:flex md:w-1/2 lg:w-7/12 relative overflow-hidden bg-[#E23744] text-white flex-col justify-between p-16">
+      {/* Left side: Royal Blue Graphic (Hidden on mobile) */}
+      <div className="hidden md:flex md:w-1/2 lg:w-7/12 relative overflow-hidden bg-[#2E4BFF] text-white flex-col justify-between p-16">
         {/* Abstract background elements */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#E23744] via-[#1E293B] to-[#0F172A] z-0 opacity-95" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#2E4BFF] via-[#1E3A8A] to-[#0F172A] z-0 opacity-95" />
         
         {/* Interactive Grid Background */}
         <InteractiveGrid />
@@ -163,46 +163,59 @@ export default function LoginPage() {
         
         {/* Bottom: Copyright */}
         <div className="relative z-20">
-          <p className="text-sm text-blue-200/80">
+          <p className="text-sm text-white/60">
             &copy; 2026 Saya Industrial. All rights reserved.
           </p>
         </div>
       </div>
 
       {/* Right side / Mobile View: Login Form */}
-      <div className="w-full md:w-1/2 lg:w-5/12 flex flex-col justify-between p-6 sm:p-12 md:p-16 bg-[#FAF9FF] min-h-screen md:min-h-0 relative overflow-hidden z-40">
+      <div className="w-full md:w-1/2 lg:w-5/12 flex flex-col justify-between p-6 sm:p-12 md:p-16 bg-white min-h-screen md:min-h-0 relative overflow-hidden z-40">
         
-        {/* Glowing aura blobs for mobile background (placed behind content with z-0) */}
-        <div className="md:hidden absolute top-[-10%] right-[-20%] w-80 h-80 rounded-full bg-blue-300/40 blur-[100px] pointer-events-none z-0" />
-        <div className="md:hidden absolute bottom-[-10%] left-[-20%] w-80 h-80 rounded-full bg-indigo-400/30 blur-[120px] pointer-events-none z-0" />
+        {/* Glowing aura blobs for mobile background */}
+        <div className="md:hidden absolute top-[-10%] right-[-20%] w-80 h-80 rounded-full bg-[#2E4BFF]/10 blur-[100px] pointer-events-none z-0" />
+        <div className="md:hidden absolute bottom-[-10%] left-[-20%] w-80 h-80 rounded-full bg-[#2E4BFF]/10 blur-[120px] pointer-events-none z-0" />
         
-        {/* Subtle dot-grid overlay for mobile (placed behind content with z-0) */}
-        <div className="md:hidden absolute inset-0 bg-[radial-gradient(#e2e8f0_1.5px,transparent_1.5px)] [background-size:24px_24px] opacity-70 pointer-events-none z-0" />
+        {/* Subtle dot-grid overlay for mobile */}
+        <div className="md:hidden absolute inset-0 bg-[radial-gradient(#e2e8f0_1.5px,transparent_1.5px)] [background-size:24px_24px] opacity-40 pointer-events-none z-0" />
 
-        {/* Top Header - Logo & Brand (Centered on mobile, left-aligned on desktop - z-10) */}
+        {/* Top Header - Logo & Brand */}
         <div className="flex justify-between items-center pt-4 md:pt-0 relative z-10 w-full animate-fade-in">
-          <span className="flex items-center gap-2.5 text-xl font-black text-gray-900 tracking-tight">
+          <span className="flex items-center gap-2.5 text-xl font-bold text-gray-900 tracking-tight">
             <img src={logoImg} alt="Logo" className="w-8 h-8 rounded-lg object-cover" />
             Saya CRM
           </span>
-          {!isStandalone && (
+          <div className="flex items-center gap-2">
             <button 
               type="button"
-              onClick={() => navigate('/download')}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#E23744] hover:bg-[#E23744]/10 rounded-lg border border-[#E23744]/20 transition-all cursor-pointer shadow-sm bg-white"
+              onClick={() => navigate('/')}
+              className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all cursor-pointer"
             >
-              <Download className="w-3.5 h-3.5" />
-              <span>Download App</span>
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back</span>
             </button>
-          )}
+            {!isStandalone && (
+              <button 
+                type="button"
+                onClick={() => navigate('/download')}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#2E4BFF] hover:bg-[#2E4BFF]/10 rounded-lg border border-[#2E4BFF]/20 transition-all cursor-pointer shadow-sm bg-white"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download App</span>
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Center: Main Form Card (Centered on all viewports - z-10) */}
+        {/* Center: Main Form Card */}
         <div className="w-full max-w-[380px] mx-auto my-auto py-8 md:py-0 relative z-10">
           
           {view === 'login' ? (
             <>
-              <div className="text-center md:text-left mb-8">
+              <div className="text-center md:text-left mb-8 flex flex-col items-center md:items-start">
+                <div className="w-16 h-16 bg-blue-50 text-[#2E4BFF] rounded-2xl flex items-center justify-center mb-4 shadow-sm border border-gray-100">
+                  <Lock size={32} className="stroke-[1.5]" />
+                </div>
                 <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">Welcome Back!</h2>
                 <p className="text-gray-500 mt-2 text-sm font-medium">Please enter your details to sign in.</p>
               </div>
@@ -227,7 +240,7 @@ export default function LoginPage() {
                       placeholder="name@company.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full h-12 pl-12 pr-4 rounded-xl border border-gray-200 focus:border-[#E23744] focus:outline-none focus:ring-4 focus:ring-[#E23744]/10 transition-all text-sm text-gray-800 bg-white"
+                      className="w-full h-12 pl-12 pr-4 rounded-xl border border-gray-200 focus:border-[#2E4BFF] focus:outline-none focus:ring-4 focus:ring-[#2E4BFF]/10 transition-all text-sm text-gray-800 bg-white"
                     />
                   </div>
                 </div>
@@ -247,7 +260,7 @@ export default function LoginPage() {
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full h-12 pl-12 pr-12 rounded-xl border border-gray-200 focus:border-[#E23744] focus:outline-none focus:ring-4 focus:ring-[#E23744]/10 transition-all text-sm text-gray-800 bg-white"
+                      className="w-full h-12 pl-12 pr-12 rounded-xl border border-gray-200 focus:border-[#2E4BFF] focus:outline-none focus:ring-4 focus:ring-[#2E4BFF]/10 transition-all text-sm text-gray-800 bg-white"
                     />
                     <button
                       type="button"
@@ -259,11 +272,11 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                {/* Solid Black Login Button */}
+                {/* Solid Royal Blue Login Button */}
                 <Button 
                   type="submit" 
                   disabled={loading} 
-                  className="w-full h-12 rounded-xl bg-black hover:bg-gray-800 text-white text-sm font-bold shadow-md hover:shadow-lg transition-all active:scale-[0.98] mt-4 flex items-center justify-center gap-2 border-0"
+                  className="w-full h-12 bg-[#2E4BFF] hover:bg-[#1E3A8A] text-white text-sm rounded-xl active:scale-[0.98] mt-4 flex items-center justify-center gap-2 font-bold shadow-md hover:shadow-lg transition-all border-0 animate-pulse-soft"
                 >
                   {loading ? (
                     <>
@@ -282,7 +295,10 @@ export default function LoginPage() {
           ) : (
             <>
               {/* Forgot Password View */}
-              <div className="text-center md:text-left mb-8">
+              <div className="text-center md:text-left mb-8 flex flex-col items-center md:items-start">
+                <div className="w-16 h-16 bg-blue-50 text-[#2E4BFF] rounded-2xl flex items-center justify-center mb-4 shadow-sm border border-gray-100">
+                  <Key size={32} className="stroke-[1.5]" />
+                </div>
                 <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">Reset Password</h2>
                 <p className="text-gray-500 mt-2 text-sm font-medium">Enter your email and we'll send you a recovery link.</p>
               </div>
@@ -307,7 +323,7 @@ export default function LoginPage() {
                       placeholder="name@company.com"
                       value={resetEmail}
                       onChange={(e) => setResetEmail(e.target.value)}
-                      className="w-full h-12 pl-12 pr-4 rounded-xl border border-gray-200 focus:border-[#E23744] focus:outline-none focus:ring-4 focus:ring-[#E23744]/10 transition-all text-sm text-gray-800 bg-white"
+                      className="w-full h-12 pl-12 pr-4 rounded-xl border border-gray-200 focus:border-[#2E4BFF] focus:outline-none focus:ring-4 focus:ring-[#2E4BFF]/10 transition-all text-sm text-gray-800 bg-white"
                     />
                   </div>
                 </div>
@@ -316,7 +332,7 @@ export default function LoginPage() {
                 <Button 
                   type="submit" 
                   disabled={resetLoading} 
-                  className="w-full h-12 rounded-xl bg-black hover:bg-gray-800 text-white text-sm font-bold shadow-md hover:shadow-lg transition-all active:scale-[0.98] mt-4 flex items-center justify-center gap-2 border-0"
+                  className="w-full h-12 bg-[#2E4BFF] hover:bg-[#1E3A8A] text-white text-sm rounded-xl active:scale-[0.98] mt-4 flex items-center justify-center gap-2 font-bold shadow-md hover:shadow-lg transition-all border-0"
                 >
                   {resetLoading ? (
                     <>
@@ -338,7 +354,7 @@ export default function LoginPage() {
                     setView('login');
                     setError('');
                   }}
-                  className="w-full h-12 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-bold transition-all active:scale-[0.98] mt-2 flex items-center justify-center gap-2"
+                  className="w-full h-12 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-bold transition-all active:scale-[0.98] mt-2 flex items-center justify-center gap-2 bg-transparent"
                 >
                   <ArrowLeft className="w-4 h-4" />
                   <span>Back to Sign In</span>
@@ -359,7 +375,7 @@ export default function LoginPage() {
                   setView('forgot-password');
                   setError('');
                 }}
-                className="text-[#E23744] hover:underline transition-colors font-bold align-baseline"
+                className="text-[#2E4BFF] hover:underline transition-colors font-bold align-baseline"
               >
                 Click here
               </button>

@@ -1,39 +1,39 @@
 const PREFIX = '[TeamMemberPWA]';
 
 export function logInfo(scope, ...args) {
-  (function(){})(PREFIX, scope, ...args);
+  console.log(PREFIX, scope, ...args);
 }
 
 export function logSkip(scope) {
-  (function(){})(PREFIX, scope, 'NO USER UID - skipping query');
+  console.log(PREFIX, scope, 'NO USER UID - skipping query');
 }
 
 export function logFetch(scope, uid, extra) {
   if (extra === undefined) {
-    (function(){})(PREFIX, scope, 'Fetching data for uid:', uid);
+    console.log(PREFIX, scope, 'Fetching data for uid:', uid);
     return;
   }
 
-  (function(){})(PREFIX, scope, 'Fetching data for uid:', uid, extra);
+  console.log(PREFIX, scope, 'Fetching data for uid:', uid, extra);
 }
 
 export function logSnapshot(scope, snapshot) {
-  (function(){})(PREFIX, scope, 'Snapshot received:', snapshot.size, 'documents');
+  console.log(PREFIX, scope, 'Snapshot received:', snapshot.size, 'documents');
   snapshot.docs.forEach((docSnapshot) => {
-    (function(){})(PREFIX, scope, 'Doc:', docSnapshot.id, docSnapshot.data());
+    console.log(PREFIX, scope, 'Doc:', docSnapshot.id, docSnapshot.data());
   });
 }
 
 export function logDocSnapshot(scope, snapshot) {
   const count = snapshot.exists() ? 1 : 0;
-  (function(){})(PREFIX, scope, 'Snapshot received:', count, 'documents');
+  console.log(PREFIX, scope, 'Snapshot received:', count, 'documents');
 
   if (snapshot.exists()) {
-    (function(){})(PREFIX, scope, 'Doc:', snapshot.id, snapshot.data());
+    console.log(PREFIX, scope, 'Doc:', snapshot.id, snapshot.data());
     return;
   }
 
-  (function(){})(PREFIX, scope, 'Doc: none');
+  console.log(PREFIX, scope, 'Doc: none');
 }
 
 export function logError(scope, error) {
@@ -45,3 +45,4 @@ export function logError(scope, error) {
     error?.message || error,
   );
 }
+

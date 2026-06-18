@@ -99,7 +99,7 @@ export default function UserAvatar({
         cursor: isInteractive ? 'pointer' : 'default',
         userSelect: 'none',
         flexShrink: 0,
-        outline: showRing ? `3px solid ${color.bg}` : 'none',
+        outline: showRing ? `3px solid var(--color-ring)` : 'none',
         outlineOffset: '2px',
         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
         transform: pressed ? 'scale(0.92)' : 'scale(1)',

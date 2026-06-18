@@ -1,16 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CalendarClock, CheckCircle2, MessageSquarePlus, RefreshCw } from 'lucide-react';
+import { CalendarClock, CheckCircle2, MessageSquarePlus, RefreshCw, CheckSquare, Building, User, Phone, Calendar, Clock, ClipboardList, AlertTriangle, Check, TrendingUp, Briefcase, MoreHorizontal } from 'lucide-react';
 import { Timestamp, increment, serverTimestamp } from 'firebase/firestore';
-import { Card, CardContent } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../components/ui/sheet';
-import { Label } from '../components/ui/label';
+import { Card, CardContent } from '../components/ui/card';
 import { useAuth } from '../hooks/useAuth';
 import { useFollowUps } from '../hooks/useFollowUps';
 import { useToast } from '../hooks/useToast';
 import { logInfo } from '../lib/firestoreDebug';
+import ActionLoader from '../components/ActionLoader';
 
 const formatDate = (timestamp) => {
   if (!timestamp) return 'N/A';
@@ -24,12 +22,27 @@ const formatDate = (timestamp) => {
   });
 };
 
-const FILTERS = [
-  { value: 'all', label: 'All' },
-  { value: 'due_today', label: 'Due Today' },
-  { value: 'open', label: 'Open' },
-  { value: 'closed', label: 'Closed' },
-  { value: 'overdue', label: 'Overdue' },
+const getInitials = (name) => {
+  if (!name) return 'RJ';
+  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+};
+
+const cardPress = (el, pressed) => {
+  if (pressed) {
+    el.style.boxShadow = 'none';
+    el.style.transform = 'translate(4px,4px)';
+  } else {
+    el.style.boxShadow = '4px 4px 0px #3E362E';
+    el.style.transform = '';
+  }
+};
+
+const TABS = [
+  { key: 'all', label: 'All' },
+  { key: 'due_today', label: 'Due Today' },
+  { key: 'open', label: 'Open' },
+  { key: 'closed', label: 'Closed' },
+  { key: 'overdue', label: 'Overdue' },
 ];
 
 const OUTCOMES = [
@@ -38,12 +51,15 @@ const OUTCOMES = [
   { value: 'negative', label: 'Negative', tone: 'border-red-200 bg-red-50 text-red-700' },
 ];
 
-function SummaryCard({ label, value, accentClass }) {
+function SummaryCard({ label, value, styleClass }) {
+  const isYellow = styleClass.includes('bg-[#FFC700]');
+  const isDark = styleClass.includes('bg-[#111827]');
+
   return (
-    <Card className={`min-w-[140px] border-none bg-gradient-to-br ${accentClass} shadow-lg`}>
+    <Card className={`min-w-[130px] ${styleClass} shadow-md rounded-2xl`}>
       <CardContent className="p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/75">{label}</p>
-        <p className="mt-2 text-3xl font-bold text-white">{value}</p>
+        <p className={`text-[10px] font-extrabold uppercase tracking-wider ${isYellow ? 'text-[#111827]/65' : isDark ? 'text-slate-400' : 'text-slate-500'}`}>{label}</p>
+        <p className="mt-1 text-2xl font-black">{value}</p>
       </CardContent>
     </Card>
   );
@@ -51,22 +67,31 @@ function SummaryCard({ label, value, accentClass }) {
 
 function FollowUpCardSkeleton() {
   return (
-    <Card className="border-gray-100">
-      <CardContent className="p-4">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div className="h-6 w-24 animate-pulse rounded-full bg-gray-100" />
-          <div className="h-6 w-16 animate-pulse rounded-full bg-gray-100" />
+    <Card className="bg-[#F2ECE1] border border-[#DFD5C6] rounded-[28px] animate-pulse h-auto min-h-[190px] md:h-[210px] w-full">
+      <CardContent className="p-[18px] flex flex-col justify-between h-full">
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="w-10 h-10 rounded-[12px] bg-[#E5DFD3] animate-pulse flex-shrink-0" />
+            <div className="h-6 bg-[#E5DFD3] rounded-lg w-1/2 animate-pulse" />
+            <div className="w-10 h-10 rounded-full bg-[#E5DFD3] animate-pulse" />
+          </div>
+          <div className="flex gap-2">
+            <div className="h-8 w-20 rounded-full bg-[#E5DFD3] animate-pulse" />
+            <div className="h-8 w-24 rounded-full bg-[#E5DFD3] animate-pulse" />
+          </div>
         </div>
-        <div className="space-y-2">
-          <div className="h-3 w-40 animate-pulse rounded bg-gray-100" />
-          <div className="h-3 w-44 animate-pulse rounded bg-gray-100" />
-          <div className="h-3 w-36 animate-pulse rounded bg-gray-100" />
-        </div>
-        <div className="mt-4 h-20 animate-pulse rounded-xl bg-gray-50" />
-        <div className="mt-4 flex gap-2">
-          <div className="h-11 flex-1 animate-pulse rounded-lg bg-gray-100" />
-          <div className="h-11 flex-1 animate-pulse rounded-lg bg-gray-100" />
-          <div className="h-11 flex-1 animate-pulse rounded-lg bg-gray-100" />
+        <div className="space-y-2.5">
+          <hr className="border-t border-[#DFD5C6]/40 my-0" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-[10px] bg-[#E5DFD3]" />
+              <div className="space-y-1">
+                <div className="h-3 w-10 bg-[#E5DFD3] rounded" />
+                <div className="h-4 w-16 bg-[#E5DFD3] rounded" />
+              </div>
+            </div>
+            <div className="w-[38px] h-[38px] rounded-full bg-[#E5DFD3]" />
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -83,62 +108,125 @@ function getStatusBadge(item) {
 
 function FollowUpCard({
   item,
-  onMarkDone,
-  onReschedule,
-  onAddNote,
+  onOpenActions,
 }) {
+  const { userData } = useAuth();
+  const isClosed = item.isClosed;
+  const isOverdue = item.overdueDays > 0 && !isClosed;
+
   return (
-    <Card className={item.overdueDays > 0 && !item.isClosed ? 'border-l-4 border-l-red-500' : 'border-l-4 border-l-transparent'}>
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-3">
-          <Badge className="capitalize">{item.taskType || 'Follow-up'}</Badge>
-          {getStatusBadge(item)}
+    <Card 
+      className="bg-[#F2ECE1] rounded-lg overflow-hidden cursor-pointer"
+      style={{
+        border: '2px solid #3E362E',
+        boxShadow: '4px 4px 0px #3E362E',
+        transition: 'box-shadow 80ms, transform 80ms',
+      }}
+      onMouseDown={e => cardPress(e.currentTarget, true)}
+      onMouseUp={e => cardPress(e.currentTarget, false)}
+      onMouseLeave={e => cardPress(e.currentTarget, false)}
+      onTouchStart={e => cardPress(e.currentTarget, true)}
+      onTouchEnd={e => cardPress(e.currentTarget, false)}
+      onClick={() => onOpenActions(item)}
+    >
+      <CardContent className="p-[18px] flex flex-col justify-between h-full">
+        {/* Top Section */}
+        <div className="space-y-2">
+          {/* Top Row: Icon, Title, Action Menu */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="w-10 h-10 rounded-[12px] bg-[#FAF6EE] border border-[#DFD5C6] text-[#A68F6D] flex items-center justify-center flex-shrink-0">
+              <CalendarClock className="h-5 w-5" />
+            </div>
+            <h3 className="text-slate-800 text-[18px] md:text-[20px] font-black tracking-tight flex-1 ml-1 leading-snug truncate">
+              {item.companyName || 'N/A'}
+            </h3>
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenActions(item);
+              }}
+              className="w-[36px] h-[36px] rounded-full flex items-center justify-center active:scale-90 hover:bg-[#FAF6EE] transition-all cursor-pointer flex-shrink-0"
+            >
+              <MoreHorizontal className="h-5 w-5 text-slate-600" />
+            </button>
+          </div>
+
+          {/* Tags / Badges */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pl-0.5 py-1.5 w-full">
+            {/* Status Badge */}
+            {isClosed ? (
+              <span className="h-7 px-2.5 rounded-full inline-flex items-center text-[9px] font-black tracking-wider bg-[#EEF1E9] text-[#3B4731] border border-[#C5D5B8] uppercase flex-shrink-0">
+                <span className="w-3.5 h-3.5 rounded-full bg-[#3B4731] text-white flex items-center justify-center mr-1 flex-shrink-0">
+                  <Check className="h-2 w-2 stroke-[4px]" />
+                </span>
+                CLOSED
+              </span>
+            ) : isOverdue ? (
+              <span className="h-7 px-2.5 rounded-full inline-flex items-center text-[9px] font-black tracking-wider bg-[#FBEAE9] text-[#7A3634] border border-[#E9C3C1] uppercase flex-shrink-0">
+                <AlertTriangle className="h-3 w-3 mr-1 text-[#E11D48] flex-shrink-0" />
+                OVERDUE
+              </span>
+            ) : (
+              <span className="h-7 px-2.5 rounded-full inline-flex items-center text-[9px] font-black tracking-wider bg-[#FAF6EE] text-[#3E362E] border border-[#DFD5C6] uppercase flex-shrink-0">
+                <Clock className="h-3 w-3 mr-1 text-[#A68F6D] flex-shrink-0" />
+                OPEN
+              </span>
+            )}
+
+            {/* On Track Badge */}
+            {!isClosed && (
+              <span className="h-7 px-2.5 rounded-full inline-flex items-center text-[9px] font-black tracking-wider bg-[#E8F0FE] text-[#1a73e8] border border-[#B3D1FD] uppercase flex-shrink-0">
+                <TrendingUp className="h-3 w-3 mr-1 text-[#1a73e8] flex-shrink-0" />
+                ON TRACK
+              </span>
+            )}
+
+            {/* Contact Phone Badge */}
+            {item.contactPhone ? (
+              <a 
+                href={`tel:${item.contactPhone}`} 
+                onClick={(e) => e.stopPropagation()}
+                className="h-7 px-2.5 rounded-full inline-flex items-center text-[9px] font-black tracking-wider bg-[#FAF6EE] text-[#3E362E] border border-[#DFD5C6] uppercase max-w-[180px] active:scale-95 transition-all hover:bg-[#E2E8D8] flex-shrink-0"
+              >
+                <Phone className="h-3 w-3 mr-1 text-[#3E362E] flex-shrink-0" />
+                <span className="truncate">{item.contactPhone}</span>
+              </a>
+            ) : (
+              <span className="h-7 px-2.5 rounded-full inline-flex items-center text-[9px] font-black tracking-wider bg-[#FAF6EE] text-[#3E362E] border border-[#DFD5C6] uppercase max-w-[180px] flex-shrink-0">
+                <Briefcase className="h-3 w-3 mr-1 text-[#A68F6D] flex-shrink-0" />
+                <span className="truncate">{item.taskType || 'FOLLOW-UP'}</span>
+              </span>
+            )}
+          </div>
         </div>
 
-        <div className="mt-4 border-b border-gray-100 pb-4">
-          <p className="text-sm font-semibold text-gray-900">
-            Company: {item.companyName || 'N/A'}
-          </p>
-          <p className="mt-1 text-xs text-gray-500">
-            Contact: {item.contactPerson ? `${item.contactPerson} | ` : ''}{item.contactPhone || 'N/A'}
-          </p>
-          <p className="mt-2 text-sm text-gray-700">
-            <span className="font-medium">Activity:</span> {item.description || 'No description provided'}
-          </p>
-        </div>
+        {/* Bottom Section */}
+        <div className="space-y-2">
+          {/* Divider Line */}
+          <hr className="border-t border-[#DFD5C6]/40 my-0" />
 
-        <div className="mt-4 space-y-1.5 text-xs text-[var(--text-secondary)]">
-          <p><span className="font-medium text-[var(--text-primary)]">Assigned:</span> {formatDate(item.assignedDate || item.createdAt || item.updatedAt)}</p>
-          <p><span className="font-medium text-[var(--text-primary)]">Target:</span> {formatDate(item.targetDate)}</p>
-          <p><span className="font-medium text-[var(--text-primary)]">Next Followup:</span> {formatDate(item.nextFollowupDate || item.targetDate)}</p>
-          <p><span className="font-medium text-[var(--text-primary)]">Rescheduled:</span> {item.rescheduleCount || 0} time{item.rescheduleCount === 1 ? '' : 's'}</p>
-          {item.overdueDays > 0 && !item.isClosed && (
-            <p className="font-semibold text-red-600">
-              Overdue: {item.overdueDays} day{item.overdueDays === 1 ? '' : 's'}
-            </p>
-          )}
-          {item.isClosed && item.outcome && (
-            <p><span className="font-medium text-[var(--text-primary)]">Outcome:</span> {item.outcome}</p>
-          )}
-        </div>
+          {/* Footer Row */}
+          <div className="flex items-center justify-between pl-0.5">
+            {/* Target Date block */}
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 rounded-[10px] bg-[#FAF6EE] border border-[#DFD5C6] text-[#A68F6D] flex items-center justify-center flex-shrink-0">
+                <Calendar className="h-4.5 w-4.5" />
+              </div>
+              <div className="flex flex-col justify-center">
+                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider leading-none mb-0.5">
+                  Next Followup
+                </span>
+                <span className="text-xs font-black text-slate-800 leading-none">
+                  {formatDate(item.nextFollowupDate || item.targetDate)}
+                </span>
+              </div>
+            </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
-          {!item.isClosed && (
-            <Button type="button" variant="secondary" className="h-11" onClick={() => onMarkDone(item)}>
-              <CheckCircle2 className="mr-2 h-4 w-4" />
-              Mark Done
-            </Button>
-          )}
-          {!item.isClosed && (
-            <Button type="button" variant="outline" className="h-11" onClick={() => onReschedule(item)}>
-              <CalendarClock className="mr-2 h-4 w-4" />
-              Reschedule
-            </Button>
-          )}
-          <Button type="button" variant="outline" className="h-11" onClick={() => onAddNote(item)}>
-            <MessageSquarePlus className="mr-2 h-4 w-4" />
-            Add Note
-          </Button>
+            {/* User Avatar */}
+            <div className="w-[38px] h-[38px] rounded-full bg-[#3E362E] text-white border-2 border-[#F2ECE1] flex items-center justify-center text-[10px] font-black shadow-sm flex-shrink-0" title={item.assignedToName || userData?.name || 'Assigned User'}>
+              {getInitials(item.assignedToName || userData?.name)}
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -159,6 +247,7 @@ export default function FollowUpsPage() {
   const [completeSheetOpen, setCompleteSheetOpen] = useState(false);
   const [rescheduleSheetOpen, setRescheduleSheetOpen] = useState(false);
   const [noteSheetOpen, setNoteSheetOpen] = useState(false);
+  const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [selectedFollowUp, setSelectedFollowUp] = useState(null);
   const [selectedOutcome, setSelectedOutcome] = useState('positive');
   const [completionNote, setCompletionNote] = useState('');
@@ -215,6 +304,7 @@ export default function FollowUpsPage() {
     setCompleteSheetOpen(false);
     setRescheduleSheetOpen(false);
     setNoteSheetOpen(false);
+    setActionSheetOpen(false);
     setSelectedFollowUp(null);
     setSelectedOutcome('positive');
     setCompletionNote('');
@@ -335,99 +425,290 @@ export default function FollowUpsPage() {
   };
 
   return (
-    <div className="pb-6">
-      <div className="px-4 pt-4 pb-3">
-        <h1 className="text-lg font-bold text-gray-900">Follow-Ups</h1>
-        <p className="mt-1 text-sm text-[var(--text-muted)]">Stay on top of every follow-up assigned to you.</p>
-      </div>
 
-      <div className="overflow-x-auto px-4 pb-1">
-        <div className="flex gap-3">
-          <SummaryCard label="Total" value={summary.total} accentClass="from-[#E23744] to-[#B91C1C]" />
-          <SummaryCard label="Due Today" value={summary.dueToday} accentClass="from-orange-400 to-amber-500" />
-          <SummaryCard label="Overdue" value={summary.overdue} accentClass="from-rose-500 to-red-600" />
-          <SummaryCard label="Closed" value={summary.closed} accentClass="from-emerald-500 to-green-600" />
+    <div 
+      className="pb-8 font-sans min-h-screen text-slate-800 relative overflow-hidden"
+      style={{
+        background: 'linear-gradient(180deg, #FAF6EE 0%, #EAE4D9 100%)',
+      }}
+    >
+      <ActionLoader visible={saving} message="Saving…" />
+      {/* Background Waves SVG */}
+      <svg className="absolute bottom-0 left-0 right-0 w-full h-[240px] pointer-events-none z-0 overflow-hidden opacity-40" viewBox="0 0 1440 320" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="fuWaveGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#DFD8CC" />
+            <stop offset="100%" stopColor="#D5CDBE" />
+          </linearGradient>
+          <linearGradient id="fuWaveGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#EFECE4" />
+            <stop offset="100%" stopColor="#E4DEC3" />
+          </linearGradient>
+        </defs>
+        <path d="M0,280 C150,280 200,200 420,200 C640,200 700,320 1020,320 C1220,320 1350,220 1440,200 L1440,320 L0,320 Z" fill="url(#fuWaveGrad1)" />
+        <path d="M0,120 C100,120 100,260 320,260 C520,260 720,220 920,220 C1120,220 1220,320 1440,320 L1440,320 L0,320 Z" fill="url(#fuWaveGrad2)" />
+      </svg>
+
+      <div className="relative z-10">
+        {/* Header */}
+        <div className="px-4 pt-5 pb-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-[#FAF6EE] border border-[#DFD5C6] rounded-xl flex items-center justify-center text-[#A68F6D] shadow-sm">
+              <CalendarClock className="h-5 w-5" />
+            </div>
+            <h1 className="text-[20px] font-black text-slate-800 tracking-tight">Follow-Ups</h1>
+          </div>
+        </div>
+
+        {/* Stats Row */}
+        <div className="px-4 mb-4 grid grid-cols-4 gap-2">
+          <div className="bg-[#F2ECE1] border border-[#DFD5C6] rounded-2xl p-3 flex flex-col items-center shadow-sm">
+            <p className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Total</p>
+            <p className="text-xl font-black text-slate-800 mt-0.5">{summary.total}</p>
+          </div>
+          <div className="bg-[#3E362E] rounded-2xl p-3 flex flex-col items-center shadow-sm">
+            <p className="text-[9px] font-extrabold uppercase tracking-wider text-white/60">Today</p>
+            <p className="text-xl font-black text-white mt-0.5">{summary.dueToday}</p>
+          </div>
+          <div className="bg-[#FBEAE9] border border-red-100 rounded-2xl p-3 flex flex-col items-center shadow-sm">
+            <p className="text-[9px] font-extrabold uppercase tracking-wider text-red-400">Late</p>
+            <p className="text-xl font-black text-red-700 mt-0.5">{summary.overdue}</p>
+          </div>
+          <div className="bg-[#EEF1E9] border border-[#DFD5C6] rounded-2xl p-3 flex flex-col items-center shadow-sm">
+            <p className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Done</p>
+            <p className="text-xl font-black text-[#3B4731] mt-0.5">{summary.closed}</p>
+          </div>
+        </div>
+
+        {/* ── TAB BAR ─────────────────────────────────────────────── */}
+        <div className="px-4 mb-4">
+          <div className="flex p-1 rounded-xl" style={{ background: '#E8E1D5' }}>
+            {TABS.map(tab => {
+              const isActive = activeTab === tab.key;
+              const counts = {
+                all: summary.total,
+                due_today: summary.dueToday,
+                open: summary.total - summary.closed,
+                closed: summary.closed,
+                overdue: summary.overdue,
+              };
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 text-[11px] font-bold transition-all duration-200 active:scale-[0.97] rounded-lg"
+                  style={{
+                    background: isActive ? '#FAF6EE' : 'transparent',
+                    color: isActive ? '#3E362E' : '#A8998A',
+                    boxShadow: isActive ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                  }}
+                >
+                  {tab.label}
+                  <span
+                    className="w-4 h-4 rounded flex items-center justify-center text-[9px] font-black"
+                    style={{
+                      background: isActive ? '#3E362E' : 'rgba(62,54,46,0.1)',
+                      color: isActive ? '#FAF6EE' : '#A8998A',
+                    }}
+                  >
+                    {counts[tab.key]}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Card List */}
+        <div className="space-y-3.5 px-4 pb-24">
+          {loading && Array.from({ length: 3 }).map((_, index) => (
+            <FollowUpCardSkeleton key={index} />
+          ))}
+
+          {!loading && error && (
+            <div className="bg-[#FBEAE9] border border-red-100 rounded-xl p-4 text-center">
+              <p className="text-sm font-bold text-red-700">Could not load follow-ups</p>
+              <p className="mt-1 text-xs text-red-600">{error.message || 'Please check your connection.'}</p>
+            </div>
+          )}
+
+          {!loading && !error && filteredFollowUps.length === 0 && (
+            <div className="text-center py-16 bg-[#F2ECE1] border border-[#DFD5C6] rounded-xl p-6 shadow-sm flex flex-col items-center">
+              <div className="h-16 w-16 bg-[#E5DFD3] text-slate-500 rounded-full flex items-center justify-center mb-4 shadow-inner">
+                <CalendarClock className="h-8 w-8 text-slate-600" />
+              </div>
+              <p className="text-slate-800 font-extrabold text-sm">No follow-ups found</p>
+              <p className="text-slate-500 text-[11px] mt-1.5">Follow-ups assigned by admin will appear here.</p>
+            </div>
+          )}
+
+          {!loading && !error && filteredFollowUps.map((item) => (
+            <FollowUpCard
+              key={item.id}
+              item={item}
+              onOpenActions={(selected) => {
+                setSelectedFollowUp(selected);
+                setActionSheetOpen(true);
+              }}
+            />
+          ))}
         </div>
       </div>
 
-      <div className="px-4 pt-4">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            {FILTERS.map((filter) => (
-              <TabsTrigger key={filter.value} value={filter.value}>
-                {filter.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-      </div>
+      <Sheet open={actionSheetOpen} onOpenChange={setActionSheetOpen}>
+        <SheetContent className="bg-[#F2ECE1] border-t border-[#DFD5C6] text-slate-800 rounded-t-[28px] p-6 pb-8">
+          <SheetHeader className="pb-4 border-b border-[#DFD5C6]">
+            <SheetTitle className="text-slate-855 font-black text-left flex flex-col">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Follow-up Details</span>
+              <span className="text-base font-bold text-slate-800 truncate mt-1">
+                {selectedFollowUp?.companyName || 'N/A'}
+              </span>
+            </SheetTitle>
+          </SheetHeader>
+          
+          {selectedFollowUp && (
+            <div className="mt-4 space-y-4 max-h-[70vh] overflow-y-auto pr-1 no-scrollbar text-left">
+              {selectedFollowUp.contactPerson && (
+                <div>
+                  <p className="text-[10px] text-slate-450 font-bold uppercase tracking-wider">Contact Person</p>
+                  <p className="text-sm font-semibold text-slate-800 mt-0.5">{selectedFollowUp.contactPerson}</p>
+                </div>
+              )}
 
-      <div className="space-y-3 px-4 pt-4">
-        {loading && Array.from({ length: 3 }).map((_, index) => <FollowUpCardSkeleton key={index} />)}
+              {selectedFollowUp.contactPhone && (
+                <div>
+                  <p className="text-[10px] text-slate-450 font-bold uppercase tracking-wider">Phone</p>
+                  <a 
+                    href={`tel:${selectedFollowUp.contactPhone}`} 
+                    className="text-sm font-black text-[var(--color-primary)] hover:underline inline-flex items-center gap-1.5 mt-0.5 active:scale-95 transition-all"
+                  >
+                    <Phone className="h-4 w-4 text-[#A68F6D]" />
+                    {selectedFollowUp.contactPhone}
+                  </a>
+                </div>
+              )}
 
-        {!loading && error && (
-          <Card className="border-red-200 bg-red-50">
-            <CardContent className="p-4 text-center">
-              <p className="text-sm font-semibold text-red-700">Could not load follow-ups</p>
-              <p className="mt-1 text-xs text-red-600">
-                {error.message || 'Please check your internet connection and try again.'}
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {!loading && !error && filteredFollowUps.length === 0 && (
-          <Card className="border-dashed border-gray-200 bg-[var(--bg-card)]">
-            <CardContent className="flex flex-col items-center px-6 py-12 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-rose-50 text-[#E23744]">
-                <RefreshCw className="h-8 w-8" />
+              <div>
+                <p className="text-[10px] text-slate-450 font-bold uppercase tracking-wider">Activity Description</p>
+                <p className="text-xs text-slate-700 font-semibold leading-relaxed mt-1 whitespace-pre-wrap bg-[#FAF6EE] border border-[#DFD5C6]/40 p-3 rounded-xl">
+                  {selectedFollowUp.description || 'No description provided'}
+                </p>
               </div>
-              <h2 className="mt-4 text-base font-semibold text-[var(--text-primary)]">No followups assigned yet</h2>
-              <p className="mt-2 max-w-[260px] text-sm leading-6 text-[var(--text-secondary)]">
-                Follow-ups assigned by admin will appear here.
-              </p>
-            </CardContent>
-          </Card>
-        )}
 
-        {!loading && !error && filteredFollowUps.map((item) => (
-          <FollowUpCard
-            key={item.id}
-            item={item}
-            onMarkDone={openCompleteSheet}
-            onReschedule={openRescheduleSheet}
-            onAddNote={openNoteSheet}
-          />
-        ))}
-      </div>
+              {selectedFollowUp.isClosed && selectedFollowUp.outcome && (
+                <div>
+                  <p className="text-[10px] text-slate-450 font-bold uppercase tracking-wider">Outcome</p>
+                  <p className="text-xs font-bold text-emerald-700 mt-1 whitespace-pre-wrap bg-[#FAF6EE] border border-emerald-200/50 p-3 rounded-xl">
+                    {selectedFollowUp.outcome}
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <p className="text-[10px] text-slate-450 font-bold uppercase tracking-wider">Latest Remarks</p>
+                <p className="text-xs text-slate-700 font-medium leading-relaxed mt-1 whitespace-pre-wrap bg-[#FAF6EE] border border-[#DFD5C6]/40 p-3 rounded-xl">
+                  {selectedFollowUp.remarks || 'No remarks added yet.'}
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2 pt-2 sm:flex-row">
+                {!selectedFollowUp.isClosed && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="h-11 flex-1 border border-transparent bg-[#EEF1E9] text-[#3B4731] hover:bg-[#E2E8D8] text-xs font-bold rounded-xl active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center"
+                    onClick={() => {
+                      setActionSheetOpen(false);
+                      setTimeout(() => {
+                        setSelectedOutcome(selectedFollowUp.outcome || 'positive');
+                        setCompletionNote(selectedFollowUp.closingNote || '');
+                        setCompleteSheetOpen(true);
+                      }, 150);
+                    }}
+                  >
+                    <CheckSquare className="mr-1.5 h-4 w-4 text-[#3B4731]" />
+                    Mark Done
+                  </Button>
+                )}
+                {!selectedFollowUp.isClosed && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-11 flex-1 border-[#DFD5C6] bg-transparent text-slate-755 hover:bg-[#FAF6EE] text-xs font-bold rounded-xl active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center"
+                    onClick={() => {
+                      setActionSheetOpen(false);
+                      setTimeout(() => {
+                        const currentDate = selectedFollowUp.nextFollowupDate?.toDate?.()
+                          || selectedFollowUp.targetDate?.toDate?.()
+                          || selectedFollowUp.nextFollowupDate
+                          || selectedFollowUp.targetDate;
+                        const parsedDate = currentDate ? new Date(currentDate) : new Date();
+                        setRescheduleDate(parsedDate.toISOString().slice(0, 10));
+                        setRescheduleReason(selectedFollowUp.rescheduleReason || '');
+                        setRescheduleSheetOpen(true);
+                      }, 150);
+                    }}
+                  >
+                    <CalendarClock className="mr-1.5 h-4 w-4 text-slate-500" />
+                    Reschedule
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 flex-1 border-[#DFD5C6] bg-transparent text-slate-755 hover:bg-[#FAF6EE] text-xs font-bold rounded-xl active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center"
+                  onClick={() => {
+                    setActionSheetOpen(false);
+                    setTimeout(() => {
+                      setNoteText(selectedFollowUp.remarks || '');
+                      setNoteSheetOpen(true);
+                    }, 150);
+                  }}
+                >
+                  <MessageSquarePlus className="mr-1.5 h-4 w-4 text-slate-500" />
+                  Add Note
+                </Button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setActionSheetOpen(false)}
+                className="w-full py-3 bg-[#FAF6EE] hover:bg-[#EAE4D9] text-slate-750 font-bold rounded-xl text-xs active:scale-[0.99] transition-all text-center mt-2 border border-[#DFD5C6] cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
 
       <Sheet open={completeSheetOpen} onOpenChange={setCompleteSheetOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>Mark as completed?</SheetTitle>
+        <SheetContent className="bg-[#F2ECE1] border-t border-[#DFD5C6] text-slate-800 rounded-t-[28px] p-6 pb-8">
+          <SheetHeader className="pb-4 border-b border-[#DFD5C6]">
+            <SheetTitle className="text-base font-black text-slate-800 text-left">Mark as completed?</SheetTitle>
           </SheetHeader>
 
           {selectedFollowUp && (
-            <div className="space-y-5 py-2">
+            <div className="space-y-5 py-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Follow-up</p>
-                <p className="mt-1 text-sm font-medium text-[var(--text-primary)]">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Follow-up</p>
+                <p className="mt-1 text-sm font-semibold text-slate-800">
                   {selectedFollowUp.companyName || selectedFollowUp.taskType || 'Assigned follow-up'}
                 </p>
               </div>
 
               <div className="space-y-3">
-                <Label>Outcome</Label>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Outcome</p>
                 <div className="space-y-2">
                   {OUTCOMES.map((outcome) => (
                     <button
                       key={outcome.value}
                       type="button"
                       onClick={() => setSelectedOutcome(outcome.value)}
-                      className={`w-full rounded-xl border px-4 py-3 text-left text-sm font-medium transition-all ${
+                      className={`w-full rounded-xl border px-4 py-3 text-left text-sm font-semibold transition-all ${
                         selectedOutcome === outcome.value
                           ? outcome.tone
-                          : 'border-[var(--border-primary)] bg-[var(--bg-card)] text-[var(--text-primary)]'
+                          : 'border-[#DFD5C6] bg-[#FAF6EE] text-slate-700'
                       }`}
                     >
                       {outcome.label}
@@ -437,94 +718,106 @@ export default function FollowUpsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="followup-completion-note">Note</Label>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Note</p>
                 <textarea
                   id="followup-completion-note"
                   rows={4}
                   value={completionNote}
                   onChange={(event) => setCompletionNote(event.target.value)}
                   placeholder="Optional closing note..."
-                  className="flex min-h-[120px] w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#E23744]"
+                  className="flex min-h-[120px] w-full rounded-xl border border-[#DFD5C6] bg-[#FAF6EE] px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#A68F6D] resize-none"
                 />
               </div>
 
-              <Button className="h-11 w-full" onClick={saveCompletedFollowUp} disabled={saving}>
+              <button 
+                className="h-11 w-full bg-[#3E362E] text-white font-bold rounded-xl text-sm active:scale-[0.98] transition-all cursor-pointer border-none disabled:opacity-50"
+                onClick={saveCompletedFollowUp} 
+                disabled={saving}
+              >
                 {saving ? 'Saving...' : 'Confirm'}
-              </Button>
+              </button>
             </div>
           )}
         </SheetContent>
       </Sheet>
 
       <Sheet open={rescheduleSheetOpen} onOpenChange={setRescheduleSheetOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>Reschedule Follow-up</SheetTitle>
+        <SheetContent className="bg-[#F2ECE1] border-t border-[#DFD5C6] text-slate-800 rounded-t-[28px] p-6 pb-8">
+          <SheetHeader className="pb-4 border-b border-[#DFD5C6]">
+            <SheetTitle className="text-base font-black text-slate-800 text-left">Reschedule Follow-up</SheetTitle>
           </SheetHeader>
 
           {selectedFollowUp && (
-            <div className="space-y-5 py-2">
+            <div className="space-y-5 py-4">
               <div className="space-y-2">
-                <Label htmlFor="followup-reschedule-date">New date</Label>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">New date</p>
                 <input
                   id="followup-reschedule-date"
                   type="date"
                   value={rescheduleDate}
                   onChange={(event) => setRescheduleDate(event.target.value)}
-                  className="flex h-12 w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-base text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#E23744]"
+                  className="flex h-12 w-full rounded-xl border border-[#DFD5C6] bg-[#FAF6EE] px-4 py-3 text-base text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#A68F6D]"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="followup-reschedule-reason">Reason</Label>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Reason</p>
                 <textarea
                   id="followup-reschedule-reason"
                   rows={4}
                   value={rescheduleReason}
                   onChange={(event) => setRescheduleReason(event.target.value)}
                   placeholder="Reason for rescheduling..."
-                  className="flex min-h-[120px] w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#E23744]"
+                  className="flex min-h-[120px] w-full rounded-xl border border-[#DFD5C6] bg-[#FAF6EE] px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#A68F6D] resize-none"
                 />
               </div>
 
-              <Button className="h-11 w-full" onClick={handleReschedule} disabled={saving}>
+              <button 
+                className="h-11 w-full bg-[#3E362E] text-white font-bold rounded-xl text-sm active:scale-[0.98] transition-all cursor-pointer border-none disabled:opacity-50"
+                onClick={handleReschedule} 
+                disabled={saving}
+              >
                 {saving ? 'Saving...' : 'Save'}
-              </Button>
+              </button>
             </div>
           )}
         </SheetContent>
       </Sheet>
 
       <Sheet open={noteSheetOpen} onOpenChange={setNoteSheetOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>Add Note</SheetTitle>
+        <SheetContent className="bg-[#F2ECE1] border-t border-[#DFD5C6] text-slate-800 rounded-t-[28px] p-6 pb-8">
+          <SheetHeader className="pb-4 border-b border-[#DFD5C6]">
+            <SheetTitle className="text-base font-black text-slate-800 text-left">Add Note</SheetTitle>
           </SheetHeader>
 
           {selectedFollowUp && (
-            <div className="space-y-5 py-2">
+            <div className="space-y-5 py-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Date</p>
-                <p className="mt-1 text-sm font-medium text-[var(--text-primary)]">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Date</p>
+                <p className="mt-1 text-sm font-semibold text-slate-800">
                   {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="followup-note">Note</Label>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Note</p>
                 <textarea
                   id="followup-note"
                   rows={4}
                   value={noteText}
                   onChange={(event) => setNoteText(event.target.value)}
                   placeholder="Write your note here..."
-                  className="flex min-h-[120px] w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[#E23744]"
+                  className="flex min-h-[120px] w-full rounded-xl border border-[#DFD5C6] bg-[#FAF6EE] px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#A68F6D] resize-none"
                 />
               </div>
 
-              <Button className="h-11 w-full" onClick={handleAddNote} disabled={saving}>
+              <button 
+                className="h-11 w-full bg-[#3E362E] text-white font-bold rounded-xl text-sm active:scale-[0.98] transition-all cursor-pointer border-none disabled:opacity-50"
+                onClick={handleAddNote} 
+                disabled={saving}
+              >
                 {saving ? 'Saving...' : 'Save'}
-              </Button>
+              </button>
             </div>
           )}
         </SheetContent>
@@ -532,3 +825,4 @@ export default function FollowUpsPage() {
     </div>
   );
 }
+

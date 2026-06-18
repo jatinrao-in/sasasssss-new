@@ -13,6 +13,7 @@ import { useRgp } from '../hooks/useRgp';
 import { useToast } from '../hooks/useToast';
 import { logInfo } from '../lib/firestoreDebug';
 import { compressImage, uploadToImgbb } from '../lib/imageUtils';
+import ActionLoader from '../components/ActionLoader';
 
 const formatDate = (timestamp) => {
   if (!timestamp) return 'N/A';
@@ -26,13 +27,23 @@ const formatDate = (timestamp) => {
   });
 };
 
-const FILTERS = [
-  { value: 'all', label: 'All' },
-  { value: 'rgp', label: 'RGP' },
-  { value: 'challan', label: 'Challan' },
-  { value: 'open', label: 'Open' },
-  { value: 'closed', label: 'Closed' },
+const TABS = [
+  { key: 'all', label: 'All' },
+  { key: 'rgp', label: 'RGP' },
+  { key: 'challan', label: 'Challan' },
+  { key: 'open', label: 'Open' },
+  { key: 'closed', label: 'Closed' },
 ];
+
+const cardPress = (el, pressed) => {
+  if (pressed) {
+    el.style.boxShadow = 'none';
+    el.style.transform = 'translate(4px,4px)';
+  } else {
+    el.style.boxShadow = '4px 4px 0px #3E362E';
+    el.style.transform = '';
+  }
+};
 
 const STATUS_OPTIONS = [
   { value: 'open', label: 'Open' },
@@ -64,43 +75,44 @@ function getStatusBadge(status) {
   }
 
   if (status === 'in_progress') {
-    return <Badge className="border-sky-200 bg-sky-100 text-sky-700">In Progress</Badge>;
+    return <Badge className="border-[var(--color-info)] bg-[var(--color-info-bg)] text-[var(--color-info)]">In Progress</Badge>;
   }
 
   return <Badge variant="default">{humanizeStatus(status)}</Badge>;
 }
 
-function SummaryCard({ label, value, accentClass }) {
+function SummaryCard({ label, value, toneClass }) {
+  const isLight = toneClass === 'light';
+
   return (
-    <Card className={`min-w-[150px] border-none bg-gradient-to-br ${accentClass} shadow-lg`}>
-      <CardContent className="p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/75">{label}</p>
-        <p className="mt-2 text-3xl font-bold text-white">{value}</p>
-      </CardContent>
-    </Card>
+    <div className={`min-w-[100px] flex-1 summary-tile ${toneClass}`}>
+      <p className={`text-[10px] font-bold uppercase tracking-wider ${isLight ? 'text-[var(--color-text-secondary)]' : 'text-white/75'}`}>{label}</p>
+      <p className="mt-1 text-2xl font-bold font-heading">{value}</p>
+    </div>
   );
 }
 
 function RgpCardSkeleton() {
   return (
-    <Card className="border-gray-100">
-      <CardContent className="p-4">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div className="h-6 w-20 animate-pulse rounded-full bg-gray-100" />
-          <div className="h-6 w-20 animate-pulse rounded-full bg-gray-100" />
-        </div>
-        <div className="h-4 w-40 animate-pulse rounded bg-gray-100" />
-        <div className="mt-4 space-y-2">
-          <div className="h-3 w-32 animate-pulse rounded bg-gray-100" />
-          <div className="h-3 w-28 animate-pulse rounded bg-gray-100" />
-        </div>
-        <div className="mt-4 h-16 animate-pulse rounded-xl bg-gray-50" />
-        <div className="mt-4 flex gap-2">
-          <div className="h-11 flex-1 animate-pulse rounded-lg bg-gray-100" />
-          <div className="h-11 flex-1 animate-pulse rounded-lg bg-gray-100" />
-        </div>
-      </CardContent>
-    </Card>
+    <div
+      className="rounded-lg overflow-hidden animate-pulse p-5 space-y-4"
+      style={{
+        background: '#F2ECE1',
+        border: '2px solid #3E362E',
+        boxShadow: '4px 4px 0px #3E362E',
+      }}
+    >
+      <div className="flex justify-between items-center gap-3">
+        <div className="h-6 w-16 bg-[#E8E1D5] rounded-full" />
+        <div className="h-6 w-16 bg-[#E8E1D5] rounded-full" />
+      </div>
+      <div className="space-y-2">
+        <div className="h-4 w-1/3 bg-[#E8E1D5] rounded" />
+        <div className="h-3 w-1/2 bg-[#E8E1D5] rounded" />
+      </div>
+      <div className="h-12 bg-[#FAF6EE] border border-[#DFD5C6] rounded-xl" />
+      <div className="h-10 bg-[#FAF6EE] border border-[#DFD5C6] rounded-xl" />
+    </div>
   );
 }
 
@@ -115,11 +127,11 @@ function ProgressSteps({ currentStep }) {
           <div key={step} className="text-center">
             <div
               className={`mx-auto h-2.5 w-full rounded-full ${
-                isCompleted || isCurrent ? 'bg-teal-500' : 'bg-gray-200'
-              } ${isCurrent ? 'ring-2 ring-teal-100' : ''}`}
+                isCompleted || isCurrent ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-border)]'
+              } ${isCurrent ? 'ring-2 ring-[var(--color-primary-light)]' : ''}`}
             />
             <p className={`mt-2 text-[10px] leading-4 ${
-              isCompleted || isCurrent ? 'font-semibold text-teal-700' : 'text-gray-400'
+              isCompleted || isCurrent ? 'font-semibold text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'
             }`}>
               {step}
             </p>
@@ -362,59 +374,113 @@ export default function RgpPage() {
   };
 
   return (
-    <div className="pb-6">
-      <div className="px-4 pt-4 pb-3">
-        <h1 className="text-lg font-bold text-gray-900">RGP / Challan</h1>
-        <p className="mt-1 text-sm text-[var(--text-muted)]">Track all assigned RGP and challan documents in real time.</p>
-      </div>
+    <div 
+      className="pb-8 font-sans min-h-screen text-slate-800 relative overflow-hidden"
+      style={{ background: 'linear-gradient(180deg, #FAF6EE 0%, #EAE4D9 100%)' }}
+    >
+      <ActionLoader visible={saving} message="Saving…" />
+      {/* Background Waves */}
+      <svg className="absolute bottom-0 left-0 right-0 w-full h-[240px] pointer-events-none z-0 overflow-hidden opacity-40" viewBox="0 0 1440 320" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="rgpWave1" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#DFD8CC" />
+            <stop offset="100%" stopColor="#D5CDBE" />
+          </linearGradient>
+          <linearGradient id="rgpWave2" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#EFECE4" />
+            <stop offset="100%" stopColor="#E4DEC3" />
+          </linearGradient>
+        </defs>
+        <path d="M0,280 C150,280 200,200 420,200 C640,200 700,320 1020,320 C1220,320 1350,220 1440,200 L1440,320 L0,320 Z" fill="url(#rgpWave1)" />
+        <path d="M0,120 C100,120 100,260 320,260 C520,260 720,220 920,220 C1120,220 1220,320 1440,320 L1440,320 L0,320 Z" fill="url(#rgpWave2)" />
+      </svg>
 
-      <div className="overflow-x-auto px-4 pb-1">
-        <div className="flex gap-3">
-          <SummaryCard label="Open RGP" value={summary.openRgp} accentClass="from-teal-500 to-teal-600" />
-          <SummaryCard label="Open Challan" value={summary.openChallan} accentClass="from-sky-500 to-blue-600" />
-          <SummaryCard label="Total Closed" value={summary.closed} accentClass="from-emerald-500 to-green-600" />
+      <div className="relative z-10">
+        {/* Header */}
+        <div className="px-4 pt-5 pb-3 flex items-center gap-3">
+          <div className="w-10 h-10 bg-[#FAF6EE] border border-[#DFD5C6] rounded-xl flex items-center justify-center text-[#A68F6D] shadow-sm">
+            <ArrowLeftRight className="h-5 w-5" />
+          </div>
+          <div>
+            <h1 className="text-[20px] font-black text-slate-800 tracking-tight leading-none">RGP / Challan</h1>
+            <p className="text-[10px] text-slate-500 font-medium mt-0.5">Track all assigned RGP and challan documents</p>
+          </div>
         </div>
-      </div>
 
-      <div className="px-4 pt-4">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            {FILTERS.map((filter) => (
-              <TabsTrigger key={filter.value} value={filter.value}>
-                {filter.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-      </div>
+        {/* Stats Row */}
+        <div className="px-4 mb-4 grid grid-cols-3 gap-2">
+          <div className="bg-[#3E362E] rounded-2xl p-3 flex flex-col items-center shadow-sm">
+            <p className="text-[9px] font-extrabold uppercase tracking-wider text-white/60">Open RGP</p>
+            <p className="text-xl font-black text-white mt-0.5">{summary.openRgp}</p>
+          </div>
+          <div className="bg-[#F2ECE1] border border-[#DFD5C6] rounded-2xl p-3 flex flex-col items-center shadow-sm">
+            <p className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Open Challan</p>
+            <p className="text-xl font-black text-slate-800 mt-0.5">{summary.openChallan}</p>
+          </div>
+          <div className="bg-[#EEF1E9] border border-[#DFD5C6] rounded-2xl p-3 flex flex-col items-center shadow-sm">
+            <p className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Closed</p>
+            <p className="text-xl font-black text-[#3B4731] mt-0.5">{summary.closed}</p>
+          </div>
+        </div>
 
-      <div className="space-y-3 px-4 pt-4">
-        {loading && Array.from({ length: 3 }).map((_, index) => <RgpCardSkeleton key={index} />)}
+        {/* ── TAB BAR ─────────────────────────────────────────────── */}
+        <div className="px-4 mb-4">
+          <div className="flex p-1 rounded-xl overflow-x-auto no-scrollbar" style={{ background: '#E8E1D5' }}>
+            {TABS.map(tab => {
+              const isActive = activeTab === tab.key;
+              const counts = {
+                all: rgp.length,
+                rgp: rgp.filter(item => item.type === 'rgp').length,
+                challan: rgp.filter(item => item.type === 'challan').length,
+                open: rgp.filter(item => !item.isClosed).length,
+                closed: rgp.filter(item => item.isClosed).length,
+              };
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 text-[11px] font-bold transition-all duration-200 active:scale-[0.97] rounded-lg whitespace-nowrap"
+                  style={{
+                    background: isActive ? '#FAF6EE' : 'transparent',
+                    color: isActive ? '#3E362E' : '#A8998A',
+                    boxShadow: isActive ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                  }}
+                >
+                  {tab.label}
+                  <span
+                    className="w-4 h-4 rounded flex items-center justify-center text-[9px] font-black"
+                    style={{
+                      background: isActive ? '#3E362E' : 'rgba(62,54,46,0.1)',
+                      color: isActive ? '#FAF6EE' : '#A8998A',
+                    }}
+                  >
+                    {counts[tab.key]}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
-        {!loading && error && (
-          <Card className="border-red-200 bg-red-50">
-            <CardContent className="p-4 text-center">
-              <p className="text-sm font-semibold text-red-700">Could not load RGP records</p>
-              <p className="mt-1 text-xs text-red-600">
-                {error.message || 'Please check your internet connection and try again.'}
-              </p>
-            </CardContent>
-          </Card>
-        )}
+        <div className="space-y-4 px-4 pb-24">
+          {loading && Array.from({ length: 3 }).map((_, index) => <RgpCardSkeleton key={index} />)}
 
-        {!loading && !error && filteredItems.length === 0 && (
-          <Card className="border-dashed border-gray-200 bg-[var(--bg-card)]">
-            <CardContent className="flex flex-col items-center px-6 py-12 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-teal-50 text-teal-600">
-                <ArrowLeftRight className="h-8 w-8" />
+          {!loading && error && (
+            <div className="bg-[#FBEAE9] border-2 border-red-600 rounded-lg p-4 text-center">
+              <p className="text-sm font-bold text-red-700">Could not load RGP records</p>
+              <p className="mt-1 text-xs text-red-600">{error.message || 'Please check your connection.'}</p>
+            </div>
+          )}
+
+          {!loading && !error && filteredItems.length === 0 && (
+            <div className="text-center py-16 bg-[#F2ECE1] rounded-lg p-6 flex flex-col items-center" style={{ border: '2px solid #3E362E', boxShadow: '4px 4px 0px #3E362E' }}>
+              <div className="h-16 w-16 bg-[#E5DFD3] rounded-full flex items-center justify-center mb-4 shadow-inner" style={{ border: '1.5px solid #3E362E' }}>
+                <ArrowLeftRight className="h-8 w-8 text-slate-600" />
               </div>
-              <h2 className="mt-4 text-base font-semibold text-[var(--text-primary)]">No RGP or challan assigned</h2>
-              <p className="mt-2 max-w-[260px] text-sm leading-6 text-[var(--text-secondary)]">
-                Documents assigned by admin will appear here.
-              </p>
-            </CardContent>
-          </Card>
-        )}
+              <p className="text-slate-800 font-extrabold text-sm">No RGP or challan assigned</p>
+              <p className="text-slate-500 text-[11px] mt-1.5 font-bold">Documents assigned by admin will appear here.</p>
+            </div>
+          )}
 
         {!loading && !error && filteredItems.map((item) => {
           const documentNumber = item.docNumber || item.challanNumber || item.referenceNumber || item.id;
@@ -450,82 +516,56 @@ export default function RgpPage() {
           const currentStep = getStepIndex(item.status);
 
           return (
-            <div key={item.id} style={{
-              background: 'var(--bg-card)',
-              borderRadius: '12px',
-              border: '1px solid var(--border-primary)',
-              marginBottom: '12px',
-              overflow: 'hidden',
-              boxShadow: 'var(--shadow-sm)'
-            }}>
+            <div 
+              key={item.id} 
+              className="bg-[#F2ECE1] rounded-lg overflow-hidden cursor-pointer"
+              style={{
+                border: '2px solid #3E362E',
+                boxShadow: '4px 4px 0px #3E362E',
+                transition: 'box-shadow 80ms, transform 80ms',
+              }}
+              onMouseDown={e => cardPress(e.currentTarget, true)}
+              onMouseUp={e => cardPress(e.currentTarget, false)}
+              onMouseLeave={e => cardPress(e.currentTarget, false)}
+              onTouchStart={e => cardPress(e.currentTarget, true)}
+              onTouchEnd={e => cardPress(e.currentTarget, false)}
+            >
               {/* Header */}
-              <div style={{
-                padding: '12px 16px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                borderBottom: '1px solid var(--border-primary)'
-              }}>
-                <span style={{
-                  background: item.type === 'challan' ? '#F3E8FF' : '#DBEAFE',
-                  color: item.type === 'challan' ? '#7C3AED' : '#1D4ED8',
-                  padding: '4px 10px',
-                  borderRadius: '20px',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  textTransform: 'uppercase'
-                }}>
+              <div className="px-5 py-3.5 flex justify-between items-center border-b-2 border-[#3E362E] bg-[#FAF6EE]">
+                <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded border-2 border-[#3E362E] ${
+                  item.type === 'challan' 
+                    ? 'bg-[#E8F0FE] text-blue-800' 
+                    : 'bg-[#FAF6EE] text-[#A68F6D]'
+                }`}>
                   {item.type === 'challan' ? 'Challan' : 'RGP'}
                 </span>
-                <span style={{
-                  background: item.isClosed ? '#F1F5F9' : '#DCFCE7',
-                  color: item.isClosed ? '#475569' : '#16A34A',
-                  padding: '4px 10px',
-                  borderRadius: '20px',
-                  fontSize: '12px',
-                  fontWeight: '600'
-                }}>
+                <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded border-2 border-[#3E362E] ${
+                  item.isClosed 
+                    ? 'bg-[#EEF1E9] text-[#3B4731]' 
+                    : 'bg-[#FBEAE9] text-[#7A3634]'
+                }`}>
                   {item.isClosed ? 'Closed' : 'Open'}
                 </span>
               </div>
 
               {/* Body */}
-              <div style={{ padding: '16px' }}>
+              <div className="p-5 space-y-4">
                 
                 {/* Doc Number + Date */}
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  marginBottom: '12px'
-                }}>
+                <div className="flex justify-between items-center gap-4">
                   <div>
-                    <p style={{
-                      fontSize: '11px',
-                      color: 'var(--text-muted)',
-                      marginBottom: '2px'
-                    }}>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                       Document No.
                     </p>
-                    <p style={{
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      color: 'var(--text-primary)'
-                    }}>
+                    <p className="text-sm font-semibold text-slate-800">
                       {documentNumber || 'N/A'}
                     </p>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <p style={{
-                      fontSize: '11px',
-                      color: 'var(--text-muted)',
-                      marginBottom: '2px'
-                    }}>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                       Date
                     </p>
-                    <p style={{
-                      fontSize: '14px',
-                      color: 'var(--text-primary)'
-                    }}>
+                    <p className="text-sm font-semibold text-slate-800">
                       {entryDate instanceof Date && !isNaN(entryDate) ? entryDate.toLocaleDateString(
                         'en-IN', {
                           day: '2-digit',
@@ -538,123 +578,51 @@ export default function RgpPage() {
                 </div>
 
                 {/* Assigned Date */}
-                <div style={{
-                  marginBottom: '12px'
-                }}>
-                  <p style={{
-                    fontSize: '11px',
-                    color: 'var(--text-muted)',
-                    marginBottom: '2px'
-                  }}>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     Assigned Date
                   </p>
-                  <p style={{
-                    fontSize: '13px',
-                    fontWeight: '500',
-                    color: 'var(--text-primary)'
-                  }}>
+                  <p className="text-sm font-semibold text-slate-800">
                     {formatDate(item.assignedDate || item.createdAt || item.updatedAt)}
                   </p>
                 </div>
 
                 {/* From → To */}
-                <div style={{
-                  background: 'var(--bg-secondary)',
-                  borderRadius: '8px',
-                  padding: '10px 12px',
-                  marginBottom: '12px'
-                }}>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}>
-                    <div style={{ flex: 1 }}>
-                      <p style={{
-                        fontSize: '11px',
-                        color: 'var(--text-muted)'
-                      }}>
-                        From
-                      </p>
-                      <p style={{
-                        fontSize: '13px',
-                        fontWeight: '600',
-                        color: 'var(--text-primary)'
-                      }}>
-                        {fromCompany}
-                      </p>
-                    </div>
-                    <span style={{
-                      color: 'var(--accent-primary)',
-                      fontSize: '18px',
-                      fontWeight: 'bold'
-                    }}>
-                      →
-                    </span>
-                    <div style={{ 
-                      flex: 1, 
-                      textAlign: 'right' 
-                    }}>
-                      <p style={{
-                        fontSize: '11px',
-                        color: 'var(--text-muted)'
-                      }}>
-                        To
-                      </p>
-                      <p style={{
-                        fontSize: '13px',
-                        fontWeight: '600',
-                        color: 'var(--text-primary)'
-                      }}>
-                        {toCompany}
-                      </p>
-                    </div>
+                <div className="bg-[#FAF6EE] rounded-xl p-3 flex items-center gap-3" style={{ border: '1.5px solid #3E362E' }}>
+                  <div className="flex-1">
+                    <p className="text-[9px] font-black uppercase tracking-wider text-slate-400">From</p>
+                    <p className="text-sm font-semibold text-slate-800">{fromCompany}</p>
+                  </div>
+                  <span className="text-[#3E362E] font-black text-lg">→</span>
+                  <div className="flex-1 text-right">
+                    <p className="text-[9px] font-black uppercase tracking-wider text-slate-400">To</p>
+                    <p className="text-sm font-semibold text-slate-800">{toCompany}</p>
                   </div>
                 </div>
 
                 {/* Description */}
-                <div style={{
-                  marginBottom: '12px'
-                }}>
-                  <p style={{
-                    fontSize: '11px',
-                    color: 'var(--text-muted)',
-                    marginBottom: '4px',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
-                  }}>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                     Description
                   </p>
-                  <p style={{
-                    fontSize: '14px',
-                    color: item.description ? 'var(--text-primary)' : 'var(--text-muted)',
-                    lineHeight: '1.5',
-                    background: 'var(--bg-secondary)',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    borderLeft: item.description ? '3px solid var(--accent-primary)' : '3px solid var(--border-primary)',
-                    fontStyle: item.description ? 'normal' : 'italic'
-                  }}>
+                  <p 
+                    className={`text-sm leading-relaxed ${item.description ? 'text-slate-800 normal-case' : 'text-slate-400 italic'} bg-[#FAF6EE] p-3 rounded-lg`}
+                    style={{ border: '2px solid #3E362E', borderLeftWidth: '5px' }}
+                  >
                     {item.description || 'No description added'}
                   </p>
                 </div>
 
                 {/* Uploaded Image Preview */}
                 {(item.challanImageUrls?.length > 0 || item.challanImageUrl) && (
-                  <div style={{ marginBottom: '16px' }}>
-                    <p style={{
-                      fontSize: '11px',
-                      color: 'var(--text-muted)',
-                      marginBottom: '8px',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px'
-                    }}>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
                       Attachments
                     </p>
-                    <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+                    <div className="flex gap-2 overflow-x-auto pb-1.5 no-scrollbar">
                       {(item.challanImageUrls || [item.challanImageUrl]).filter(Boolean).map((url, i) => (
-                        <a key={i} href={url} target="_blank" rel="noreferrer" style={{ flexShrink: 0, borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-primary)', width: '80px', height: '80px', display: 'block' }}>
-                          <img src={url} alt={`Attachment ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <a key={i} href={url} target="_blank" rel="noreferrer" className="flex-shrink-0 rounded-xl overflow-hidden w-16 h-16 hover:opacity-90 transition-opacity" style={{ border: '1.5px solid #3E362E' }}>
+                          <img src={url} alt={`Attachment ${i + 1}`} className="w-full h-full object-cover" />
                         </a>
                       ))}
                     </div>
@@ -662,80 +630,51 @@ export default function RgpPage() {
                 )}
 
                 {/* Progress Steps */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  marginBottom: '16px',
-                  overflowX: 'auto'
-                }}>
-                  {steps.map((step, index) => (
-                    <div key={index} style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      flex: index < steps.length - 1 ? 1 : 0
-                    }}>
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{
-                          width: '24px',
-                          height: '24px',
-                          borderRadius: '50%',
-                          background: index <= currentStep
-                            ? 'var(--accent-primary)'
-                            : 'var(--bg-secondary)',
-                          border: '2px solid',
-                          borderColor: index <= currentStep
-                            ? 'var(--accent-primary)'
-                            : 'var(--border-primary)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          margin: '0 auto 4px',
-                          fontSize: '12px',
-                          color: index <= currentStep
-                            ? 'white'
-                            : 'var(--text-muted)'
-                        }}>
-                          {index < currentStep ? '✓' : index + 1}
+                <div className="flex items-center gap-1 overflow-x-auto py-2 no-scrollbar">
+                  {steps.map((step, index) => {
+                    const isPassed = index < currentStep;
+                    const isCurrent = index === currentStep;
+                    const isCompleted = index <= currentStep;
+                    
+                    return (
+                      <div key={index} className={`flex items-center ${index < steps.length - 1 ? 'flex-1' : ''}`}>
+                        <div className="text-center flex flex-col items-center">
+                          <div 
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black transition-all"
+                            style={{
+                              border: '2px solid #3E362E',
+                              background: isCurrent ? '#3E362E' : isPassed ? '#3B4731' : '#FAF6EE',
+                              color: isCurrent ? '#FAF6EE' : isPassed ? '#FAF6EE' : '#A8998A',
+                            }}
+                          >
+                            {isPassed ? '✓' : index + 1}
+                          </div>
+                          <p 
+                            className="text-[9px] mt-1 text-center font-bold w-14 truncate"
+                            style={{
+                              color: isCompleted ? '#3E362E' : '#A8998A'
+                            }}
+                          >
+                            {step}
+                          </p>
                         </div>
-                        <p style={{
-                          fontSize: '9px',
-                          color: index <= currentStep
-                            ? 'var(--accent-primary)'
-                            : 'var(--text-muted)',
-                          width: '60px',
-                          textAlign: 'center',
-                          fontWeight: index === currentStep
-                            ? '600' : '400'
-                        }}>
-                          {step}
-                        </p>
+                        {index < steps.length - 1 && (
+                          <div 
+                            className="flex-1 h-[2px] min-w-[20px] mb-4"
+                            style={{
+                              background: isPassed ? '#3B4731' : '#DFD5C6'
+                            }}
+                          />
+                        )}
                       </div>
-                      {index < steps.length - 1 && (
-                        <div style={{
-                          flex: 1,
-                          height: '2px',
-                          background: index < currentStep
-                            ? 'var(--accent-primary)'
-                            : 'var(--border-primary)',
-                          marginBottom: '20px'
-                        }} />
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Open Since */}
                 {!item.isClosed && (
-                  <div style={{
-                    marginBottom: '12px'
-                  }}>
-                    <p style={{
-                      fontSize: '13px',
-                      color: openDays > 15 
-                        ? '#DC2626' : 'var(--text-secondary)',
-                      fontWeight: openDays > 15 
-                        ? '600' : '400'
-                    }}>
+                  <div>
+                    <p className={`text-xs font-bold ${openDays > 15 ? 'text-red-600' : 'text-slate-500'}`}>
                       Open since: {openDays} days
                       {openDays > 15 && ' - Action Required!'}
                     </p>
@@ -744,11 +683,14 @@ export default function RgpPage() {
 
                 {/* Remarks */}
                 {item.remarks && (
-                  <div style={{ marginBottom: '12px' }}>
-                    <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                       Remarks
                     </p>
-                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                    <p 
+                      className="text-xs text-slate-600 italic bg-[#FAF6EE] p-2.5 rounded-lg"
+                      style={{ border: '1.5px solid #3E362E' }}
+                    >
                       {item.remarks}
                     </p>
                   </div>
@@ -756,66 +698,48 @@ export default function RgpPage() {
 
                 {/* Member-attached remark image */}
                 {item.imageUrl && (
-                  <div style={{ marginBottom: '12px' }}>
-                    <p style={{
-                      fontSize: '11px',
-                      color: 'var(--text-muted)',
-                      marginBottom: '6px',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px'
-                    }}>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                       Attached Image
                     </p>
-                    <a href={item.imageUrl} target="_blank" rel="noreferrer" style={{ display: 'block' }}>
+                    <a href={item.imageUrl} target="_blank" rel="noreferrer" className="block relative group rounded-xl overflow-hidden" style={{ border: '2px solid #3E362E' }}>
                       <img
                         src={item.imageUrl}
                         alt="Attached"
-                        style={{
-                          width: '100%',
-                          maxHeight: '160px',
-                          objectFit: 'cover',
-                          borderRadius: '8px',
-                          border: '1px solid var(--border-primary)',
-                          cursor: 'pointer'
-                        }}
+                        className="w-full max-h-40 object-cover cursor-pointer hover:opacity-95 transition-opacity"
                       />
-                      <p style={{
-                        fontSize: '11px',
-                        color: 'var(--accent-primary)',
-                        marginTop: '4px'
-                      }}>
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/40 px-3 py-1.5 text-[10px] text-white backdrop-blur-sm">
                         Tap to view full image
-                      </p>
+                      </div>
                     </a>
                   </div>
                 )}
 
                 {/* Action Buttons */}
                 {!item.isClosed && (
-                  <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px',
-                    marginTop: '4px'
-                  }}>
+                  <div className="flex flex-col gap-2 pt-2 border-t-2 border-[#3E362E]">
                     {/* Top row: Status and Remark */}
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                    <div className="flex gap-2">
                       <button
                         onClick={() => openStatusSheet(item)}
+                        className="flex-1 h-10 text-xs font-black rounded-lg active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5"
                         style={{
-                          flex: 1, padding: '10px', background: 'var(--accent-primary)',
-                          color: 'white', border: 'none', borderRadius: '8px',
-                          fontSize: '13px', fontWeight: '600', cursor: 'pointer'
+                          border: '2px solid #3E362E',
+                          background: '#3E362E',
+                          color: '#FAF6EE',
+                          boxShadow: '2px 2px 0px #3E362E',
                         }}
                       >
                         Update Status
                       </button>
                       <button
                         onClick={() => openRemarkSheet(item)}
+                        className="flex-1 h-10 text-xs font-black rounded-lg active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5"
                         style={{
-                          flex: 1, padding: '10px', background: 'var(--bg-secondary)',
-                          color: 'var(--text-primary)', border: '1px solid var(--border-primary)',
-                          borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer'
+                          border: '2px solid #3E362E',
+                          background: '#FAF6EE',
+                          color: '#3E362E',
+                          boxShadow: '2px 2px 0px #3E362E',
                         }}
                       >
                         Add Remark
@@ -823,33 +747,53 @@ export default function RgpPage() {
                     </div>
 
                     {/* Bottom row: Camera & Gallery */}
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <label style={{
-                        flex: 1, padding: '10px', background: 'var(--bg-card)',
-                        color: 'var(--text-primary)', border: '1px solid var(--border-primary)',
-                        borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                        opacity: uploadingItemId === item.id ? 0.5 : 1
-                      }}>
-                        {uploadingItemId === item.id ? '...' : <><Camera className="w-4 h-4 text-teal-600" /> Camera</>}
+                    <div className="flex gap-2">
+                      <label 
+                        className={`flex-1 h-10 text-xs font-black rounded-lg cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 transition-all ${
+                          uploadingItemId === item.id ? 'opacity-50 pointer-events-none' : ''
+                        }`}
+                        style={{
+                          border: '2px solid #3E362E',
+                          background: '#FAF6EE',
+                          color: '#3E362E',
+                          boxShadow: '2px 2px 0px #3E362E',
+                        }}
+                      >
+                        {uploadingItemId === item.id ? (
+                          '...'
+                        ) : (
+                          <>
+                            <Camera className="w-3.5 h-3.5 text-[#A68F6D]" /> Camera
+                          </>
+                        )}
                         <input 
                           type="file" accept="image/*" capture="environment" multiple
                           onChange={(e) => handleImageUpload(e, item)}
-                          style={{ display: 'none' }} disabled={uploadingItemId === item.id}
+                          className="hidden" disabled={uploadingItemId === item.id}
                         />
                       </label>
-                      <label style={{
-                        flex: 1, padding: '10px', background: 'var(--bg-card)',
-                        color: 'var(--text-primary)', border: '1px solid var(--border-primary)',
-                        borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                        opacity: uploadingItemId === item.id ? 0.5 : 1
-                      }}>
-                        {uploadingItemId === item.id ? 'Uploading...' : <><ImageIcon className="w-4 h-4 text-teal-600" /> Gallery</>}
+                      <label 
+                        className={`flex-1 h-10 text-xs font-black rounded-lg cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 transition-all ${
+                          uploadingItemId === item.id ? 'opacity-50 pointer-events-none' : ''
+                        }`}
+                        style={{
+                          border: '2px solid #3E362E',
+                          background: '#FAF6EE',
+                          color: '#3E362E',
+                          boxShadow: '2px 2px 0px #3E362E',
+                        }}
+                      >
+                        {uploadingItemId === item.id ? (
+                          'Uploading...'
+                        ) : (
+                          <>
+                            <ImageIcon className="w-3.5 h-3.5 text-[#A68F6D]" /> Gallery
+                          </>
+                        )}
                         <input 
                           type="file" accept="image/*" multiple
                           onChange={(e) => handleImageUpload(e, item)}
-                          style={{ display: 'none' }} disabled={uploadingItemId === item.id}
+                          className="hidden" disabled={uploadingItemId === item.id}
                         />
                       </label>
                     </div>
@@ -860,18 +804,19 @@ export default function RgpPage() {
           );
         })}
       </div>
+    </div>  {/* end relative z-10 */}
 
       <Sheet open={statusSheetOpen} onOpenChange={setStatusSheetOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>Update RGP/Challan Status</SheetTitle>
+        <SheetContent className="bg-[#F2ECE1] border-t border-[#DFD5C6] text-slate-800 rounded-t-[28px] p-6 pb-8">
+          <SheetHeader className="pb-4 border-b border-[#DFD5C6]">
+            <SheetTitle className="text-base font-black text-slate-800 text-left">Update RGP/Challan Status</SheetTitle>
           </SheetHeader>
 
           {selectedItem && (
-            <div className="space-y-5 py-2">
+            <div className="space-y-5 py-2 text-[var(--color-text-primary)]">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Document</p>
-                <p className="mt-1 text-sm font-medium text-[var(--text-primary)]">
+                <p className="text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--color-text-muted)]">Document</p>
+                <p className="mt-1 text-sm font-semibold text-[var(--color-text-primary)]">
                   {selectedItem.docNumber || selectedItem.challanNumber || selectedItem.referenceNumber || selectedItem.id}
                 </p>
               </div>
@@ -886,15 +831,15 @@ export default function RgpPage() {
                       onClick={() => setSelectedStatus(statusOption.value)}
                       className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all ${
                         selectedStatus === statusOption.value
-                          ? 'border-teal-300 bg-teal-50 text-teal-700'
-                          : 'border-[var(--border-primary)] bg-[var(--bg-card)] text-[var(--text-primary)]'
+                          ? 'border-[#A68F6D] bg-[#F2ECE1] text-[#3E362E]'
+                          : 'border-[#DFD5C6] bg-[#FAF6EE] text-slate-700'
                       }`}
                     >
                       <span
                         className={`h-4 w-4 rounded-full border ${
                           selectedStatus === statusOption.value
-                            ? 'border-teal-600 bg-teal-600'
-                            : 'border-gray-300'
+                            ? 'border-[#A68F6D] bg-[#A68F6D]'
+                            : 'border-[#DFD5C6] bg-transparent'
                         }`}
                       />
                       <span className="text-sm font-medium">{statusOption.label}</span>
@@ -911,7 +856,7 @@ export default function RgpPage() {
                   value={statusRemarks}
                   onChange={(event) => setStatusRemarks(event.target.value)}
                   placeholder="Add remarks for this status update..."
-                  className="flex min-h-[120px] w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  className="flex min-h-[120px] w-full rounded-lg border border-[#DFD5C6] bg-[#FAF6EE] px-4 py-3 text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
                 />
               </div>
 
@@ -924,13 +869,13 @@ export default function RgpPage() {
       </Sheet>
 
       <Sheet open={remarkSheetOpen} onOpenChange={setRemarkSheetOpen}>
-        <SheetContent>
+        <SheetContent className="bg-[#F2ECE1] border-t border-[#DFD5C6] text-slate-800 rounded-t-[28px] p-6 pb-8">
           <SheetHeader>
-            <SheetTitle>Add Remark</SheetTitle>
+            <SheetTitle className="text-slate-805">Add Remark</SheetTitle>
           </SheetHeader>
 
           {selectedItem && (
-            <div className="space-y-4 py-2">
+            <div className="space-y-4 py-2 text-[var(--color-text-primary)]">
               {/* Text Remark */}
               <div className="space-y-2">
                 <Label htmlFor="rgp-remark">Remark</Label>
@@ -940,55 +885,37 @@ export default function RgpPage() {
                   value={remarkText}
                   onChange={(event) => setRemarkText(event.target.value)}
                   placeholder="Write your remark here..."
-                  className="flex min-h-[90px] w-full rounded-lg border border-[var(--border-primary)] bg-[var(--bg-card)] px-4 py-3 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  className="flex min-h-[90px] w-full rounded-lg border border-[#DFD5C6] bg-[#FAF6EE] px-4 py-3 text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
                 />
               </div>
 
               {/* Image Upload Section */}
-              <div>
-                <Label style={{ display: 'block', marginBottom: '8px' }}>
-                  Attach Image <span style={{ fontWeight: '400', color: 'var(--text-muted)' }}>(Optional · Max 5MB)</span>
+              <div className="space-y-2">
+                <Label style={{ display: 'block' }}>
+                  Attach Image <span style={{ fontWeight: '400', color: 'var(--color-text-muted)' }}>(Optional · Max 5MB)</span>
                 </Label>
 
                 {/* Drop zone — only shown when no image selected */}
                 {!remarkImagePreview && (
-                  <label style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    padding: '14px',
-                    border: '2px dashed var(--border-primary)',
-                    borderRadius: '10px',
-                    cursor: 'pointer',
-                    color: 'var(--text-secondary)',
-                    fontSize: '14px',
-                    background: 'var(--bg-secondary)'
-                  }}>
+                  <label className="flex items-center justify-center gap-2 p-4 border-2 dashed border-[#DFD5C6] rounded-xl cursor-pointer text-slate-700 text-sm bg-[#FAF6EE] hover:bg-[#EAE4D9]/80 transition-all">
                     <input
                       type="file"
                       accept="image/*"
                       capture="environment"
                       onChange={handleRemarkImageSelect}
-                      style={{ display: 'none' }}
+                      className="hidden"
                     />
-                    <Camera className="w-4 h-4" /> Tap to attach image / take photo
+                    <Camera className="w-4 h-4 text-[var(--color-primary)]" /> Tap to attach image / take photo
                   </label>
                 )}
 
                 {/* Preview + upload/success */}
                 {remarkImagePreview && (
-                  <div style={{ position: 'relative' }}>
+                  <div className="relative">
                     <img
                       src={remarkImagePreview}
                       alt="Preview"
-                      style={{
-                        width: '100%',
-                        maxHeight: '200px',
-                        objectFit: 'cover',
-                        borderRadius: '10px',
-                        border: '1px solid var(--border-primary)'
-                      }}
+                      className="w-full max-h-48 object-cover rounded-xl border border-[#DFD5C6]"
                     />
                     {/* Remove button */}
                     <button
@@ -997,41 +924,25 @@ export default function RgpPage() {
                         setRemarkImagePreview(null);
                         setRemarkImageUrl(null);
                       }}
-                      style={{
-                        position: 'absolute', top: '8px', right: '8px',
-                        background: '#DC2626', color: 'white', border: 'none',
-                        borderRadius: '50%', width: '28px', height: '28px',
-                        cursor: 'pointer', fontSize: '14px', display: 'flex',
-                        alignItems: 'center', justifyContent: 'center', lineHeight: 1
-                      }}
+                      className="absolute top-2 right-2 bg-[var(--color-danger)] text-white border-none rounded-full w-7 h-7 cursor-pointer text-xs flex items-center justify-center font-bold"
                     >
                       ✕
                     </button>
 
                     {/* Upload button — only while not yet uploaded */}
                     {!remarkImageUrl && (
-                      <button
+                      <Button
                         onClick={handleRemarkImageUpload}
                         disabled={remarkImageUploading}
-                        style={{
-                          width: '100%', marginTop: '8px', padding: '10px',
-                          background: remarkImageUploading ? '#94A3B8' : 'var(--accent-primary)',
-                          color: 'white', border: 'none', borderRadius: '8px',
-                          cursor: remarkImageUploading ? 'not-allowed' : 'pointer',
-                          fontSize: '14px', fontWeight: '600'
-                        }}
+                        className="w-full mt-2"
                       >
                         {remarkImageUploading ? 'Uploading...' : 'Upload Image to Cloud'}
-                      </button>
+                      </Button>
                     )}
 
                     {/* Success badge */}
                     {remarkImageUrl && (
-                      <div style={{
-                        marginTop: '8px', padding: '8px 12px',
-                        background: '#DCFCE7', borderRadius: '8px',
-                        color: '#16A34A', fontSize: '13px', fontWeight: '600'
-                      }}>
+                      <div className="mt-2 p-2 px-3 bg-[var(--color-success-bg)] border border-[#DFD5C6] rounded-lg text-[var(--color-success)] text-sm font-semibold">
                         ✓ Image uploaded successfully!
                       </div>
                     )}
@@ -1040,7 +951,7 @@ export default function RgpPage() {
               </div>
 
               <Button
-                className="h-11 w-full"
+                className="h-11 w-full mt-2"
                 onClick={handleAddRemark}
                 disabled={saving || remarkImageUploading || (selectedRemarkImage && !remarkImageUrl)}
               >

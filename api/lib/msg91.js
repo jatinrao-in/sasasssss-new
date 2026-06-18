@@ -79,50 +79,56 @@ const sendTemplate = async (
 
 // All 9 template functions:
 
-export const sendWelcomeMessage = (
+export const sendWelcomeMessage = async (
   phone, name, email, password, url
-) => sendTemplate(phone, 'welcome_message',
-  [name, email, password, url]);
+) => {
+  console.log('sendWelcomeMessage skipped (welcome message disabled)');
+  return {
+    success: true,
+    response: { status: 'success', message: 'skipped' },
+    phone,
+    template: 'welcome_message_v2'
+  };
+};
 
 export const sendTaskAssigned = (
   phone, name, task, project, deadline
-) => sendTemplate(phone, 'task_assigned',
+) => sendTemplate(phone, 'saya_task_assigned',
   [name, task, project, deadline]);
 
 export const sendTaskOverdue = (
   phone, name, task, project, days
-) => sendTemplate(phone, 'task_overdue',
+) => sendTemplate(phone, 'saya_task_overdue',
   [name, task, project, String(days)]);
 
 export const sendSalaryCredited = (
   phone, name, amount, month, date
-) => sendTemplate(phone, 'salary_credited',
+) => sendTemplate(phone, 'saya_salary_credited',
   [name, String(amount), month, date]);
 
 export const sendToolReturn = (
   phone, name, tool, issuedDate, days
-) => sendTemplate(phone, 'tool_return',
+) => sendTemplate(phone, 'saya_tool_return',
   [name, tool, issuedDate, String(days)]);
 
 export const sendRgpReminder = (
-  phone, name, docNo,
-  fromCo, toCo, days
-) => sendTemplate(phone, 'rgp_reminder',
+  phone, name, docNo, fromCo, toCo, days
+) => sendTemplate(phone, 'saya_rgp_reminder',
   [name, docNo, fromCo, toCo, String(days)]);
 
 export const sendPaymentReminder = (
   phone, name, customer, invoice, amount
-) => sendTemplate(phone, 'payment_reminder',
+) => sendTemplate(phone, 'saya_payment_reminder',
   [name, customer, invoice, String(amount)]);
 
 export const sendDailyReminder = (
   phone, name, pending, overdue
-) => sendTemplate(phone, 'daily_reminder',
+) => sendTemplate(phone, 'saya_daily_reminder',
   [name, String(pending), String(overdue)]);
 
 export const sendGeneralMessage = (
   phone, name, summary
-) => sendTemplate(phone, 'general_message',
+) => sendTemplate(phone, 'saya_general_message',
   [name, String(summary)]);
 
 export default sendTemplate;

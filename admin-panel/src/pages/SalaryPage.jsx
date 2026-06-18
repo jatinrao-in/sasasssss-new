@@ -91,108 +91,112 @@ function EditModal({ row, month, onClose, onSave }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center modal-overlay">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-[var(--bg-card)] rounded-2xl shadow-2xl w-full max-w-md mx-4 modal-content">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-[16px] shadow-2xl w-full max-w-md mx-4 overflow-hidden border border-slate-100 flex flex-col max-h-[90vh] slide-in-up">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-primary)]">
-          <div>
-            <h2 className="text-base font-semibold text-[var(--text-primary)]">
-              Edit Salary - {row?.memberName}
-            </h2>
-            <p className="text-xs text-[var(--text-muted)] mt-0.5">{formatMonthLabel(month)}</p>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+              <Wallet className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-sm sm:text-base font-semibold text-[#0F172A] tracking-[-0.01em]">
+                Edit Salary - {row?.memberName}
+              </h2>
+              <p className="text-[10px] sm:text-[11px] text-[#64748B] font-semibold uppercase tracking-[0.02em] mt-0.5">{formatMonthLabel(month)}</p>
+            </div>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 transition-colors">
-            <X className="w-4 h-4 text-gray-500" />
+          <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:bg-slate-150 transition-colors">
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Fields */}
-        <div className="px-5 py-4 space-y-4">
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="label">Working Days</label>
-                <input
-                  className="input-field"
-                  type="number" min="0" step="0.5"
-                  value={form.workingDays}
-                  onChange={(e) => set('workingDays', e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="label">Present Days</label>
-                <input
-                  className="input-field"
-                  type="number" min="0" step="0.5"
-                  value={form.presentDays}
-                  onChange={(e) => set('presentDays', e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="label">Basic Salary</label>
-                <input
-                  className="input-field"
-                  type="number" min="0"
-                  value={form.basicSalary}
-                  onChange={(e) => set('basicSalary', e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="label">Overtime</label>
-                <input
-                  className="input-field"
-                  type="number" min="0"
-                  value={form.overtime}
-                  onChange={(e) => set('overtime', e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="label">Allowances</label>
-                <input
-                  className="input-field"
-                  type="number" min="0"
-                  value={form.allowances}
-                  onChange={(e) => set('allowances', e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="label">Net Salary</label>
-                <input
-                  className="input-field bg-gray-50 text-teal-700 font-bold"
-                  type="number"
-                  value={netSalary}
-                  disabled
-                />
-              </div>
-            </div>
-
+        <div className="px-6 py-5 space-y-4 font-sans text-xs sm:text-[13px] font-medium text-[#0F172A]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="label">Remarks (optional)</label>
+              <label className="block text-[#64748B] mb-1.5 font-sans">Working Days</label>
               <input
-                className="input-field"
-                type="text"
-                placeholder="Any notes..."
-                value={form.remarks}
-                onChange={(e) => set('remarks', e.target.value)}
+                className="w-full h-10 px-3 rounded-lg border border-slate-200 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-xs sm:text-[13px] bg-slate-50/30 font-medium text-[#0F172A]"
+                type="number" min="0" step="0.5"
+                value={form.workingDays}
+                onChange={(e) => set('workingDays', e.target.value)}
               />
             </div>
+            <div>
+              <label className="block text-[#64748B] mb-1.5 font-sans">Present Days</label>
+              <input
+                className="w-full h-10 px-3 rounded-lg border border-slate-200 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-xs sm:text-[13px] bg-slate-50/30 font-medium text-[#0F172A]"
+                type="number" min="0" step="0.5"
+                value={form.presentDays}
+                onChange={(e) => set('presentDays', e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[#64748B] mb-1.5 font-sans">Basic Salary</label>
+              <input
+                className="w-full h-10 px-3 rounded-lg border border-slate-200 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-xs sm:text-[13px] bg-slate-50/30 font-medium text-[#0F172A]"
+                type="number" min="0"
+                value={form.basicSalary}
+                onChange={(e) => set('basicSalary', e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-[#64748B] mb-1.5 font-sans">Overtime</label>
+              <input
+                className="w-full h-10 px-3 rounded-lg border border-slate-200 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-xs sm:text-[13px] bg-slate-50/30 font-medium text-[#0F172A]"
+                type="number" min="0"
+                value={form.overtime}
+                onChange={(e) => set('overtime', e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[#64748B] mb-1.5 font-sans">Allowances</label>
+              <input
+                className="w-full h-10 px-3 rounded-lg border border-slate-200 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-xs sm:text-[13px] bg-slate-50/30 font-medium text-[#0F172A]"
+                type="number" min="0"
+                value={form.allowances}
+                onChange={(e) => set('allowances', e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-[#64748B] mb-1.5 font-sans">Net Salary</label>
+              <input
+                className="w-full h-10 px-3 rounded-lg border border-emerald-100 focus:outline-none text-xs sm:text-[13px] bg-emerald-50/70 text-emerald-700 font-bold"
+                type="number"
+                value={netSalary}
+                disabled
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[#64748B] mb-1.5 font-sans">Remarks (optional)</label>
+            <input
+              className="w-full h-10 px-3 rounded-lg border border-slate-200 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-xs sm:text-[13px] bg-slate-50/30 font-medium text-[#0F172A]"
+              type="text"
+              placeholder="Any notes..."
+              value={form.remarks}
+              onChange={(e) => set('remarks', e.target.value)}
+            />
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 px-5 py-4 border-t border-[var(--border-primary)]">
-          <button onClick={onClose} className="btn-secondary">Cancel</button>
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+          <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl text-xs sm:text-[13px] font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors">Cancel</button>
           <button
+            type="button"
             onClick={handleSave}
             disabled={saving}
-            className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-[13px] font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition-colors disabled:opacity-50"
           >
             {saving ? (
               <><RefreshCw className="w-4 h-4 animate-spin" /> Saving...</>
@@ -214,41 +218,37 @@ function SummaryCards({ rows, loading }) {
   const pending = total - paid;
 
   const cards = [
-    { label: 'Total Payroll', value: total, textColor: 'text-[var(--text-primary)]', bg: '' },
-    { label: 'Paid', value: paid, textColor: 'text-green-600', bg: 'bg-green-50' },
-    { label: 'Pending', value: pending, textColor: 'text-orange-500', bg: 'bg-orange-50' },
+    { label: 'Total Payroll', value: total, icon: Wallet, iconBg: 'bg-blue-50/70', iconColor: 'text-blue-600', border: 'border-l-blue-400', desc: `${withData.length} processed` },
+    { label: 'Paid', value: paid, icon: Check, iconBg: 'bg-emerald-50/70', iconColor: 'text-emerald-600', border: 'border-l-emerald-400', desc: `${withData.filter((r) => r.status === 'paid').length} employees` },
+    { label: 'Pending', value: pending, icon: AlertTriangle, iconBg: 'bg-amber-50/70', iconColor: 'text-amber-600', border: 'border-l-amber-400', desc: `${withData.filter((r) => r.status !== 'paid').length} employees` },
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      {cards.map((c) => (
-        <div
-          key={c.label}
-          className={`card px-4 py-3 stagger-item ${c.bg || ''}`}
-        >
-          {loading ? (
-            <div className="space-y-2 animate-pulse">
-              <div className="h-3 w-20 bg-gray-200 rounded" />
-              <div className="h-6 w-28 bg-gray-200 rounded" />
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      {cards.map((c) => {
+        const Icon = c.icon;
+        return (
+          <div
+            key={c.label}
+            className={`bg-white border border-[#E2E8F0] rounded-[16px] p-5 shadow-sm flex items-center gap-3 border-l-4 ${c.border}`}
+          >
+            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${c.iconBg}`}>
+              <Icon className={`h-5 w-5 ${c.iconColor}`} />
             </div>
-          ) : (
-            <>
-              <p className="text-xs text-[var(--text-muted)]">{c.label}</p>
-              <p className={`text-xl font-bold mt-0.5 ${c.textColor}`}>{formatCurrency(c.value)}</p>
-              <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                {c.label === 'Total Payroll'
-                  ? `${withData.length} processed`
-                  : c.label === 'Paid'
-                  ? `${withData.filter((r) => r.status === 'paid').length} employees`
-                  : `${withData.filter((r) => r.status !== 'paid').length} employees`}
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-[12px] font-semibold text-[#64748B] uppercase tracking-[0.08em] truncate">{c.label}</p>
+              <p className="text-xl sm:text-[22px] font-bold text-[#0F172A] mt-0.5 [font-variant-numeric:tabular-nums]">
+                {formatCurrency(c.value)}
               </p>
-            </>
-          )}
-        </div>
-      ))}
+              <p className="text-[11px] text-slate-400 font-medium mt-0.5">{c.desc}</p>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
+
 
 // Main page
 export default function SalaryPage() {
@@ -431,33 +431,34 @@ export default function SalaryPage() {
   const hasAnyData = rows.some((r) => r.hasData);
 
   return (
-    <div className="space-y-5 page-transition">
+    <div className="space-y-6 page-transition bg-[#F8FAFC] min-h-screen text-[#0F172A] font-sans pb-16">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 flex-wrap">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 flex-wrap border-b border-[#E2E8F0] pb-4">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Salary Management</h1>
-          <p className="text-sm text-[var(--text-muted)] mt-0.5">
+          <h1 className="text-2xl sm:text-[28px] font-bold text-[#0F172A] tracking-[-0.02em] leading-tight">Salary Management</h1>
+          <p className="text-xs sm:text-[13px] text-[#64748B] mt-1 font-medium">
             {teamMembers.length} employees | {formatMonthLabel(month)}
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2.5 flex-wrap">
           {/* Month selector */}
           <div className="relative">
             <select
               value={month}
               onChange={(e) => setMonth(e.target.value)}
-              className="input-field pr-8 appearance-none cursor-pointer"
+              className="h-10 pl-3 pr-8 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-650 focus:ring-1 focus:ring-blue-655 text-xs sm:text-[13px] font-semibold text-[#0F172A] bg-white cursor-pointer appearance-none shadow-sm"
             >
               {getMonthOptions().map((o) => (
                 <option key={o.val} value={o.val}>{o.label}</option>
               ))}
             </select>
-            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
           </div>
           <button
+            type="button"
             onClick={handleProcessPayroll}
             disabled={processing || loading}
-            className="btn-primary text-sm disabled:opacity-60"
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs sm:text-[13px] font-semibold text-white bg-blue-600 hover:bg-blue-705 shadow-sm transition-colors disabled:opacity-60 cursor-pointer"
           >
             {processing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Wallet className="w-4 h-4" />}
             Process Payroll
@@ -471,9 +472,10 @@ export default function SalaryPage() {
       {/* Bulk actions */}
       <div className="flex items-center gap-2 flex-wrap">
         <button
+          type="button"
           onClick={handleBulkMarkPaid}
           disabled={processing}
-          className="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg font-medium flex items-center gap-1 transition-colors disabled:opacity-60"
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-60 cursor-pointer"
         >
           <Check className="w-3.5 h-3.5" /> Mark All as Paid
         </button>
@@ -481,43 +483,44 @@ export default function SalaryPage() {
 
       {/* Table */}
       {/* Desktop View */}
-      <div className="card p-0 overflow-hidden hidden md:block">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[900px]">
-            <thead>
-              <tr className="bg-gray-50 border-b border-[var(--border-primary)]">
-                <th className="table-header text-left min-w-[160px]">Employee</th>
-                <th className="table-header text-center">Days (W/P)</th>
-                <th className="table-header text-right">Basic</th>
-                <th className="table-header text-right">Overtime</th>
-                <th className="table-header text-right">Allowances</th>
-                <th className="table-header text-right">Net Salary</th>
-                <th className="table-header text-center">Status</th>
-                <th className="table-header text-center">Paid Date</th>
-                <th className="table-header text-center">Actions</th>
+      <div className="hidden md:block bg-white border border-[#E2E8F0] rounded-[16px] overflow-hidden shadow-sm">
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-left font-sans min-w-[900px]">
+            <thead className="bg-slate-50 border-b border-[#E2E8F0]">
+              <tr>
+                <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Employee</th>
+                <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-center">Days (W/P)</th>
+                <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-right">Basic</th>
+                <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-right">Overtime</th>
+                <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-right">Allowances</th>
+                <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-right">Net Salary</th>
+                <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-center">Status</th>
+                <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-center">Paid Date</th>
+                <th className="px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-center">Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-[#E2E8F0]">
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
               ) : teamMembers.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="text-center py-16">
-                    <div className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Team</div>
-                    <p className="font-medium text-[var(--text-primary)]">No team members added yet</p>
-                    <p className="text-xs text-[var(--text-muted)] mt-1">Add members from Team page.</p>
+                  <td colSpan={9} className="text-center py-16">
+                    <div className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-3">Team</div>
+                    <p className="font-semibold text-[#0F172A]">No team members added yet</p>
+                    <p className="text-xs text-[#64748B] mt-1 font-medium">Add members from Team page.</p>
                   </td>
                 </tr>
               ) : !hasAnyData ? (
                 <tr>
-                  <td colSpan={10} className="text-center py-16">
-                    <div className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Payroll</div>
-                    <p className="font-semibold text-[var(--text-primary)] text-base">No salary data for this month.</p>
-                    <p className="text-xs text-[var(--text-muted)] mt-1.5">Click "Process Payroll" to initialize records for all members.</p>
+                  <td colSpan={9} className="text-center py-16">
+                    <div className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-3">Payroll</div>
+                    <p className="font-semibold text-[#0F172A] text-base">No salary data for this month.</p>
+                    <p className="text-xs text-[#64748B] mt-1.5 font-medium">Click "Process Payroll" to initialize records for all members.</p>
                     <button
+                      type="button"
                       onClick={handleProcessPayroll}
                       disabled={processing}
-                      className="btn-primary mt-4 text-sm"
+                      className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs sm:text-[13px] font-semibold shadow-sm flex items-center gap-1.5 mx-auto transition-colors"
                     >
                       <Wallet className="w-4 h-4" /> Initialize Payroll
                     </button>
@@ -527,74 +530,76 @@ export default function SalaryPage() {
                 rows.map((row) => (
                   <tr
                     key={row.uid}
-                    className={`hover:bg-gray-50/50 transition-colors border-b border-[var(--border-primary)] last:border-0 ${
+                    className={`hover:bg-slate-50/50 transition-colors border-b border-[#E2E8F0] last:border-0 ${
                       !row.hasData ? 'opacity-50' : ''
                     }`}
                   >
                     {/* Employee */}
-                    <td className="table-cell">
+                    <td className="p-4">
                       <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 rounded-full bg-teal-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
                           {getInitials(row.memberName)}
                         </div>
                         <div>
-                          <p className="font-medium text-[var(--text-primary)] text-xs leading-tight">{row.memberName}</p>
-                          <p className="text-[10px] text-[var(--text-muted)]">{row.designation || 'Member'}</p>
+                          <p className="font-semibold text-[#0F172A] text-xs leading-tight">{row.memberName}</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5">{row.designation || 'Member'}</p>
                         </div>
                       </div>
                     </td>
 
-                    <td className="table-cell text-center">
-                      <div className="text-xs">
-                        <span className="text-gray-500">W:</span> {row.workingDays} <span className="text-gray-300">|</span> <span className="text-gray-500">P:</span> {row.presentDays}
+                    <td className="p-4 text-center text-xs font-medium text-[#0F172A]">
+                      <div>
+                        <span className="text-slate-400">W:</span> {row.workingDays} <span className="text-slate-200 px-1">|</span> <span className="text-slate-400">P:</span> {row.presentDays}
                       </div>
                     </td>
 
-                    <td className="table-cell text-right text-gray-700">
+                    <td className="p-4 text-right text-xs font-semibold text-slate-700 [font-variant-numeric:tabular-nums]">
                       {formatCurrency(row.basicSalary)}
                     </td>
 
-                    <td className="table-cell text-right text-gray-700">
+                    <td className="p-4 text-right text-xs font-semibold text-slate-700 [font-variant-numeric:tabular-nums]">
                       {formatCurrency(row.overtime)}
                     </td>
 
-                    <td className="table-cell text-right text-gray-700">
+                    <td className="p-4 text-right text-xs font-semibold text-slate-700 [font-variant-numeric:tabular-nums]">
                       {formatCurrency(row.allowances)}
                     </td>
 
-                    <td className="table-cell text-right font-bold text-teal-700">
+                    <td className="p-4 text-right text-xs font-bold text-teal-700 [font-variant-numeric:tabular-nums]">
                       {formatCurrency(row.netSalary)}
                     </td>
 
-                    <td className="table-cell text-center">
+                    <td className="p-4 text-center text-xs">
                       {row.hasData ? (
                         <span className={`badge ${row.status === 'paid' ? 'badge-green' : 'badge-yellow'}`}>
                           {row.status === 'paid' ? 'Paid' : 'Pending'}
                         </span>
                       ) : (
-                        <span className="text-xs text-gray-400">-</span>
+                        <span className="text-xs text-slate-400">-</span>
                       )}
                     </td>
 
-                    <td className="table-cell text-center text-[var(--text-muted)] text-xs">
+                    <td className="p-4 text-center text-slate-500 text-xs font-medium">
                       {row.status === 'paid' && row.paidDate
                         ? new Date(row.paidDate.toDate ? row.paidDate.toDate() : row.paidDate).toLocaleDateString('en-IN')
                         : '-'}
                     </td>
 
-                    <td className="table-cell">
-                      <div className="flex items-center justify-center gap-1">
+                    <td className="p-4">
+                      <div className="flex items-center justify-center gap-1.5">
                         <button
+                          type="button"
                           onClick={() => setEditRow(row)}
-                          className="text-xs text-blue-600 hover:bg-blue-50 px-2 py-1 rounded font-medium flex items-center gap-1 transition-colors"
+                          className="text-xs text-blue-650 hover:bg-blue-50 px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 transition-colors"
                         >
                           <Edit2 className="w-3 h-3" /> Edit
                         </button>
                         {row.hasData && row.status === 'pending' && (
                           <button
+                            type="button"
                             onClick={() => handleMarkPaid(row)}
                             disabled={processing}
-                            className="text-xs text-green-600 hover:bg-green-50 px-2 py-1 rounded font-medium flex items-center gap-1 transition-colors disabled:opacity-50"
+                            className="text-xs text-green-600 hover:bg-green-50 px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 transition-colors disabled:opacity-50"
                           >
                             <Check className="w-3 h-3" /> Mark as Paid
                           </button>
@@ -617,42 +622,43 @@ export default function SalaryPage() {
         {loading ? (
           <div className="space-y-4">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="card p-4 space-y-2 animate-pulse">
+              <div key={i} className="bg-white border border-[#E2E8F0] rounded-[16px] p-5 shadow-sm space-y-3 animate-pulse">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-gray-200" />
-                  <div className="h-4 bg-gray-200 rounded w-24" />
+                  <div className="w-8 h-8 rounded-full bg-slate-200" />
+                  <div className="h-4 bg-slate-200 rounded w-24" />
                 </div>
-                <div className="h-4 bg-gray-200 rounded w-full" />
+                <div className="h-4 bg-slate-200 rounded w-full" />
               </div>
             ))}
           </div>
         ) : teamMembers.length === 0 ? (
-          <div className="card p-8 text-center text-gray-500">
+          <div className="bg-white border border-[#E2E8F0] rounded-[16px] p-8 text-center text-slate-500 font-medium text-xs">
             No team members added yet. Add members from Team page.
           </div>
         ) : !hasAnyData ? (
-          <div className="card p-8 text-center text-[var(--text-primary)]">
-            <p className="font-semibold">No salary data for this month.</p>
-            <p className="text-xs text-[var(--text-muted)] mt-1.5">Click "Process Payroll" to initialize records.</p>
+          <div className="bg-white border border-[#E2E8F0] rounded-[16px] p-8 text-center text-[#0F172A]">
+            <p className="font-semibold text-sm">No salary data for this month.</p>
+            <p className="text-xs text-slate-500 mt-1 font-medium">Click "Process Payroll" to initialize records.</p>
             <button
+              type="button"
               onClick={handleProcessPayroll}
               disabled={processing}
-              className="btn-primary mt-4 mx-auto text-sm"
+              className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs sm:text-[13px] font-semibold shadow-sm flex items-center gap-1.5 mx-auto transition-colors"
             >
               <Wallet className="w-4 h-4" /> Initialize Payroll
             </button>
           </div>
         ) : (
           rows.map((row) => (
-            <div key={row.uid} className={`card p-4 space-y-3 ${!row.hasData ? 'opacity-50' : ''}`}>
+            <div key={row.uid} className={`bg-white border border-[#E2E8F0] rounded-[16px] p-5 shadow-sm space-y-3 ${!row.hasData ? 'opacity-50' : ''}`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-full bg-teal-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
                     {getInitials(row.memberName)}
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-900 leading-tight">{row.memberName}</h4>
-                    <p className="text-xs text-gray-400">{row.designation || 'Member'}</p>
+                    <h4 className="font-semibold text-gray-900 leading-tight text-sm">{row.memberName}</h4>
+                    <p className="text-xs text-slate-400 mt-0.5">{row.designation || 'Member'}</p>
                   </div>
                 </div>
                 {row.hasData ? (
@@ -660,43 +666,43 @@ export default function SalaryPage() {
                     {row.status === 'paid' ? 'Paid' : 'Pending'}
                   </span>
                 ) : (
-                  <span className="text-xs text-gray-400">-</span>
+                  <span className="text-xs text-slate-400">-</span>
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-2 text-xs py-2 border-y border-gray-50">
+              <div className="grid grid-cols-2 gap-2 text-xs py-2.5 border-y border-slate-100 font-sans font-medium text-slate-755">
                 <div>
-                  <span className="text-gray-400">Working Days:</span> <span className="font-medium">{row.workingDays}</span>
+                  <span className="text-slate-400 font-sans">Working Days:</span> <span className="font-semibold text-[#0F172A]">{row.workingDays}</span>
                 </div>
                 <div>
-                  <span className="text-gray-400">Present/Paid:</span> <span className="font-medium">{row.presentDays}</span>
+                  <span className="text-slate-400 font-sans">Present/Paid:</span> <span className="font-semibold text-[#0F172A]">{row.presentDays}</span>
                 </div>
                 <div>
-                  <span className="text-gray-400">Basic:</span> <span className="font-medium text-gray-900">{formatCurrency(row.basicSalary)}</span>
+                  <span className="text-slate-400 font-sans">Basic:</span> <span className="font-semibold text-[#0F172A]">{formatCurrency(row.basicSalary)}</span>
                 </div>
                 <div>
-                  <span className="text-gray-400">Overtime:</span> <span className="font-medium text-gray-900">{formatCurrency(row.overtime)}</span>
+                  <span className="text-slate-400 font-sans">Overtime:</span> <span className="font-semibold text-[#0F172A]">{formatCurrency(row.overtime)}</span>
                 </div>
                 <div>
-                  <span className="text-gray-400">Allowances:</span> <span className="font-medium text-gray-900">{formatCurrency(row.allowances)}</span>
+                  <span className="text-slate-400 font-sans">Allowances:</span> <span className="font-semibold text-[#0F172A]">{formatCurrency(row.allowances)}</span>
                 </div>
                 <div>
-                  <span className="text-gray-400">Net Salary:</span> <span className="font-bold text-teal-700">{formatCurrency(row.netSalary)}</span>
+                  <span className="text-slate-400 font-sans">Net Salary:</span> <span className="font-bold text-teal-700">{formatCurrency(row.netSalary)}</span>
                 </div>
               </div>
 
               <div className="flex items-center justify-between pt-1 text-xs">
-                <span className="text-gray-400">
+                <span className="text-slate-450 font-medium">
                   {row.status === 'paid' && row.paidDate
                     ? `Paid: ${new Date(row.paidDate.toDate ? row.paidDate.toDate() : row.paidDate).toLocaleDateString('en-IN')}`
                     : 'Unpaid'}
                 </span>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setEditRow(row)} className="text-xs text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg font-medium">
+                  <button type="button" onClick={() => setEditRow(row)} className="text-xs text-blue-650 bg-blue-50 hover:bg-blue-100 border border-blue-100 px-3 py-1.5 rounded-lg font-semibold transition-colors">
                     Edit
                   </button>
                   {row.hasData && row.status === 'pending' && (
-                    <button onClick={() => handleMarkPaid(row)} disabled={processing} className="text-xs text-green-600 bg-green-50 hover:bg-green-100 px-3 py-1.5 rounded-lg font-medium">
+                    <button type="button" onClick={() => handleMarkPaid(row)} disabled={processing} className="text-xs text-green-600 bg-green-50 hover:bg-green-100 border border-green-100 px-3 py-1.5 rounded-lg font-semibold transition-colors">
                       Pay
                     </button>
                   )}

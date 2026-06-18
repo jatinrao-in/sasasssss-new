@@ -82,10 +82,19 @@ export function RealtimeProvider({ children }) {
       unsubs.push(onSnapshot(
         ref,
         (snapshot) => {
-          const data = snapshot.docs.map((itemDoc) => ({
+          let data = snapshot.docs.map((itemDoc) => ({
             id: itemDoc.id,
             ...itemDoc.data(),
           }));
+          
+          if (!isAdmin) {
+            data = [...data].sort((a, b) => {
+              const aTime = a.createdAt?.toMillis?.() ?? (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+              const bTime = b.createdAt?.toMillis?.() ?? (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+              return bTime - aTime;
+            });
+          }
+
           if (onData) {
             onData(data, snapshot);
           } else {
@@ -99,7 +108,7 @@ export function RealtimeProvider({ children }) {
     const assignedQuery = () => (
       isAdmin
         ? [orderBy('createdAt', 'desc')]
-        : [where('assignedTo', '==', uid), orderBy('createdAt', 'desc')]
+        : [where('assignedTo', '==', uid)]
     );
 
     // Dynamic project listener setup for members

@@ -408,6 +408,82 @@ function RescheduleModal({ onClose, onSubmit }) {
   );
 }
 
+function ApproveRescheduleModal({ task, onClose, onApprove, onReject }) {
+  const [processing, setProcessing] = useState(false);
+
+  const handleAction = async (approve) => {
+    setProcessing(true);
+    try {
+      if (approve) {
+        await onApprove(task);
+      } else {
+        await onReject(task);
+      }
+      onClose();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center modal-overlay">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative card w-full max-w-sm mx-4 modal-content p-0" style={{ background: '#ffffff' }}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="text-lg font-semibold text-gray-900">Review Reschedule Request</h2>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100">
+            <X className="w-4 h-4 text-gray-500" />
+          </button>
+        </div>
+        <div className="px-6 py-5 space-y-4 text-sm text-gray-600">
+          <div>
+            <span className="block text-xs text-gray-400 uppercase font-medium">Task</span>
+            <span className="font-semibold text-gray-900">{task.title}</span>
+          </div>
+          <div>
+            <span className="block text-xs text-gray-400 uppercase font-medium">Requested By</span>
+            <span className="font-medium text-gray-900">{task.rescheduleRequest?.requestedByName || 'Member'}</span>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <span className="block text-xs text-gray-400 uppercase font-medium">Current Target</span>
+              <span className="font-medium text-gray-900">{formatDate(task.targetDate)}</span>
+            </div>
+            <div>
+              <span className="block text-xs text-gray-400 uppercase font-medium">Proposed Date</span>
+              <span className="font-semibold text-amber-700">{formatDate(task.rescheduleRequest?.suggestedDate)}</span>
+            </div>
+          </div>
+          <div>
+            <span className="block text-xs text-gray-400 uppercase font-medium">Reason</span>
+            <p className="text-gray-700 bg-amber-50/50 border border-amber-100/50 p-2.5 rounded-lg italic mt-1 break-words">
+              "{task.rescheduleRequest?.reason || 'No reason provided'}"
+            </p>
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
+          <button 
+            onClick={() => handleAction(false)} 
+            disabled={processing} 
+            className="flex-1 btn-secondary text-red-600 hover:text-red-700 border-red-200 hover:border-red-300 hover:bg-red-50 text-xs font-semibold"
+          >
+            {processing ? 'Processing...' : 'Reject Request'}
+          </button>
+          <button 
+            onClick={() => handleAction(true)} 
+            disabled={processing} 
+            className="flex-1 btn-primary bg-green-600 hover:bg-green-700 text-xs font-semibold"
+          >
+            {processing ? 'Processing...' : 'Approve Request'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProjectDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -428,6 +504,7 @@ export default function ProjectDetailPage() {
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [rescheduleTaskData, setRescheduleTaskData] = useState(null);
   const [expandedRequestId, setExpandedRequestId] = useState(null);
+  const [approveRescheduleTask, setApproveRescheduleTask] = useState(null);
   const [saving, setSaving] = useState(false);
 
   const project = projects.find((projectItem) => projectItem.id === id);
@@ -662,7 +739,7 @@ export default function ProjectDetailPage() {
         </button>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{project.name}</h1>
-          <p className="text-sm text-gray-500">{project.client || ''} | {project.status}</p>
+          <p className="text-sm text-gray-500">{project.client || ''} | {project.status} | Created: {formatDate(project.createdAt)}</p>
         </div>
       </div>
 
@@ -780,31 +857,12 @@ export default function ProjectDetailPage() {
                       {task.rescheduleRequest?.status === 'pending' && (
                          <div className="relative">
                            <button 
-                             onClick={() => setExpandedRequestId(expandedRequestId === task.id ? null : task.id)}
+                             onClick={() => setApproveRescheduleTask(task)}
                              className="flex items-center justify-center w-6 h-6 rounded-full bg-orange-100 hover:bg-orange-200 animate-pulse relative z-10"
-                             title="Reschedule Requested"
+                             title="Review Reschedule Request"
                            >
                              <span className="w-2 h-2 rounded-full bg-orange-500"></span>
                            </button>
-                           
-                           {expandedRequestId === task.id && (
-                             <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-100 p-4 z-50">
-                               <div className="text-sm font-medium text-gray-900 mb-2 border-b pb-2">Reschedule Request</div>
-                               <div className="space-y-2 text-xs">
-                                 <div><span className="text-gray-500">From:</span> {task.rescheduleRequest.requestedByName}</div>
-                                 <div><span className="text-gray-500">Suggested Date:</span> <span className="font-medium text-gray-900">{formatDate(task.rescheduleRequest.suggestedDate)}</span></div>
-                                 <div><span className="text-gray-500">Reason:</span> <p className="text-gray-700 mt-1 bg-gray-50 p-2 rounded">{task.rescheduleRequest.reason}</p></div>
-                               </div>
-                               <div className="flex gap-2 mt-3 pt-3 border-t">
-                                 <button onClick={() => handleApproveReschedule(task)} className="flex-1 flex items-center justify-center gap-1 bg-green-50 text-green-700 hover:bg-green-100 py-1.5 rounded text-xs font-medium">
-                                   <Check className="w-3 h-3" /> Approve
-                                 </button>
-                                 <button onClick={() => handleRejectReschedule(task)} className="flex-1 flex items-center justify-center gap-1 bg-red-50 text-red-700 hover:bg-red-100 py-1.5 rounded text-xs font-medium">
-                                   <XCircle className="w-3 h-3" /> Reject
-                                 </button>
-                               </div>
-                             </div>
-                           )}
                          </div>
                       )}
                       
@@ -840,7 +898,7 @@ export default function ProjectDetailPage() {
                 <div className="flex justify-between items-start gap-2">
                   <div className="max-w-[70%]">
                     <p className="font-semibold text-gray-900 text-sm break-words">{task.title}</p>
-                    <p className="text-xs text-gray-400 truncate mt-0.5">Assigned: {task.assignedToName || '-'}</p>
+                    <p className="text-xs text-gray-400 truncate mt-0.5">Assigned: {task.assignedToName || '-'} on {formatDate(task.assignedDate || task.createdAt)}</p>
                   </div>
                   <span className={`badge ${statusColors[task.status] || 'badge-gray'}`}>{task.status}</span>
                 </div>
@@ -876,15 +934,23 @@ export default function ProjectDetailPage() {
                   </div>
                 )}
                 {task.rescheduleRequest?.status === 'pending' && (
-                  <div className="bg-orange-50/50 border border-orange-100 rounded-xl p-3 text-xs space-y-2">
-                    <p className="font-semibold text-orange-800">Reschedule Requested</p>
-                    <p className="text-gray-600"><span className="font-medium text-gray-500">Date:</span> {formatDate(task.rescheduleRequest.suggestedDate)}</p>
-                    <p className="text-gray-600"><span className="font-medium text-gray-500">Reason:</span> {task.rescheduleRequest.reason}</p>
-                    <div className="flex gap-2 pt-1">
-                      <button onClick={() => handleApproveReschedule(task)} className="flex-1 bg-green-600 hover:bg-green-700 text-white py-1.5 rounded-lg text-[10px] font-semibold transition-colors">Approve</button>
-                      <button onClick={() => handleRejectReschedule(task)} className="flex-1 bg-red-600 hover:bg-red-700 text-white py-1.5 rounded-lg text-[10px] font-semibold transition-colors">Reject</button>
+                  <button 
+                    onClick={() => setApproveRescheduleTask(task)}
+                    className="w-full flex items-start justify-between p-3 bg-amber-50 hover:bg-amber-100/80 border border-amber-200 rounded-xl text-left transition-colors"
+                  >
+                    <div className="flex items-start gap-2 flex-1 min-w-0">
+                      <Clock className="w-4 h-4 text-amber-600 animate-pulse flex-shrink-0 mt-0.5" />
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-bold text-amber-800">Reschedule Pending Approval</p>
+                        <p className="text-[10px] text-amber-600 mt-0.5">By: {task.rescheduleRequest.requestedByName || 'Member'}</p>
+                        <p className="text-[10px] text-amber-600 mt-0.5">Proposed: {formatDate(task.rescheduleRequest.suggestedDate)}</p>
+                        {task.rescheduleRequest.reason && (
+                          <p className="text-[10px] text-amber-700 font-medium mt-1 italic break-words">"{task.rescheduleRequest.reason}"</p>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                    <span className="text-[10px] font-bold text-amber-700 bg-amber-200/50 px-2 py-0.5 rounded-md flex-shrink-0 ml-2">Review</span>
+                  </button>
                 )}
                 <div className="flex justify-between items-center border-t border-gray-100/60 pt-2.5">
                   <div className="flex items-center gap-2">
@@ -935,46 +1001,70 @@ export default function ProjectDetailPage() {
           <div className="py-4 text-center text-gray-400 text-sm">No expenses yet.</div>
         ) : (
           <>
-          {/* Desktop View Table */}
+          {/* Desktop Table */}
           <div className="hidden sm:block overflow-x-auto">
-            <table className="w-full min-w-[500px]">
-            <thead>
-              <tr className="bg-gray-50">
-                <th className="table-header">Activity</th>
-                <th className="table-header text-right">Amount</th>
-                <th className="table-header">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {expenses.map((expense) => (
-                <tr key={expense.id} className="group hover:bg-gray-50">
-                  <td className="table-cell">{expense.activity}</td>
-                  <td className="table-cell text-right font-semibold">{formatCurrency(expense.amount)}</td>
-                  <td className="table-cell">
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                      <DeleteButton onClick={() => deleteExpense(expense.id)} />
-                    </div>
-                  </td>
+            <table className="w-full min-w-[640px]">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th className="table-header">Activity</th>
+                  <th className="table-header">Task</th>
+                  <th className="table-header">Submitted By</th>
+                  <th className="table-header">Date</th>
+                  <th className="table-header text-right">Amount</th>
+                  <th className="table-header">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {expenses.map((expense) => {
+                  const relatedTask = projectTasks.find(t => t.id === expense.taskId);
+                  return (
+                    <tr key={expense.id} className="group hover:bg-gray-50">
+                      <td className="table-cell font-medium">{expense.activity}</td>
+                      <td className="table-cell text-xs text-teal-600 max-w-[160px] truncate">
+                        {relatedTask?.title || '—'}
+                      </td>
+                      <td className="table-cell text-xs text-gray-500">
+                        {expense.assignedToName || '—'}
+                      </td>
+                      <td className="table-cell text-xs text-gray-400">{formatDate(expense.createdAt)}</td>
+                      <td className="table-cell text-right font-semibold">{formatCurrency(expense.amount)}</td>
+                      <td className="table-cell">
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                          <DeleteButton onClick={() => deleteExpense(expense.id)} />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
 
-          {/* Mobile View Cards */}
+          {/* Mobile Cards */}
           <div className="sm:hidden space-y-3">
-            {expenses.map((expense) => (
-              <div key={expense.id} className="card p-4 flex justify-between items-center gap-2">
-                <div>
-                  <p className="font-semibold text-gray-900 text-sm">{expense.activity}</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">{formatDate(expense.createdAt)}</p>
+            {expenses.map((expense) => {
+              const relatedTask = projectTasks.find(t => t.id === expense.taskId);
+              return (
+                <div key={expense.id} className="card p-4 space-y-1.5">
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900 text-sm">{expense.activity}</p>
+                      {relatedTask && (
+                        <p className="text-[10px] text-teal-600 font-medium mt-0.5 truncate">📋 {relatedTask.title}</p>
+                      )}
+                      {expense.assignedToName && (
+                        <p className="text-[10px] text-gray-500 font-medium mt-0.5">👤 {expense.assignedToName}</p>
+                      )}
+                      <p className="text-[10px] text-gray-400 mt-0.5">{formatDate(expense.createdAt)}</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="font-bold text-gray-900 text-sm">{formatCurrency(expense.amount)}</span>
+                      <DeleteButton onClick={() => deleteExpense(expense.id)} />
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="font-bold text-gray-900 text-sm">{formatCurrency(expense.amount)}</span>
-                  <DeleteButton onClick={() => deleteExpense(expense.id)} />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           </>
         )}
@@ -1008,6 +1098,14 @@ export default function ProjectDetailPage() {
         <RescheduleModal
           onClose={() => { setShowRescheduleModal(false); setRescheduleTaskData(null); }}
           onSubmit={handleRescheduleTask}
+        />
+      )}
+      {approveRescheduleTask && (
+        <ApproveRescheduleModal
+          task={approveRescheduleTask}
+          onClose={() => setApproveRescheduleTask(null)}
+          onApprove={handleApproveReschedule}
+          onReject={handleRejectReschedule}
         />
       )}
       <DeleteConfirmDialog

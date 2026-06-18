@@ -46,6 +46,7 @@ const LoginPage = lazy(() => import('./pwa/pages/LoginPage'));
 const AccessDeniedPage = lazy(() => import('./pwa/pages/AccessDeniedPage'));
 const MemberDashboardPage = lazy(() => import('./pwa/pages/DashboardPage'));
 const TasksPage = lazy(() => import('./pwa/pages/TasksPage'));
+const TaskDetailPage = lazy(() => import('./pwa/pages/TaskDetailPage'));
 const EnquiriesPage = lazy(() => import('./pwa/pages/EnquiriesPage'));
 const FollowUpsPage = lazy(() => import('./pwa/pages/FollowUpsPage'));
 const MemberPaymentsPage = lazy(() => import('./pwa/pages/PaymentsPage'));
@@ -53,6 +54,83 @@ const RgpPage = lazy(() => import('./pwa/pages/RgpPage'));
 const NotificationsPage = lazy(() => import('./pwa/pages/NotificationsPage'));
 const ProfilePage = lazy(() => import('./pwa/pages/ProfilePage'));
 const DownloadPage = lazy(() => import('./pwa/pages/DownloadPage'));
+const SupportPage = lazy(() => import('./pwa/pages/SupportPage'));
+const LandingPage = lazy(() => import('./pages/LandingPage'));
+
+
+function NotificationHandler() {
+  const { showPrompt, requestPermission, setShowPrompt } = usePushNotifications();
+
+  if (!showPrompt) return null;
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        bottom: '80px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 9999,
+        width: 'calc(100% - 32px)',
+        maxWidth: '400px',
+        background: '#ffffff',
+        borderRadius: '16px',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+        border: '1px solid #e5e7eb',
+        padding: '16px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+        animation: 'slideUp 0.3s ease-out',
+      }}
+    >
+      <style>{`@keyframes slideUp { from { opacity: 0; transform: translateX(-50%) translateY(20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }`}</style>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+        <div style={{ fontSize: '24px', flexShrink: 0 }}>🔔</div>
+        <div>
+          <p style={{ fontWeight: 700, fontSize: '14px', color: '#111827', margin: 0 }}>Enable Notifications</p>
+          <p style={{ fontSize: '12px', color: '#6b7280', margin: '4px 0 0 0', lineHeight: '1.5' }}>
+            Get real-time updates for tasks, payments, and follow-ups.
+          </p>
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button
+          onClick={() => setShowPrompt(false)}
+          style={{
+            flex: 1,
+            padding: '10px',
+            borderRadius: '10px',
+            border: '1px solid #e5e7eb',
+            background: '#f9fafb',
+            fontSize: '13px',
+            fontWeight: 600,
+            color: '#6b7280',
+            cursor: 'pointer',
+          }}
+        >
+          Later
+        </button>
+        <button
+          onClick={requestPermission}
+          style={{
+            flex: 2,
+            padding: '10px',
+            borderRadius: '10px',
+            border: 'none',
+            background: 'linear-gradient(135deg, #0d9488, #0f766e)',
+            fontSize: '13px',
+            fontWeight: 700,
+            color: '#ffffff',
+            cursor: 'pointer',
+          }}
+        >
+          Enable Notifications
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function MemberLayout() {
   return (
@@ -95,12 +173,14 @@ function ExitHandler() {
   const location = useLocation();
 
   useEffect(() => {
-    window.history.pushState(null, null, window.location.pathname);
+    const mainTabs = ['/pwa/dashboard', '/pwa/tasks', '/pwa/enquiries', '/pwa/rgp', '/pwa/profile', '/login'];
+
+    if (mainTabs.includes(window.location.pathname)) {
+      window.history.pushState(null, null, window.location.pathname);
+    }
 
     const handlePopState = () => {
-      const mainTabs = ['/pwa/dashboard', '/pwa/tasks', '/pwa/enquiries', '/pwa/rgp', '/pwa/profile', '/login'];
-
-      if (mainTabs.includes(window.location.pathname) || mainTabs.includes(location.pathname)) {
+      if (mainTabs.includes(location.pathname)) {
         window.history.pushState(null, null, window.location.pathname);
         setShowExit(true);
       }
@@ -136,50 +216,6 @@ function ExitHandler() {
             </Button>
             <Button className="flex-1" onClick={() => setShowExit(false)}>
               Stay
-            </Button>
-          </div>
-        </div>
-      </SheetContent>
-    </Sheet>
-  );
-}
-
-function NotificationHandler() {
-  const { showPrompt, requestPermission, setShowPrompt } = usePushNotifications();
-  const { currentUser } = useAuth();
-  const location = useLocation();
-
-  const memberPaths = [
-    '/pwa/dashboard',
-    '/pwa/tasks',
-    '/pwa/enquiries',
-    '/pwa/follow-ups',
-    '/pwa/payments',
-    '/pwa/rgp',
-    '/pwa/notifications',
-    '/pwa/profile'
-  ];
-
-  if (!currentUser || !memberPaths.includes(location.pathname)) {
-    return null;
-  }
-
-  return (
-    <Sheet open={showPrompt} onOpenChange={setShowPrompt}>
-      <SheetContent>
-        <SheetHeader>
-          <SheetTitle>Enable Notifications</SheetTitle>
-        </SheetHeader>
-        <div className="mt-4 space-y-4">
-          <p className="text-gray-600">
-            Get real-time updates for tasks, payments, and follow-ups. We promise not to spam you!
-          </p>
-          <div className="flex gap-3">
-            <Button variant="outline" className="flex-1" onClick={() => setShowPrompt(false)}>
-              Later
-            </Button>
-            <Button className="flex-1 bg-teal-600 hover:bg-teal-700" onClick={requestPermission}>
-              Enable
             </Button>
           </div>
         </div>
@@ -285,7 +321,7 @@ function AppContent() {
     <Suspense fallback={<PageSkeleton />}>
       <Routes>
         {/* Auth routes */}
-        <Route path="/" element={<RootRedirect />} />
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/access-denied" element={<AccessDeniedPage />} />
         <Route path="/download" element={<DownloadPage />} />
@@ -309,6 +345,14 @@ function AppContent() {
             element={(
               <MemberPageRoute pageKey="tasks">
                 <TasksPage />
+              </MemberPageRoute>
+            )}
+          />
+          <Route
+            path="tasks/:taskId"
+            element={(
+              <MemberPageRoute pageKey="tasks">
+                <TaskDetailPage />
               </MemberPageRoute>
             )}
           />
@@ -345,7 +389,15 @@ function AppContent() {
             )}
           />
           <Route path="notifications" element={<NotificationsPage />} />
-          <Route path="profile" element={<ProfilePage />} />
+          <Route path="support" element={<SupportPage />} />
+          <Route
+            path="profile"
+            element={(
+              <MemberPageRoute pageKey="profile">
+                <ProfilePage />
+              </MemberPageRoute>
+            )}
+          />
         </Route>
 
         {/* Admin portal routes */}

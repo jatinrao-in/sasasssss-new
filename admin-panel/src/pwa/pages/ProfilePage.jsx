@@ -23,6 +23,7 @@ function fmt(amount) {
   return `₹${Number(amount).toLocaleString('en-IN')}`;
 }
 
+// Format date with custom format helper
 function fmtDate(ts) {
   if (!ts) return 'Not yet paid';
   const d = ts.toDate ? ts.toDate() : new Date(ts);
@@ -54,61 +55,61 @@ function SalaryCard({ record, month }) {
   const net = record?.netSalary ?? 0;
 
   return (
-    <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
+    <div className="rounded-2xl overflow-hidden border border-[var(--color-border)] shadow-sm">
       {/* Header */}
-      <div className={`flex items-center justify-between px-4 py-3 ${isPaid ? 'bg-green-50' : 'bg-orange-50'}`}>
-        <span className="text-sm font-semibold text-gray-700">{formatMonthLabel(month)}</span>
-        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${isPaid ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-600'}`}>
+      <div className={`flex items-center justify-between px-4 py-3 ${isPaid ? 'bg-[var(--color-success-bg)]' : 'bg-[var(--color-warning-bg)]'}`}>
+        <span className="text-sm font-semibold text-[var(--color-text-primary)]">{formatMonthLabel(month)}</span>
+        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${isPaid ? 'bg-[var(--color-success-bg)] text-[var(--color-success)]' : 'bg-[var(--color-warning-bg)] text-[var(--color-warning)]'}`}>
           {isPaid ? '✅ Paid' : '🟡 Pending'}
         </span>
       </div>
 
       {/* Net Salary Amount */}
-      <div className="bg-white px-4 py-5 border-b border-gray-100 text-center">
-        <span className="block text-sm font-medium text-gray-500 mb-1">Net Salary</span>
-        <span className="text-3xl font-bold text-[#E23744]">{fmt(net)}</span>
+      <div className="bg-[var(--color-surface)] px-4 py-5 border-b border-[var(--color-border)] text-center">
+        <span className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1">Net Salary</span>
+        <span className="text-3xl font-black text-[var(--color-text-primary)]">{fmt(net)}</span>
       </div>
 
       {/* Details */}
-      <div className="bg-white px-4 py-3 border-b border-gray-100 space-y-1">
+      <div className="bg-[var(--color-surface)] px-4 py-3 border-b border-[var(--color-border)] space-y-1">
         <div className="flex justify-between text-sm">
-          <span className="text-gray-500">Working Days</span>
-          <span className="font-medium text-gray-700">{record?.workingDays || 0}</span>
+          <span className="text-[var(--color-text-secondary)]">Working Days</span>
+          <span className="font-medium text-[var(--color-text-primary)]">{record?.workingDays || 0}</span>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-gray-500">Present Days</span>
-          <span className="font-medium text-gray-700">{record?.presentDays || 0}</span>
+          <span className="text-[var(--color-text-secondary)]">Present Days</span>
+          <span className="font-medium text-[var(--color-text-primary)]">{record?.presentDays || 0}</span>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-gray-500">Basic Salary</span>
-          <span className="font-medium text-gray-700">{fmt(record?.basicSalary || 0)}</span>
+          <span className="text-[var(--color-text-secondary)]">Basic Salary</span>
+          <span className="font-medium text-[var(--color-text-primary)]">{fmt(record?.basicSalary || 0)}</span>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-gray-500">Overtime</span>
-          <span className="font-medium text-gray-700">{fmt(record?.overtime || 0)}</span>
+          <span className="text-[var(--color-text-secondary)]">Overtime</span>
+          <span className="font-medium text-[var(--color-text-primary)]">{fmt(record?.overtime || 0)}</span>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-gray-500">Allowances</span>
-          <span className="font-medium text-gray-700">{fmt(record?.allowances || 0)}</span>
+          <span className="text-[var(--color-text-secondary)]">Allowances</span>
+          <span className="font-medium text-[var(--color-text-primary)]">{fmt(record?.allowances || 0)}</span>
         </div>
       </div>
 
       {/* Status */}
-      <div className="bg-white px-4 py-3 space-y-1">
+      <div className="bg-[var(--color-surface)] px-4 py-3 space-y-1">
         <div className="flex justify-between text-sm">
-          <span className="text-gray-500">Payment Status</span>
-          <span className={`font-medium ${isPaid ? 'text-green-600' : 'text-orange-500'}`}>
-            {isPaid ? '✅ Paid' : '🟡 Pending'}
+          <span className="text-[var(--color-text-secondary)]">Payment Status</span>
+          <span className={`font-medium ${isPaid ? 'text-[var(--color-success)]' : 'text-[var(--color-warning)]'}`}>
+            {isPaid ? 'Paid' : 'Pending'}
           </span>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-gray-500">Payment Date</span>
-          <span className="font-medium text-gray-700">{fmtDate(record?.paidDate)}</span>
+          <span className="text-[var(--color-text-secondary)]">Payment Date</span>
+          <span className="font-medium text-[var(--color-text-primary)]">{fmtDate(record?.paidDate)}</span>
         </div>
         {record?.remarks && (
           <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Remarks</span>
-            <span className="font-medium text-gray-600 text-right max-w-[60%]">{record.remarks}</span>
+            <span className="text-[var(--color-text-secondary)]">Remarks</span>
+            <span className="font-medium text-[var(--color-text-secondary)] text-right max-w-[60%]">{record.remarks}</span>
           </div>
         )}
       </div>
@@ -119,7 +120,7 @@ function SalaryCard({ record, month }) {
 // ─── Skeleton ──────────────────────────────────────────────────────────────────
 function SalarySkeleton() {
   return (
-    <div className="rounded-2xl border border-gray-100 overflow-hidden animate-pulse">
+    <div className="rounded-2xl border border-[var(--color-border)] overflow-hidden animate-pulse">
       <div className="h-12 bg-gray-100" />
       <div className="px-4 py-3 space-y-3 bg-white">
         {Array.from({ length: 5 }).map((_, i) => (
@@ -146,8 +147,8 @@ function MySalarySection({ uid }) {
     <div className="px-4 mb-5">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-full bg-rose-50 flex items-center justify-center">
-            <Wallet className="h-4 w-4 text-[#E23744]" />
+          <div className="h-8 w-8 rounded-full bg-[var(--color-primary-light)] flex items-center justify-center">
+            <Wallet className="h-4 w-4 text-[var(--color-primary)]" />
           </div>
           <h3 className="text-sm font-semibold text-[var(--text-primary)]">My Salary</h3>
         </div>
@@ -156,13 +157,13 @@ function MySalarySection({ uid }) {
           <select
             value={selectedMonth}
             onChange={e => setSelectedMonth(e.target.value)}
-            className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 pr-6 appearance-none bg-white text-gray-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500/20"
+            className="text-xs border border-[var(--color-border)] rounded-lg px-2 py-1.5 pr-6 appearance-none bg-[var(--color-surface)] text-[var(--color-text-primary)] cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20"
           >
             {monthOptions().map(o => (
               <option key={o.val} value={o.val}>{o.label}</option>
             ))}
           </select>
-          <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
+          <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-[var(--color-text-muted)] pointer-events-none" />
         </div>
       </div>
 
@@ -172,10 +173,10 @@ function MySalarySection({ uid }) {
       ) : record ? (
         <SalaryCard record={record} month={selectedMonth} />
       ) : (
-        <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-8 text-center">
+        <div className="empty-state">
           <div className="text-3xl mb-2">💰</div>
-          <p className="text-sm font-medium text-gray-600">Salary not processed yet</p>
-          <p className="text-xs text-gray-400 mt-1">Contact admin for details</p>
+          <h4>Salary not processed yet</h4>
+          <p>Contact admin for details</p>
         </div>
       )}
 
@@ -183,8 +184,8 @@ function MySalarySection({ uid }) {
       {!historyLoading && pastMonths.length > 0 && (
         <div className="mt-4">
           <h4 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-2">Previous Months</h4>
-          <Card>
-            <CardContent className="p-0 divide-y divide-gray-50">
+          <Card className="card p-0">
+            <CardContent className="p-0 divide-y divide-[var(--color-border)]">
               {historyLoading ? (
                 Array.from({ length: 3 }).map((_, i) => (
                   <div key={i} className="px-4 py-3 flex justify-between animate-pulse">
@@ -196,19 +197,19 @@ function MySalarySection({ uid }) {
                 pastMonths.map(r => (
                   <div key={r.month || r.id}>
                     <button
-                      className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+                      className="w-full flex items-center justify-between px-4 py-3 hover:bg-[var(--color-surface-muted)] transition-colors text-left"
                       onClick={() => setExpandedHistory(expandedHistory === r.month ? null : r.month)}
                     >
                       <div className="flex items-center gap-2">
-                        <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                        <span className="text-sm text-gray-700">{formatMonthLabel(r.month || r.id)}</span>
+                        <Calendar className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
+                        <span className="text-sm text-[var(--color-text-primary)]">{formatMonthLabel(r.month || r.id)}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-[#E23744]">{fmt(r.netSalary)}</span>
-                        <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${r.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-600'}`}>
+                        <span className="text-sm font-extrabold text-[var(--color-text-primary)]">{fmt(r.netSalary)}</span>
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${r.status === 'paid' ? 'bg-[var(--color-success-bg)] text-[var(--color-success)]' : 'bg-[var(--color-warning-bg)] text-[var(--color-warning)]'}`}>
                           {r.status === 'paid' ? '✅' : '🟡'}
                         </span>
-                        {expandedHistory === r.month ? <ChevronUp className="w-3.5 h-3.5 text-gray-400" /> : <ChevronDown className="w-3.5 h-3.5 text-gray-400" />}
+                        {expandedHistory === r.month ? <ChevronUp className="w-3.5 h-3.5 text-[var(--color-text-muted)]" /> : <ChevronDown className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />}
                       </div>
                     </button>
                     {expandedHistory === r.month && (
@@ -233,6 +234,7 @@ export default function ProfilePage() {
   const toast = useToast();
   const { tasks } = useTasks(currentUser?.uid || userData?.uid);
   const [passwordSheetOpen, setPasswordSheetOpen] = useState(false);
+  const [logoutSheetOpen, setLogoutSheetOpen] = useState(false);
   const [currentPwd, setCurrentPwd] = useState('');
   const [newPwd, setNewPwd] = useState('');
   const [confirmPwd, setConfirmPwd] = useState('');
@@ -257,13 +259,18 @@ export default function ProfilePage() {
   const onTimePct = myTasks.length > 0 ? Math.round((completedTasks.length / myTasks.length) * 100) : 0;
 
   const stats = [
-    { label: 'Completed', value: completedTasks.length, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
-    { label: 'On-Time %', value: `${onTimePct}%`, icon: Clock, color: 'text-[#E23744]', bg: 'bg-rose-50' },
-    { label: 'Overdue', value: overdueTasks.length, icon: AlertTriangle, color: 'text-red-500', bg: 'bg-red-50' },
+    { label: 'Completed', value: completedTasks.length, icon: CheckCircle, color: 'text-[var(--color-success)]', bg: 'bg-[var(--color-success-bg)]' },
+    { label: 'On-Time %', value: `${onTimePct}%`, icon: Clock, color: 'text-[var(--color-warning)]', bg: 'bg-[var(--color-warning-bg)]' },
+    { label: 'Overdue', value: overdueTasks.length, icon: AlertTriangle, color: 'text-[var(--color-danger)]', bg: 'bg-[var(--color-danger-bg)]' },
   ];
 
   const handleLogout = async () => {
-    try { await logout(); } catch (err) { toast.error('Logout failed'); }
+    try {
+      setLogoutSheetOpen(false);
+      await logout();
+    } catch (err) {
+      toast.error('Logout failed');
+    }
   };
 
   useEffect(() => {
@@ -292,7 +299,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="pb-4">
+    <div className="pb-4 text-[var(--color-text-primary)]">
       {/* Avatar + Name */}
       <div className="mb-3 flex flex-col items-center bg-[var(--bg-card)] px-5 py-8">
         <UserAvatar
@@ -300,32 +307,47 @@ export default function ProfilePage() {
           size={80}
           showRing
         />
-        <h2 className="mt-3 text-xl font-bold text-[var(--text-primary)]">
+        <h2 className="mt-3 text-xl font-bold text-[var(--color-text-primary)] pwa-headline">
           {profileUser?.name || 'Team Member'}
         </h2>
-        <p className="mt-1 text-sm text-[var(--text-secondary)]">
+        <p className="mt-1 text-sm text-[var(--color-text-secondary)] font-medium">
           {profileUser?.designation || 'Team Member'}
         </p>
-        <span className="mt-2 rounded-full bg-[var(--accent-light)] px-3 py-1 text-xs font-semibold text-[var(--accent-primary)]">
+        <span className="mt-2 rounded-full bg-[var(--color-primary-light)] px-3 py-1 text-xs font-semibold text-[var(--color-primary)]">
           {profileUser?.role === 'admin' ? 'Administrator' : 'Team Member'}
         </span>
       </div>
 
       {/* Contact Info */}
       <div className="px-4 mb-5">
-        <Card>
-          <CardContent className="p-0 divide-y divide-gray-50">
+        <Card className="card p-0">
+          <CardContent className="p-0 divide-y divide-[var(--color-border)]">
             <div className="flex items-center gap-3 px-4 py-3">
-              <div className="h-9 w-9 rounded-full bg-rose-50 flex items-center justify-center"><Mail className="h-4 w-4 text-[#E23744]" /></div>
-              <div className="flex-1 min-w-0"><p className="text-xs text-gray-400">Email</p><p className="text-sm text-gray-700 truncate">{userData?.email || '-'}</p></div>
+              <div className="h-9 w-9 rounded-full bg-[var(--color-primary-light)] flex items-center justify-center">
+                <Mail className="h-4 w-4 text-[var(--color-primary)]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Email</p>
+                <p className="text-sm font-semibold text-[var(--color-text-primary)] truncate">{userData?.email || '-'}</p>
+              </div>
             </div>
             <div className="flex items-center gap-3 px-4 py-3">
-              <div className="h-9 w-9 rounded-full bg-blue-50 flex items-center justify-center"><Phone className="h-4 w-4 text-blue-600" /></div>
-              <div className="flex-1"><p className="text-xs text-gray-400">Phone</p><p className="text-sm text-gray-700">{userData?.phone || '-'}</p></div>
+              <div className="h-9 w-9 rounded-full bg-[var(--color-primary-light)] flex items-center justify-center">
+                <Phone className="h-4 w-4 text-[var(--color-primary)]" />
+              </div>
+              <div className="flex-1">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Phone</p>
+                <p className="text-sm font-semibold text-[var(--color-text-primary)]">{userData?.phone || '-'}</p>
+              </div>
             </div>
             <div className="flex items-center gap-3 px-4 py-3">
-              <div className="h-9 w-9 rounded-full bg-green-50 flex items-center justify-center"><MessageCircle className="h-4 w-4 text-green-600" /></div>
-              <div className="flex-1"><p className="text-xs text-gray-400">WhatsApp</p><p className="text-sm text-gray-700">{userData?.whatsapp || '-'}</p></div>
+              <div className="h-9 w-9 rounded-full bg-[var(--color-primary-light)] flex items-center justify-center">
+                <MessageCircle className="h-4 w-4 text-[var(--color-primary)]" />
+              </div>
+              <div className="flex-1">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">WhatsApp</p>
+                <p className="text-sm font-semibold text-[var(--color-text-primary)]">{userData?.whatsapp || '-'}</p>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -333,13 +355,13 @@ export default function ProfilePage() {
 
       {/* Stats */}
       <div className="px-4 mb-5">
-        <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3">My Stats</h3>
+        <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-3">My Stats</h3>
         <div className="grid grid-cols-3 gap-2.5">
           {stats.map((stat, idx) => { const Icon = stat.icon; return (
-            <Card key={idx}><CardContent className="p-3 flex flex-col items-center text-center">
+            <Card key={idx} className="card p-0"><CardContent className="p-3 flex flex-col items-center text-center">
               <div className={`h-9 w-9 rounded-full ${stat.bg} flex items-center justify-center mb-2`}><Icon className={`h-4 w-4 ${stat.color}`} /></div>
-              <p className="text-xl font-bold text-gray-900">{stat.value}</p>
-              <p className="text-[10px] text-[var(--text-muted)] mt-0.5">{stat.label}</p>
+              <p className="text-xl font-bold text-[var(--color-text-primary)]">{stat.value}</p>
+              <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">{stat.label}</p>
             </CardContent></Card>
           ); })}
         </div>
@@ -347,27 +369,27 @@ export default function ProfilePage() {
 
       {/* App Settings */}
       <div className="px-4 mb-5">
-        <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3">App Settings</h3>
-        <Card>
-          <CardContent className="p-0 divide-y divide-gray-50">
+        <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-3">App Settings</h3>
+        <Card className="card p-0">
+          <CardContent className="p-0 divide-y divide-[var(--color-border)]">
             <div className="flex items-center justify-between px-4 py-3.5">
               <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-full bg-rose-50 flex items-center justify-center">
+                <div className="h-9 w-9 rounded-full bg-[var(--color-primary-light)] flex items-center justify-center">
                   {soundDisabled ? (
-                    <VolumeX className="h-4 w-4 text-[#E23744]" />
+                    <VolumeX className="h-4 w-4 text-[var(--color-primary)]" />
                   ) : (
-                    <Volume2 className="h-4 w-4 text-[#E23744]" />
+                    <Volume2 className="h-4 w-4 text-[var(--color-primary)]" />
                   )}
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-800">Notification Sound</p>
-                  <p className="text-xs text-gray-500">Play sound for new notifications</p>
+                  <p className="text-sm font-semibold text-[var(--color-text-primary)]">Notification Sound</p>
+                  <p className="text-xs text-[var(--color-text-secondary)]">Play sound for new notifications</p>
                 </div>
               </div>
               <button
                 onClick={toggleSound}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                  soundDisabled ? 'bg-gray-200' : 'bg-[#E23744]'
+                  soundDisabled ? 'bg-gray-200' : 'bg-[var(--color-primary)]'
                 }`}
               >
                 <span
@@ -387,21 +409,55 @@ export default function ProfilePage() {
       {/* Actions */}
       <div className="px-4 space-y-3">
         <Button variant="outline" className="w-full min-h-[44px] justify-start" onClick={() => setPasswordSheetOpen(true)}>
-          <Lock className="h-4 w-4 mr-3 text-gray-500" />Change Password
+          <Lock className="h-4 w-4 mr-3 text-[var(--color-text-secondary)]" />Change Password
         </Button>
-        <Button variant="outline-destructive" className="w-full min-h-[44px] justify-start border-red-200 text-red-600 hover:bg-red-50" onClick={handleLogout}>
+        <Button variant="outline-destructive" className="w-full min-h-[44px] justify-start border-red-200 text-red-600 hover:bg-red-50" onClick={() => setLogoutSheetOpen(true)}>
           <LogOut className="h-4 w-4 mr-3" />Logout
         </Button>
       </div>
 
       {/* Change Password Sheet */}
       <Sheet open={passwordSheetOpen} onOpenChange={setPasswordSheetOpen}>
-        <SheetContent><SheetHeader><SheetTitle>Change Password</SheetTitle></SheetHeader>
-          <div className="mt-3 space-y-4">
-            <div className="space-y-2"><Label htmlFor="currentPwd">Current Password</Label><Input id="currentPwd" type="password" placeholder="Enter current password" value={currentPwd} onChange={e => setCurrentPwd(e.target.value)} /></div>
-            <div className="space-y-2"><Label htmlFor="newPwd">New Password</Label><Input id="newPwd" type="password" placeholder="Enter new password" value={newPwd} onChange={e => setNewPwd(e.target.value)} /></div>
-            <div className="space-y-2"><Label htmlFor="confirmPwd">Confirm</Label><Input id="confirmPwd" type="password" placeholder="Confirm new password" value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)} /></div>
+        <SheetContent className="bg-[var(--color-bg)] border-t border-[var(--color-border)]">
+          <SheetHeader><SheetTitle className="text-[var(--color-text-primary)]">Change Password</SheetTitle></SheetHeader>
+          <div className="mt-3 space-y-4 text-[var(--color-text-primary)]">
+            <div className="space-y-2">
+              <Label htmlFor="currentPwd">Current Password</Label>
+              <Input id="currentPwd" type="password" placeholder="Enter current password" value={currentPwd} onChange={e => setCurrentPwd(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="newPwd">New Password</Label>
+              <Input id="newPwd" type="password" placeholder="Enter new password" value={newPwd} onChange={e => setNewPwd(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPwd">Confirm</Label>
+              <Input id="confirmPwd" type="password" placeholder="Confirm new password" value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)} />
+            </div>
             <Button className="w-full min-h-[44px]" onClick={handleChangePassword} disabled={saving}>{saving ? 'Saving...' : 'Save Password'}</Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Logout Confirmation Sheet */}
+      <Sheet open={logoutSheetOpen} onOpenChange={setLogoutSheetOpen}>
+        <SheetContent className="bg-[var(--color-bg)] border-t border-[var(--color-border)] rounded-t-[28px]">
+          <SheetHeader>
+            <SheetTitle className="text-[var(--color-text-primary)]">Logout Confirmation</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4 space-y-4 text-[var(--color-text-primary)]">
+            <p className="text-sm text-gray-600">Are you sure you want to log out of your account?</p>
+            <div className="flex gap-3">
+              <Button
+                variant="outline-destructive"
+                className="flex-1 border-red-200 text-red-600 hover:bg-red-50"
+                onClick={handleLogout}
+              >
+                Logout
+              </Button>
+              <Button className="flex-1" onClick={() => setLogoutSheetOpen(false)}>
+                Cancel
+              </Button>
+            </div>
           </div>
         </SheetContent>
       </Sheet>

@@ -91,17 +91,22 @@ export function useEnquiries() {
     const enquiryQuery = query(
       collection(db, COLLECTIONS.enquiries),
       where('assignedTo', '==', currentUser?.uid),
-      orderBy('createdAt', 'desc'),
     );
 
     const unsubscribe = onSnapshot(
       enquiryQuery,
       (snapshot) => {
         logSnapshot('useEnquiries', snapshot);
-        const nextEnquiries = snapshot.docs.map((enquiryDoc) => normalizeEnquiry({
+        let nextEnquiries = snapshot.docs.map((enquiryDoc) => normalizeEnquiry({
           id: enquiryDoc.id,
           ...enquiryDoc.data(),
         }));
+
+        nextEnquiries = [...nextEnquiries].sort((a, b) => {
+          const aTime = a.createdAt?.toMillis?.() ?? (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+          const bTime = b.createdAt?.toMillis?.() ?? (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+          return bTime - aTime;
+        });
 
         setEnquiries(nextEnquiries);
         setLoading(false);

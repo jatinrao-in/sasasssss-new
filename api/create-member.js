@@ -109,15 +109,15 @@ export default async function handler(req, res) {
       throw new Error('Firestore save failed: ' + fsErr.message);
     }
 
-    // Send welcome WhatsApp silently
-    if (whatsapp?.trim()) {
-       try {
-         const appUrl = process.env.APP_URL || 'https://sasasssss-one.vercel.app';
-         await sendWelcomeMessage(whatsapp.trim(), name, email, password, appUrl);
-       } catch (e) {
-         console.error('WhatsApp Welcome Send failed:', e.message);
-       }
-    }
+    // Welcome message disabled until template approved
+    // if (whatsapp?.trim()) {
+    //    try {
+    //      const appUrl = process.env.APP_URL || 'https://sasasssss-one.vercel.app';
+    //      await sendWelcomeMessage(whatsapp.trim(), name, email, password, appUrl);
+    //    } catch (e) {
+    //      console.error('WhatsApp Welcome Send failed:', e.message);
+    //    }
+    // }
 
     return res.status(200).json({
       success: true,

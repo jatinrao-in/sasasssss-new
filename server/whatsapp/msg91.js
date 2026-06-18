@@ -117,45 +117,52 @@ export function handleConfigError(res, error) {
 const S = (val) => String(val ?? '') || 'N/A';
 
 export async function sendWelcomeMessage(toNumber, memberName, email, password, appURL) {
-  return sendTemplate(toNumber, 'welcome_message', [S(memberName), S(email), S(password), S(appURL)]);
+  console.log('sendWelcomeMessage skipped (welcome message disabled)');
+  return {
+    to: toNumber,
+    template: 'welcome_message_v2',
+    payload: {},
+    result: { status: 'success', message: 'skipped' },
+    sent: true
+  };
 }
 
 export async function sendToolReturn(toNumber, memberName, toolName, issuedDate, daysSinceIssue) {
-  return sendTemplate(toNumber, 'tool_return', [S(memberName), S(toolName), S(issuedDate), S(daysSinceIssue)]);
+  return sendTemplate(toNumber, 'saya_tool_return', [S(memberName), S(toolName), S(issuedDate), S(daysSinceIssue)]);
 }
 
 export async function sendRgpReminder(toNumber, memberName, docNumber, fromCompany, toCompany, daysOpen) {
-  return sendTemplate(toNumber, 'rgp_reminder', [S(memberName), S(docNumber), S(fromCompany), S(toCompany), S(daysOpen)]);
+  return sendTemplate(toNumber, 'saya_rgp_reminder', [S(memberName), S(docNumber), S(fromCompany), S(toCompany), S(daysOpen)]);
 }
 
 export async function sendPaymentReminder(toNumber, memberName, clientName, invoiceNumber, pendingAmount) {
-  return sendTemplate(toNumber, 'payment_reminder', [S(memberName), S(clientName), S(invoiceNumber), S(pendingAmount)]);
+  return sendTemplate(toNumber, 'saya_payment_reminder', [S(memberName), S(clientName), S(invoiceNumber), S(pendingAmount)]);
 }
 
 export async function sendTaskAssigned(toNumber, memberName, taskName, projectName, deadline) {
-  return sendTemplate(toNumber, 'task_assigned', [S(memberName), S(taskName), S(projectName), S(deadline)]);
+  return sendTemplate(toNumber, 'saya_task_assigned', [S(memberName), S(taskName), S(projectName), S(deadline)]);
 }
 
 export async function sendTaskOverdue(toNumber, memberName, taskName, projectName, overdueDays) {
-  return sendTemplate(toNumber, 'task_overdue', [S(memberName), S(taskName), S(projectName), S(overdueDays)]);
+  return sendTemplate(toNumber, 'saya_task_overdue', [S(memberName), S(taskName), S(projectName), S(overdueDays)]);
 }
 
 export async function sendSalaryCredited(toNumber, memberName, netSalary, month, paidDate) {
-  return sendTemplate(toNumber, 'salary_credited', [S(memberName), S(netSalary), S(month), S(paidDate)]);
+  return sendTemplate(toNumber, 'saya_salary_credited', [S(memberName), S(netSalary), S(month), S(paidDate)]);
 }
 
 export async function sendDailyReminder(toNumber, memberName, pendingTasks, overdueTasks) {
   const pt = pendingTasks ?? 0;
   const ot = overdueTasks ?? 0;
-  return sendTemplate(toNumber, 'daily_reminder', [S(memberName), String(pt), String(ot)]);
+  return sendTemplate(toNumber, 'saya_daily_reminder', [S(memberName), String(pt), String(ot)]);
 }
 
 export async function sendGeneralMessage(toNumber, memberName, summary) {
-  return sendTemplate(toNumber, 'general_message', [S(memberName), S(summary)]);
+  return sendTemplate(toNumber, 'saya_general_message', [S(memberName), S(summary)]);
 }
 
 export async function sendToolAssigned(toNumber, memberName, toolName, issuedDate) {
-  return sendTemplate(toNumber, 'task_assigned', [S(memberName), S(toolName), 'Tool Department', S(issuedDate)]);
+  return sendTemplate(toNumber, 'saya_task_assigned', [S(memberName), S(toolName), 'Tool Department', S(issuedDate)]);
 }
 
 export async function sendViaMsg91(toNumber, message) {
