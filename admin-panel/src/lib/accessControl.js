@@ -184,11 +184,18 @@ export function sanitizePermissions(role, permissions, options = {}) {
 
   const allowedKeys = new Set(getAllPageKeys(normalizedRole));
 
-  return [...new Set(
+  const sanitized = [...new Set(
     permissions
       .map((permission) => mapPermissionAlias(normalizedRole, permission))
       .filter((permission) => allowedKeys.has(permission)),
   )];
+
+  // Auto-grant reports if admin has dashboard permission
+  if (normalizedRole === 'admin' && sanitized.includes('dashboard') && !sanitized.includes('reports')) {
+    sanitized.push('reports');
+  }
+
+  return sanitized;
 }
 
 export function resolveUserPermissions(userLike, mainAdminUid) {
