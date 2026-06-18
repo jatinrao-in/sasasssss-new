@@ -348,7 +348,7 @@ export default function DashboardPage() {
     },
     {
       label: 'Reports',
-      path: '/admin/dashboard',
+      path: '/admin/reports',
       icon: BarChart3,
       badgeText: 'Analytics',
       badgeClass: 'bg-sky-50 text-sky-600'

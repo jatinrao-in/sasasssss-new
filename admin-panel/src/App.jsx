@@ -21,6 +21,7 @@ import RgpChallanPage from './pages/RgpChallanPage';
 import SalaryPage from './pages/SalaryPage';
 import ToolAssignPage from './pages/ToolAssignPage';
 import TeamPage from './pages/TeamPage';
+import ReportsPage from './pages/ReportsPage';
 import SettingsPage from './pages/SettingsPage';
 import NotificationLogsPage from './pages/NotificationLogsPage';
 import AdminNotificationsPage from './pages/NotificationsPage';
@@ -504,6 +505,14 @@ function AppContent() {
               element={(
                 <AdminRoute pageKey="dashboard">
                   <AdminNotificationsPage />
+                </AdminRoute>
+              )}
+            />
+            <Route
+              path="reports"
+              element={(
+                <AdminRoute pageKey="reports">
+                  <ReportsPage />
                 </AdminRoute>
               )}
             />

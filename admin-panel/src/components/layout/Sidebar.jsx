@@ -57,7 +57,7 @@ const SECTIONS = [
   },
   {
     title: 'SYSTEM',
-    keys: ['tools', 'settings'],
+    keys: ['tools', 'reports', 'settings'],
   },
 ];
 

@@ -63,7 +63,7 @@ export const ADMIN_PAGE_OPTIONS = [
     key: 'reports',
     label: 'Reports',
     description: 'Performance and analytics reports',
-    path: '/admin/dashboard',
+    path: '/admin/reports',
   },
   {
     key: 'settings',
