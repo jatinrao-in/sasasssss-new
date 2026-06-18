@@ -1,14 +1,31 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import fs from 'fs'
 
 const buildId = Date.now().toString();
+
+const writeVersionFilePlugin = () => {
+  return {
+    name: 'write-version-file',
+    buildStart() {
+      const content = JSON.stringify({ buildId });
+      try {
+        fs.writeFileSync('public/version.json', content);
+        console.log('Generated public/version.json with buildId:', buildId);
+      } catch (err) {
+        console.warn('Failed to write version.json:', err.message);
+      }
+    }
+  };
+};
 
 export default defineConfig({
   define: {
     __APP_BUILD_ID__: JSON.stringify(buildId),
   },
   plugins: [
+    writeVersionFilePlugin(),
     react({
       include: /\.[jt]sx?$/,
     }),
